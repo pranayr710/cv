@@ -49,6 +49,7 @@ from backend.config import CONFIG, Config
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from backend.detection import Detector, Obj, Person
+    from backend.expression import ExpressionRecognizer
     from backend.face import FaceAnalyzer, FaceResult
     from backend.headpose import HeadPoseEstimator, HeadPoseResult
     from backend.posture import PostureAnalyzer, PostureResult
@@ -98,6 +99,14 @@ class PostureAnalyzerLike(Protocol):
     def analyze(
         self, frame: np.ndarray, person_bboxes: Sequence[Sequence[float]]
     ) -> list[PostureResult]: ...
+
+
+class ExpressionLike(Protocol):
+    """Anything exposing ``classify(frame, face_bboxes) -> list[result|None]``."""
+
+    def classify(
+        self, frame: np.ndarray, face_bboxes: Sequence[Sequence[float] | None]
+    ) -> list[object | None]: ...
 
 
 class PersonTrackerLike(Protocol):
@@ -152,6 +161,32 @@ def _headpose_to_json(hp: HeadPoseResult | None) -> dict | None:
     }
 
 
+def _expression_to_json(expression) -> dict | None:
+    """Serialise an ExpressionResult into the ``expression`` object, or ``None``.
+
+    Args:
+        expression: The per-person :class:`~backend.expression.ExpressionResult`,
+            or ``None`` when there was no face or it was too small to classify.
+
+    Returns:
+        A dict matching the schema's ``expression`` object, or ``None``. The
+        label describes the **visible expression**, never an inferred emotional
+        state — see :mod:`backend.expression` for why that wording is
+        load-bearing.
+    """
+    if expression is None:
+        return None
+    return {
+        "label": expression.label,
+        "confidence": float(expression.confidence),
+        "distribution": (
+            {k: float(v) for k, v in expression.distribution.items()}
+            if expression.distribution
+            else None
+        ),
+    }
+
+
 def _point_to_json(point: tuple[float, float] | None) -> list[float] | None:
     """Serialise an (x, y) point, or ``None``.
 
@@ -197,6 +232,7 @@ def _assemble_frame(
     faces: list[FaceResult],
     headposes: list[HeadPoseResult | None],
     postures: list[PostureResult],
+    expressions: list[object | None],
     track_ids: list[int | None],
     objects: list[Obj],
 ) -> dict:
@@ -225,18 +261,23 @@ def _assemble_frame(
             not aligned with ``persons``.
     """
     if not (
-        len(persons) == len(faces) == len(headposes) == len(postures) == len(track_ids)
+        len(persons)
+        == len(faces)
+        == len(headposes)
+        == len(postures)
+        == len(expressions)
+        == len(track_ids)
     ):
         raise ValueError(
             "Misaligned per-person lists: "
             f"persons={len(persons)}, faces={len(faces)}, "
             f"headposes={len(headposes)}, postures={len(postures)}, "
-            f"track_ids={len(track_ids)}."
+            f"expressions={len(expressions)}, track_ids={len(track_ids)}."
         )
 
     person_records = []
-    for person, face, hp, posture, track_id in zip(
-        persons, faces, headposes, postures, track_ids
+    for person, face, hp, posture, expression, track_id in zip(
+        persons, faces, headposes, postures, expressions, track_ids
     ):
         person_records.append(
             {
@@ -251,6 +292,7 @@ def _assemble_frame(
                 "face": _face_to_json(face),
                 "head_pose": _headpose_to_json(hp),
                 "posture": _posture_to_json(posture),
+                "expression": _expression_to_json(expression),
             }
         )
 
@@ -285,6 +327,13 @@ def _build_face_analyzer(config: Config) -> FaceAnalyzer:
     return FaceAnalyzer(config.face)
 
 
+def _build_expression_recognizer(config: Config) -> ExpressionRecognizer:
+    """Construct the real :class:`~backend.expression.ExpressionRecognizer`."""
+    from backend.expression import ExpressionRecognizer
+
+    return ExpressionRecognizer(config.expression)
+
+
 def _build_headpose_estimator(config: Config) -> HeadPoseEstimator:
     """Construct the real :class:`~backend.headpose.HeadPoseEstimator` from config."""
     from backend.headpose import HeadPoseEstimator
@@ -315,6 +364,7 @@ def process_video(
     face_analyzer: FaceAnalyzerLike | None = None,
     headpose_estimator: HeadPoseLike | None = None,
     posture_analyzer: PostureAnalyzerLike | None = None,
+    expression_recognizer: ExpressionLike | None = None,
     person_tracker: PersonTrackerLike | None = None,
 ) -> int:
     """Run the full Stage 1+2 pipeline over a video and write JSONL output.
@@ -357,6 +407,7 @@ def process_video(
     face_analyzer = face_analyzer or _build_face_analyzer(config)
     headpose_estimator = headpose_estimator or _build_headpose_estimator(config)
     posture_analyzer = posture_analyzer or _build_posture_analyzer(config)
+    expression_recognizer = expression_recognizer or _build_expression_recognizer(config)
     person_tracker = person_tracker or _build_person_tracker(config)
 
     sample_rate = max(int(config.pipeline.sample_rate), 1)
@@ -442,6 +493,9 @@ def process_video(
                 # Posture runs on every person, not just faceless ones: it is
                 # a face-independent signal by design (see backend/posture.py).
                 postures = posture_analyzer.analyze(frame, person_bboxes)
+                # Expression consumes the same face boxes as head pose; it needs
+                # no landmarks, so it covers every student who has a face box.
+                expressions = expression_recognizer.classify(frame, face_bboxes)
                 # Tracking runs on every processed frame, in order: its motion
                 # model assumes fixed spacing between consecutive updates, so
                 # this must stay inside the sample_rate-filtered branch.
@@ -454,6 +508,7 @@ def process_video(
                     faces,
                     headposes,
                     postures,
+                    expressions,
                     track_ids,
                     objects,
                 )

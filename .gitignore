@@ -24,3 +24,6 @@ weights/
 
 # Generated PPT layout previews (regenerate with verify_ppt.py)
 ppt_preview/
+
+# Ultralytics training runs (weights + plots; regenerate with tools/train_behaviour.py)
+runs/

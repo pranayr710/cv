@@ -84,7 +84,8 @@
         "face",
         "head_pose",
         "posture",
-        "source"
+        "source",
+        "expression"
       ],
       "additionalProperties": false,
       "properties": {
@@ -284,6 +285,46 @@
             "face_seeded"
           ],
           "description": "How this student was found. \"yolo\" = the body was detected directly and bbox is a real detection. \"face_seeded\" = only the face was detected (YOLO missed the occluded body) and bbox is ESTIMATED from face geometry, not measured. See backend/students.py."
+        },
+        "expression": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "label",
+            "confidence",
+            "distribution"
+          ],
+          "additionalProperties": false,
+          "description": "Visible facial EXPRESSION, not an inferred emotional state. null when no face was found or the face was too small to classify honestly (see backend/expression.py). Report class-level aggregates by default, never a live per-student label.",
+          "properties": {
+            "label": {
+              "type": "string",
+              "enum": [
+                "happy",
+                "sad",
+                "neutral"
+              ],
+              "description": "Mapped from the model raw 8-class output; see distribution."
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Probability of the winning RAW class, not of the mapped bucket."
+            },
+            "distribution": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": {
+                "type": "number"
+              },
+              "description": "Full raw 8-class AffectNet distribution, so the 8-to-3 collapse stays auditable."
+            }
+          }
         }
       }
     },

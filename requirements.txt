@@ -42,6 +42,18 @@ mediapipe==0.10.21
 # CUDA build installed separately, so it will not replace it.
 sixdrepnet>=0.1.6,<0.2
 
+# Facial-expression classification (happy/sad/neutral) — backend/expression.py.
+# EmotiEffLib (formerly HSEmotion): EfficientNet-B0 on AffectNet, SOTA on that
+# benchmark with multiple ABAW competition placings. Reuses the onnxruntime
+# already pinned above for SCRFD. Model downloads on first use.
+# NOTE: this reports an *expression* label, never an inferred emotional state —
+# see the module docstring for the research and legal reasons that distinction
+# is load-bearing, not cosmetic.
+emotiefflib>=1.1,<2.0
+
+# Dataset tooling (tools/make_split.py reads Roboflow data.yaml)
+pyyaml>=6.0
+
 # Integration + CLI (Day 4)
 tqdm>=4.66
 jsonschema>=4.21

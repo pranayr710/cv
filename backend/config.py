@@ -294,6 +294,64 @@ class HeadPoseConfig:
 
 
 @dataclass(frozen=True)
+class ExpressionConfig:
+    """Facial-expression classification -- see backend/expression.py.
+
+    Added as a requirement after Review 1. Note carefully what it is called:
+    this reports an **expressed facial signal**, not an inferred internal
+    emotional state. That distinction is not pedantry -- Barrett, Adolphs,
+    Marsella, Martinez & Pollak (2019) reviewed over 1,000 studies and found no
+    scientific support for reading emotion reliably from facial movement (a
+    smile can signal submission rather than happiness). The EU AI Act also makes
+    inferring *emotion* from biometric data in education a flat prohibition, not
+    merely high-risk. Calling the output an expression label keeps the feature
+    defensible; calling it emotion would not.
+    """
+
+    # EmotiEffLib (formerly HSEmotion) model. enet_b0_8_best_vgaf is the
+    # EfficientNet-B0 8-class AffectNet model: smallest and fastest of the pack,
+    # which matters because it runs once per student per frame.
+    model_name: str = "enet_b0_8_best_vgaf"
+
+    # "onnx" or "torch". ONNX runs on CPU here without competing with YOLO and
+    # SixDRepNet for the 6.4 GB of VRAM those already occupy.
+    engine: Literal["onnx", "torch"] = "onnx"
+
+    # The model emits AffectNet's 8 classes; the project reports 3. Mapping is
+    # config-driven (not hardcoded) and the **full 8-class distribution is kept**
+    # in the output, so this collapse is auditable and reversible.
+    #
+    # Anger/Contempt/Disgust/Fear/Surprise map to "neutral" rather than to
+    # "sad": they are distinct states, and folding anger into sadness would be a
+    # claim the model never made. Mapping them to neutral says "not one of the
+    # three we report", which is true.
+    expression_map: tuple[tuple[str, str], ...] = (
+        ("Happiness", "happy"),
+        ("Sadness", "sad"),
+        ("Neutral", "neutral"),
+        ("Anger", "neutral"),
+        ("Contempt", "neutral"),
+        ("Disgust", "neutral"),
+        ("Fear", "neutral"),
+        ("Surprise", "neutral"),
+    )
+
+    # The three labels actually reported.
+    reported_labels: tuple[str, ...] = ("happy", "sad", "neutral")
+
+    # A face box smaller than this (shorter side, pixels) is skipped rather than
+    # upscaled to the model's 224x224 input. Classroom back-row faces can be
+    # ~20 px; classifying a 7x upscale of that is guessing, and this project's
+    # rule is that an unusable signal is reported as absent, not invented.
+    min_face_px: int = 40
+
+    # Padding around the face box before the crop, as a fraction of box size.
+    # AffectNet training images include hair, jawline and some background;
+    # a tight box alone is out of distribution.
+    crop_padding: float = 0.15
+
+
+@dataclass(frozen=True)
 class PostureConfig:
     """Exploratory — body-pose keypoints as a signal independent of a face.
 
@@ -560,6 +618,7 @@ class Config:
         default_factory=StudentResolutionConfig
     )
     headpose: HeadPoseConfig = field(default_factory=HeadPoseConfig)
+    expression: ExpressionConfig = field(default_factory=ExpressionConfig)
     posture: PostureConfig = field(default_factory=PostureConfig)
     attention: AttentionConfig = field(default_factory=AttentionConfig)
     peer_interaction: PeerInteractionConfig = field(
