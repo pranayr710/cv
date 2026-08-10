@@ -49,24 +49,72 @@ class DetectionConfig:
     # ground truth.
     object_conf: float = 0.35
 
+    # Per-class overrides of object_conf, as (class_name, threshold) pairs.
+    # A tuple of pairs rather than a dict because this config is frozen and a
+    # dict default would be mutable shared state.
+    #
+    # "book" is overridden because it is the weakest class we depend on and the
+    # one a reviewer asked about directly. COCO's `book` class was trained
+    # largely on bookshelves and stacked/closed books, not an open notebook seen
+    # at a downward classroom angle -- a domain mismatch, so the default 0.35 is
+    # miscalibrated for our footage rather than merely strict. Books detected
+    # across the 13 dataset images (yolo11m, imgsz 1920):
+    #    0.35 (shared default) ->  21
+    #    0.30                  ->  28
+    #    0.25 (chosen)         ->  40
+    #    0.20                  ->  51
+    #    0.15                  ->  77
+    # 0.25 was chosen by *looking* at the boxes on img01, not by taking the
+    # count: at 0.25 the detections are genuine open books and notebooks, while
+    # below it false positives appear -- including one box drawn around a
+    # student's head. This project has made the opposite mistake before (the
+    # "phantom laptop" that turned out to be a real computer lab), so a
+    # threshold is not moved here on a count alone.
+    #
+    # This buys recall for the "writing / on-task" signal in backend.attention,
+    # where a missed book wrongly leaves a studying student in the ambiguous
+    # bucket.
+    #
+    # A limitation the same inspection exposed, and the reason this is a
+    # stopgap: several students visibly writing on **loose sheets of paper**
+    # (img01 is an exam, not a textbook lesson) get no box at any threshold --
+    # COCO's `book` class does not fire on loose paper. So the writing signal
+    # will systematically under-report exactly in exam and worksheet settings.
+    # Fine-tuning on SCB-Dataset's `write`/`read` labels detects the *behaviour*
+    # rather than a proxy object, and is the real fix.
+    object_conf_per_class: tuple[tuple[str, float], ...] = (("book", 0.25),)
+
     # NMS IoU
     iou: float = 0.50
 
-    # COCO class names we care about (person auto-included)
+    # COCO class names we care about (person auto-included).
+    # "book" is kept deliberately: a student with a book and pen is *on-task*,
+    # which is the opposite signal from a phone. Dropping it would leave the
+    # pipeline unable to tell studying from distraction -- see
+    # backend/attention.py's writing_object_classes.
     object_whitelist: tuple[str, ...] = ("cell phone", "laptop", "book")
 
     # Inference resolution. YOLO resizes the frame to this before inference, so
     # it directly controls whether distant students survive. Raised from 960:
     # at 960 a back-row student ~60 px tall in a 1920-wide frame shrinks to
-    # ~30 px and is lost. Persons detected across 12 classroom images
-    # (person_conf=0.30), with per-image latency on an RTX 4050:
-    #    960 -> 175 persons,  34 ms
-    #   1280 -> 236 persons,  50 ms   <- chosen
-    #   1536 -> 271 persons,  72 ms
-    #   1920 -> 301 persons,  86 ms
-    # Higher keeps helping, but 1280 captures most of the gain at 1.5x cost.
-    # Raise it for offline batch runs where latency does not matter.
-    imgsz: int = 1280
+    # ~30 px and is lost.
+    #
+    # Re-swept across all 13 dataset images against model size, with SCRFD's
+    # 434 detected faces as an independent reference for how many students are
+    # actually present (persons found / ms per image on an RTX 4050):
+    #
+    #   imgsz   yolo11m      yolo11l      yolo11x
+    #    1280   264 /  ~50   227 /   94   234 / 146
+    #    1536   302 /   77   282 /   88   296 / 154
+    #    1920   331 /  106   351 /  132   374 / 240
+    #
+    # Two findings: resolution matters far more than model capacity (11m@1920
+    # beats 11x@1280 by 97 persons while running faster), and no configuration
+    # reaches the 434 students the face detector finds -- which is why
+    # backend/students.py exists. 1920 chosen: +67 persons over 1280 for +56 ms.
+    # yolo11x@1920 finds 43 more still, at 2.3x the latency -- worth switching
+    # to for offline batch runs, not for the live path.
+    imgsz: int = 1920
 
     # Batch size when running on video frames
     batch_size: int = 1
@@ -74,7 +122,60 @@ class DetectionConfig:
 
 @dataclass(frozen=True)
 class FaceConfig:
-    """Person B — MediaPipe Face Mesh settings."""
+    """Person B — face detection + MediaPipe Face Mesh landmark settings.
+
+    Two detector backends, selected by :attr:`detector`:
+
+    * ``"scrfd"`` (default) — InsightFace SCRFD finds face boxes on the
+      **whole frame**; Face Mesh then supplies landmarks/EAR per box.
+    * ``"mediapipe"`` — the original path: Face Mesh's own internal detector,
+      run on each person crop. Kept so the two can be benchmarked against each
+      other (``tools/bench_faces.py``), not because it is competitive.
+
+    Measured on ``dataset/img01.jpg`` (1920x1088 classroom CCTV, ~50 students,
+    30 persons found by YOLO):
+
+    ==================  ==============
+    Backend             Faces found
+    ==================  ==============
+    mediapipe (old)     10
+    scrfd (default)     48
+    ==================  ==============
+
+    The gap is a model-fit problem, not a tuning one. MediaPipe's detector
+    (BlazeFace) is built for short-range, selfie-distance faces. SCRFD was
+    trained for the WIDER FACE "hard" split, where ~79% of faces are under
+    32x32 px and ~52% under 16x16 px — i.e. exactly a classroom's back rows.
+    """
+
+    # Which face detector supplies the face boxes. See the class docstring for
+    # the measurement behind this default.
+    detector: Literal["scrfd", "mediapipe"] = "scrfd"
+
+    # --- SCRFD (InsightFace) settings; ignored when detector="mediapipe" --- #
+
+    # InsightFace model pack. "buffalo_l" bundles det_10g.onnx (SCRFD-10GF).
+    # Auto-downloaded to ~/.insightface on first use, like YOLO's weights.
+    scrfd_model_pack: str = "buffalo_l"
+
+    # Inference resolution for SCRFD, same trade-off as DetectionConfig.imgsz:
+    # small faces die when the frame is downscaled too far. Measured on img01:
+    #    640  -> 37 faces
+    #   1024  -> 42 faces
+    #   1600  -> 48 faces   <- chosen
+    #   2048  -> 48 faces   (no further gain, more compute)
+    scrfd_det_size: tuple[int, int] = (1600, 1600)
+
+    # Detection confidence floor. Kept at 0.30 to match DetectionConfig's
+    # person_conf for the same reason: a missed student costs more than a
+    # stray box in engagement statistics.
+    scrfd_det_thresh: float = 0.30
+
+    # SCRFD returns a tight face box. Face Mesh needs a little context around
+    # it to fit the mesh reliably, so the crop handed to Face Mesh is padded by
+    # this fraction of the box size. Distinct from person_crop_padding below,
+    # which pads a *person* box and was measured to be harmful.
+    scrfd_landmark_padding: float = 0.25
 
     max_num_faces: int = 40  # cap per Face Mesh pass (a crop normally has 1)
     refine_landmarks: bool = True
@@ -128,6 +229,51 @@ class FaceConfig:
     # whose IoU with an already-assigned face exceeds this is treated as a
     # duplicate and not assigned twice.
     duplicate_face_iou: float = 0.50
+
+
+@dataclass(frozen=True)
+class StudentResolutionConfig:
+    """Recovering students that person detection missed — see backend/students.py.
+
+    Face detection finds more students than person detection does, at every YOLO
+    model/resolution combination measured across the 13 dataset images:
+
+    =========================================  ========
+    Signal                                     Count
+    =========================================  ========
+    Faces (SCRFD)                               434
+    Persons (YOLOv11m @ 1280, old default)      264
+    Persons (YOLOv11m @ 1920, current)          331
+    Persons (YOLOv11x @ 1920, best tried)       374
+    =========================================  ========
+
+    Unmatched faces were rendered and hand-checked on ``img382.jpg``: all 30
+    were real students in back rows, not false positives. Bodies are occluded by
+    desks and neighbours; heads are not. So a face with no person box is treated
+    as a student whose body box is *estimated*.
+    """
+
+    # Master switch. Off = the old behaviour (a student exists only if YOLO
+    # found their body), which under-counts crowded rows by roughly a third.
+    seed_persons_from_faces: bool = True
+
+    # Body-box geometry, extrapolated from the face box. These are rough
+    # anthropometric ratios, NOT measurements from this footage:
+    #   * shoulder span is a little over twice head width
+    #   * from an elevated camera, a seated student's visible extent runs from
+    #     just above the crown to about the desk edge
+    # They exist to give a face-seeded student a usable spatial anchor for
+    # object association (a phone/book near them) and tracking continuity —
+    # never for true body extent. See backend/students.py.
+    body_width_to_face_width: float = 2.6
+    body_height_to_face_height: float = 4.0
+    body_top_above_face: float = 0.3
+
+    # A face this weak is not trusted to invent a whole student. Set above
+    # FaceConfig.scrfd_det_thresh on purpose: a marginal face is still worth
+    # reporting when it sits inside a confirmed person box, but not worth
+    # fabricating a body box for on its own.
+    seed_min_face_score: float = 0.40
 
 
 @dataclass(frozen=True)
@@ -248,6 +394,21 @@ class AttentionConfig:
     # consistent with reading or writing).
     device_gaze_labels: tuple[str, ...] = ("down", "back")
     device_object_classes: tuple[str, ...] = ("cell phone",)
+
+    # A bowed head over a *book* is the opposite signal from a bowed head over a
+    # phone: it is the posture of a student working. Splitting these was raised
+    # directly in review -- previously both collapsed into the ambiguous
+    # "head_down_no_device" bucket, so a studying student and a disengaged one
+    # were indistinguishable, and the system could not credit anyone for
+    # working. A phone still wins when both are detected (see
+    # backend.attention.classify_frame): the more concerning reading is the
+    # safer default when the evidence is contradictory.
+    #
+    # "laptop" is deliberately NOT here. It is genuinely ambiguous -- note in
+    # DetectionConfig that img04 is a computer lab where laptops are the work
+    # and img01 an ordinary classroom where they are not -- and this project's
+    # rule is that an ambiguous signal gets its own bucket rather than a guess.
+    writing_object_classes: tuple[str, ...] = ("book",)
 
     # A "cell phone" detection counts as near a person if its box overlaps
     # theirs at all, in image space.
@@ -395,6 +556,9 @@ class Config:
 
     detection: DetectionConfig = field(default_factory=DetectionConfig)
     face: FaceConfig = field(default_factory=FaceConfig)
+    students: StudentResolutionConfig = field(
+        default_factory=StudentResolutionConfig
+    )
     headpose: HeadPoseConfig = field(default_factory=HeadPoseConfig)
     posture: PostureConfig = field(default_factory=PostureConfig)
     attention: AttentionConfig = field(default_factory=AttentionConfig)

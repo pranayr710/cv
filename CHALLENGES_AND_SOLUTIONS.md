@@ -178,14 +178,73 @@ After the attention tracker shipped, four follow-up items were flagged as unfini
 
 ---
 
+## 11. Review 1 feedback — fixing detection coverage properly
+
+**The feedback:** not all students were boxed, only some books were boxed with no explanation of why the rest weren't, and boxes should be on faces rather than whole bodies. Part 1 to be finished before anything downstream continues.
+
+### 11.1 The face detector was the wrong model, not badly tuned
+
+Earlier in this project (§5) we concluded that ~42–45% face coverage was the **camera angle's** ceiling and that improving it was "a camera-placement problem, not a code problem." **That conclusion was wrong.** It was a property of the *model*: MediaPipe Face Mesh's internal detector is BlazeFace, built for short-range selfie-distance faces on a phone.
+
+Replaced it with **SCRFD** (InsightFace), which is trained for the WIDER FACE "hard" split where ~79% of faces are under 32×32 px and ~52% under 16×16 px — a description of a classroom's back rows. MediaPipe Face Mesh is retained, but only to fit landmarks *inside* the boxes SCRFD supplies.
+
+Measured across all 13 real classroom images:
+
+| | MediaPipe (before) | SCRFD (now) |
+|---|---|---|
+| Faces bound to a student | 97 | **360** |
+| Face coverage of students | 36.7% | **90.5%** |
+
+The rejection of BlazeFace-as-pre-detector in §5 was still correct — it just led to the wrong conclusion. The lesson is that "we tried harder on the same model family and it didn't help" is not evidence that a task is impossible.
+
+### 11.2 The bottleneck moved — and person detection turned out to be worse than face detection
+
+SCRFD found **more faces than YOLO found persons** (421 vs 331). Rendering the unmatched faces on `img382.jpg` (19 person boxes vs 56 faces) showed every one was a **real student** in a crowded back row, not a false positive.
+
+The cause is geometric: a classroom camera sees heads clearly and bodies barely at all — torsos are occluded by desks, by the row in front, and by each other. COCO's "person" class expects a mostly-visible human figure.
+
+So `backend/students.py` now treats a detected face with no person box as a student in its own right, with a body box **estimated** from face geometry. Every such student is tagged `source="face_seeded"` in the output so an estimate can never be mistaken for a measurement.
+
+| | Before | Now |
+|---|---|---|
+| Students found | 264 | **398** |
+| — by YOLO body detection | 264 | 331 |
+| — recovered from their face | 0 | +67 |
+
+**A real regression caught by our own tests, and the fix that was rejected.** Raising `imgsz` from 1280 to 1920 (+67 persons on classroom footage) silently broke detection on smaller images — `tests/fixtures/frontal_face.jpg` (802 px) went from 1 person to **0**. The obvious fix, clamping `imgsz` to native resolution, was implemented and then **rejected on measurement**: it cost 331 → 263 persons (398 → 379 students), because upscaling genuinely *helps* crowded shots where students are small. The two cases cannot be reconciled by one rule on frame size — an 800×450 classroom shot *gains* 20 → 30 persons from the same 2.4× upscale that breaks the 802 px portrait. Shipped the setting that serves the target domain plus a loud warning for inputs where it is likely wrong, and pinned the limitation in a test so it cannot later be mistaken for a code defect.
+
+### 11.3 Books: kept and turned into a positive signal, not dropped
+
+The initial instinct was to drop the `book` class since nothing downstream used it. That was wrong, and the review question exposed why: **a student with a book and pen is on-task**, which is the opposite signal from a phone. Previously both a studying student and a disengaged one landed in the same ambiguous `head_down_no_device` bucket, so the system could not credit anyone for working.
+
+Added a `head_down_writing` category (`backend/attention.py`) — bowed head + book nearby — and gave `book` its own confidence threshold, since COCO's `book` class was trained on bookshelves and closed books rather than open notebooks at a downward angle. Books detected: **21 → 35**. A phone still wins when both are near the same student: the more concerning reading is the safer default on contradictory evidence.
+
+Threshold chosen by *looking* at the boxes, not by the count — at 0.15 false positives appear, including a box drawn around a student's head. This project made the opposite mistake once already (§4's "phantom laptop" that turned out to be a real computer lab).
+
+**Two limitations recorded rather than smoothed over:**
+- Several students visibly writing on **loose exam paper** get no box at any threshold — COCO's `book` class does not fire on loose sheets. The writing signal will under-report in exam and worksheet settings specifically. Fine-tuning on SCB-Dataset's `write`/`read` labels detects the behaviour instead of a proxy object, and is the real fix.
+- Pairing the book with a **wrist keypoint** would separate "writing" from "a book is open on the desk." `backend/posture.py` extracts only nose/shoulder/hip landmarks, so this is deferred, not overlooked.
+
+### 11.4 What did *not* improve, stated plainly
+
+Of the 360 faces now bound to students, only **55 also yield Face Mesh landmarks**. SCRFD finds the face box; Face Mesh still cannot fit a 468-point mesh to most small classroom faces. Consequences:
+
+- **Head pose and gaze** need only the box → these now work for 360 students instead of 97.
+- **Facial expression** (the new requirement) needs only the box → unblocked at the same scale.
+- **EAR / eye-closure** needs landmarks → still limited to ~55 students. Not fixed, and not claimed to be.
+
+A `face_bbox` present with `landmarks=None` is now a representable, useful state. Under the old path every mesh failure silently became "no face at all."
+
+---
+
 ## Where things stand, in numbers
 
 | Metric | Session start | Now |
 |---|---|---|
-| Automated tests passing | 10 (9 skipped) | **109 (0 skipped, 0 failed)** |
+| Automated tests passing | 10 (9 skipped) | **134 (0 skipped, 0 failed)** |
 | CUDA confirmed working | No | **Yes — RTX 4050** |
-| Faces found on real footage | 0 | Robust (42% face, up to 100% w/ posture fallback) |
-| Persons found (12-image sample) | 139 | 236 |
+| Faces bound to a student (13 images) | 0 | **360 (90.5% of students)** |
+| Students found (13-image sample) | 139 | **398** |
 | Gaze `"down"` label reachable | No (bug) | Yes |
 | Real end-to-end run completed | Never | Yes — 321 frames, schema-valid |
 | Stage 2 (tracking) | Not started | Done (ByteTrack) |

@@ -47,11 +47,19 @@ class Person:
 
     Attributes:
         bbox: Axis-aligned pixel box ``(x, y, w, h)``, top-left origin, ints.
-        confidence: YOLO detection confidence in ``[0.0, 1.0]``.
+        confidence: Detection confidence in ``[0.0, 1.0]``.
+        source: How this student was found. ``"yolo"`` means YOLO detected the
+            body directly and ``bbox`` is a real detection. ``"face_seeded"``
+            means only their *face* was detected — YOLO missed the body, which
+            happens constantly in crowded rows where desks and neighbours
+            occlude torsos — and ``bbox`` is therefore **estimated from face
+            geometry**, not measured. See :mod:`backend.students` for why this
+            distinction is kept explicit rather than smoothed over.
     """
 
     bbox: tuple[int, int, int, int]
     confidence: float
+    source: str = "yolo"
 
 
 @dataclass(frozen=True)
@@ -117,6 +125,43 @@ def _resolve_device(requested: str) -> str:
         return "cuda"
     logger.warning("CUDA unavailable; using CPU for detection.")
     return "cpu"
+
+
+_UPSCALE_WARN_FACTOR: float = 2.0
+"""Upscale factor above which :class:`Detector` warns about ``imgsz``.
+
+Upscaling a frame well past its native resolution pushes apparent object size
+outside the scale distribution COCO trained on, and can lose detections
+entirely. Measured on ``tests/fixtures/frontal_face.jpg`` (802 px, one person
+filling the frame):
+
+==========  =======
+imgsz       Persons
+==========  =======
+640-1440    1
+1600        **0**
+1920        **0**
+==========  =======
+
+It is deliberately a **warning, not a clamp**. Clamping ``imgsz`` to native
+resolution was tried first and rejected on measurement: it costs far more than
+it saves on the footage that matters. Across the 13 dataset images (many of
+which are 1280x720, i.e. upscaled 1.5x to reach imgsz 1920):
+
+============================  ==============  =================
+                              clamp to native  imgsz 1920 as-is
+============================  ==============  =================
+Persons detected by YOLO      263              **331**
+Students after face seeding   379              **398**
+============================  ==============  =================
+
+Upscaling *helps* crowded classroom shots, because there the objects are small
+and upscaling brings them into range — the opposite of the portrait case. The
+two cannot be reconciled by a single rule on frame size (an 800x450 classroom
+shot gains 20 -> 30 persons from the same 2.4x upscale that breaks the 802 px
+portrait), so the honest handling is to keep the setting that serves the target
+domain and warn loudly on inputs where it is likely wrong.
+"""
 
 
 def _xyxy_to_xywh(
@@ -203,6 +248,10 @@ class Detector:
         # Map class-id -> class-name for the loaded model.
         self._names: dict[int, str] = dict(self._model.names)
         self._whitelist: frozenset[str] = frozenset(self.config.object_whitelist)
+        # Per-class confidence overrides, flattened once at construction so the
+        # hot loop in detect() does no lookup work beyond a dict get.
+        self._class_conf: dict[str, float] = dict(self.config.object_conf_per_class)
+        self._upscale_warned: bool = False
 
         logger.info(
             "Detector ready: weights=%s device=%s person_conf=%.2f objects=%s",
@@ -211,6 +260,37 @@ class Detector:
             self.config.person_conf,
             tuple(self._whitelist),
         )
+
+    def _warn_if_heavily_upscaled(self, frame: np.ndarray) -> None:
+        """Warn once if ``imgsz`` upscales this frame far past its own size.
+
+        See :data:`_UPSCALE_WARN_FACTOR` for the measurements behind the
+        threshold and for why this warns instead of clamping. Logged once per
+        :class:`Detector`, not per frame, so a video does not emit thousands of
+        identical lines.
+
+        Args:
+            frame: The frame about to be passed to the model.
+        """
+        if self._upscale_warned:
+            return
+        native = max(frame.shape[:2])
+        if native <= 0:
+            return
+        factor = self.config.imgsz / native
+        if factor >= _UPSCALE_WARN_FACTOR:
+            self._upscale_warned = True
+            logger.warning(
+                "imgsz=%d upscales this %dpx frame by %.1fx. That is tuned for "
+                "wide classroom shots where students are small; on close-up or "
+                "low-resolution input this can LOSE detections entirely "
+                "(measured: a 802px single-person image drops from 1 person to "
+                "0 between imgsz 1440 and 1600). Consider lowering "
+                "CONFIG.detection.imgsz for this source.",
+                self.config.imgsz,
+                native,
+                factor,
+            )
 
     def detect(self, frame: np.ndarray) -> tuple[list[Person], list[Obj]]:
         """Run detection on a single frame.
@@ -237,8 +317,16 @@ class Detector:
 
         # Prefilter at the lowest threshold we care about so we never discard a
         # box the per-class threshold would have kept, then filter precisely.
-        min_conf = min(self.config.person_conf, self.config.object_conf)
+        # Per-class overrides must be included here: a book override of 0.25
+        # below the 0.35 default would otherwise be filtered out by YOLO before
+        # this method ever saw it.
+        min_conf = min(
+            self.config.person_conf,
+            self.config.object_conf,
+            *(conf for _cls, conf in self.config.object_conf_per_class),
+        )
 
+        self._warn_if_heavily_upscaled(frame)
         results = self._model.predict(
             frame,
             imgsz=self.config.imgsz,
@@ -271,8 +359,10 @@ class Detector:
 
             if name == _PERSON_CLASS_NAME and confidence >= self.config.person_conf:
                 persons.append(Person(bbox=bbox, confidence=confidence))
-            elif name in self._whitelist and confidence >= self.config.object_conf:
-                objects.append(Obj(cls=name, bbox=bbox, confidence=confidence))
+            elif name in self._whitelist:
+                threshold = self._class_conf.get(name, self.config.object_conf)
+                if confidence >= threshold:
+                    objects.append(Obj(cls=name, bbox=bbox, confidence=confidence))
 
         return persons, objects
 
@@ -305,6 +395,7 @@ def _frame_record(
                 "track_id": None,  # filled by ByteTrack in Stage 2
                 "bbox": list(p.bbox),
                 "confidence": p.confidence,
+                "source": p.source,
                 "face": None,  # Person B fills this in
                 "head_pose": None,  # Person C fills this in
                 "posture": None,  # integrate.py fills this in

@@ -15,7 +15,20 @@ torchvision>=0.17,<1.0
 # ultralytics' own runtime auto-install, which is unavailable offline.
 lap>=0.5.12
 
-# MediaPipe (Person B)
+# SCRFD face detection (Person B) — replaces MediaPipe's own face detector,
+# which is BlazeFace: a short-range/selfie model that finds ~1 face for every 5
+# SCRFD finds on classroom footage (97 vs 379 across 13 real images). SCRFD is
+# trained for the WIDER FACE "hard" split where ~79% of faces are under 32x32
+# px, i.e. back-row students. Model weights (buffalo_l) auto-download to
+# ~/.insightface on first use, like Ultralytics' YOLO weights.
+# NOTE: onnxruntime here is the CPU build. onnxruntime-gpu would cut face
+# detection latency substantially (currently the slowest stage, ~400 ms/frame on
+# CPU) but needs a CUDA/cuDNN version match — not swapped in blind.
+insightface>=1.0,<2.0
+onnxruntime>=1.17,<2.0
+
+# MediaPipe (Person B) — still used, for the 468 face-mesh landmarks and EAR,
+# fitted inside the face boxes SCRFD supplies.
 # NOTE: face.py uses the legacy Solutions Face Mesh API (mp.solutions.face_mesh).
 # MediaPipe removed the Solutions API from the wheels at 0.10.30+ (those are
 # Tasks-API-only, and also require numpy>=2). Pinned to the last verified build

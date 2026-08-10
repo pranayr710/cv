@@ -27,6 +27,7 @@ pytest.importorskip("torch")
 cv2 = pytest.importorskip("cv2")
 jsonschema = pytest.importorskip("jsonschema")
 
+from backend.config import CONFIG
 from backend.detection import (
     Detector,
     Obj,
@@ -90,32 +91,125 @@ def test_model_loads_without_error(detector: Detector) -> None:
     assert "person" in detector._names.values()
 
 
-def test_detects_person_on_fixture(detector: Detector) -> None:
-    """A supplied fixture image containing a person yields >= 1 Person."""
-    fixture = _find_fixture_image()
-    if fixture is None:
-        pytest.skip(
-            "No fixture image in tests/fixtures/ "
-            "(drop a person/classroom .jpg/.png there to enable this test)."
-        )
+#: Known wide classroom frames in ``dataset/``, in preference order. Named
+#: explicitly rather than picked by a heuristic: the folder also holds close-up
+#: stock photos (``8FURIilo_2x.jpg`` is three people holding phones, added to
+#: exercise phone detection), and "widest file" or "first alphabetically" both
+#: select one of those. Choosing by detected-person count would make the test
+#: circular — it would pass by construction.
+_CLASSROOM_IMAGES: tuple[str, ...] = ("img01.jpg", "img12.jpg", "img382.jpg")
 
-    frame = cv2.imread(str(fixture))
-    assert frame is not None, f"Failed to read fixture image: {fixture}"
+
+def _find_classroom_image() -> Path | None:
+    """Return a known wide classroom frame from ``dataset/``, or ``None``.
+
+    ``dataset/`` is gitignored, so this returns ``None`` on a fresh clone and
+    the caller skips rather than fails.
+
+    Returns:
+        A path to a known classroom frame, or ``None`` if none is present.
+    """
+    dataset = _REPO_ROOT / "dataset"
+    if not dataset.is_dir():
+        return None
+    for name in _CLASSROOM_IMAGES:
+        candidate = dataset / name
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def test_detects_many_students_on_a_real_classroom_frame(detector: Detector) -> None:
+    """The target domain: a wide classroom shot must yield many students.
+
+    A far stronger assertion than ">= 1 person in some image" — a wide
+    classroom frame contains dozens of students, so a configuration that
+    silently halves recall fails here instead of passing.
+    """
+    image = _find_classroom_image()
+    if image is None:
+        pytest.skip("No classroom images in dataset/ (gitignored).")
+
+    frame = cv2.imread(str(image))
+    assert frame is not None, f"Failed to read classroom image: {image}"
 
     persons, objects = detector.detect(frame)
 
-    assert isinstance(persons, list)
     assert isinstance(objects, list)
-    assert len(persons) >= 1, f"Expected >=1 person in {fixture.name}, found 0."
+    assert len(persons) >= 10, (
+        f"Expected many students in the classroom frame {image.name}, "
+        f"found {len(persons)}. Detection recall has regressed badly."
+    )
     for person in persons:
         assert isinstance(person, Person)
         _x, _y, w, h = person.bbox
         assert w > 0 and h > 0
         assert 0.0 <= person.confidence <= 1.0
         assert person.confidence >= detector.config.person_conf
+        assert person.source == "yolo"
     for obj in objects:
         assert isinstance(obj, Obj)
         assert obj.cls in detector.config.object_whitelist
+
+
+def test_detects_person_on_fixture() -> None:
+    """A portrait-style image yields a person at a portrait-appropriate imgsz.
+
+    Documents a real, measured limitation rather than asserting the shipped
+    config works everywhere. ``CONFIG.detection.imgsz`` is 1920 because that is
+    right for wide classroom shots, but on ``frontal_face.jpg`` (802 px, one
+    person filling the frame) that upscale loses the detection entirely:
+
+        imgsz 640-1440 -> 1 person
+        imgsz 1600     -> 0 persons
+        imgsz 1920     -> 0 persons
+
+    Clamping imgsz to native resolution was tried as a fix and rejected: it
+    cost 331 -> 263 persons across the dataset (see backend/detection.py's
+    ``_UPSCALE_WARN_FACTOR``). So the model and code are fine — this is purely
+    scale tuning, and this test pins that diagnosis so the limitation cannot be
+    mistaken for a code defect later.
+    """
+    fixture = _find_fixture_image()
+    if fixture is None:
+        pytest.skip("No fixture image in tests/fixtures/.")
+
+    frame = cv2.imread(str(fixture))
+    assert frame is not None, f"Failed to read fixture image: {fixture}"
+
+    from dataclasses import replace
+
+    native = max(frame.shape[:2])
+    portrait_detector = Detector(replace(CONFIG.detection, imgsz=1280))
+    persons, _objects = portrait_detector.detect(frame)
+
+    assert len(persons) >= 1, (
+        f"Expected >=1 person in {fixture.name} at imgsz=1280 "
+        f"(native {native}px), found 0."
+    )
+    for person in persons:
+        assert isinstance(person, Person)
+        _x, _y, w, h = person.bbox
+        assert w > 0 and h > 0
+        assert 0.0 <= person.confidence <= 1.0
+
+
+def test_heavy_upscaling_is_warned_about(caplog) -> None:
+    """The warning that replaced the rejected clamp must actually fire.
+
+    Without it, running this classroom-tuned config on a low-resolution source
+    would silently return nothing — the exact failure mode measured above.
+    """
+    import logging
+    from dataclasses import replace
+
+    detector = Detector(replace(CONFIG.detection, imgsz=1920))
+    small = np.zeros((300, 400, 3), dtype=np.uint8)  # 1920/400 = 4.8x upscale
+    with caplog.at_level(logging.WARNING, logger="backend.detection"):
+        detector.detect(small)
+    assert any("upscales" in r.message for r in caplog.records), (
+        "Expected an imgsz upscale warning for a 400px frame at imgsz=1920."
+    )
 
 
 def test_black_frame_returns_empty(detector: Detector) -> None:

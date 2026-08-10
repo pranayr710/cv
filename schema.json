@@ -4,7 +4,12 @@
   "title": "ClassGraph Stage 1 Frame",
   "description": "One record per processed video frame. Emitted as JSONL — one JSON object per line.",
   "type": "object",
-  "required": ["frame_id", "timestamp_ms", "persons", "objects"],
+  "required": [
+    "frame_id",
+    "timestamp_ms",
+    "persons",
+    "objects"
+  ],
   "additionalProperties": false,
   "properties": {
     "frame_id": {
@@ -20,24 +25,39 @@
     "persons": {
       "type": "array",
       "description": "Detected students. Empty array if none detected.",
-      "items": { "$ref": "#/$defs/person" }
+      "items": {
+        "$ref": "#/$defs/person"
+      }
     },
     "objects": {
       "type": "array",
       "description": "Detected relevant objects (phones, laptops, books).",
-      "items": { "$ref": "#/$defs/object_detection" }
+      "items": {
+        "$ref": "#/$defs/object_detection"
+      }
     }
   },
-
   "$defs": {
     "bbox": {
       "type": "array",
       "description": "Axis-aligned pixel bbox [x, y, w, h] with (x, y) as top-left.",
       "prefixItems": [
-        { "type": "number", "minimum": 0 },
-        { "type": "number", "minimum": 0 },
-        { "type": "number", "exclusiveMinimum": 0 },
-        { "type": "number", "exclusiveMinimum": 0 }
+        {
+          "type": "number",
+          "minimum": 0
+        },
+        {
+          "type": "number",
+          "minimum": 0
+        },
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
       ],
       "minItems": 4,
       "maxItems": 4
@@ -45,100 +65,253 @@
     "landmark": {
       "type": "array",
       "prefixItems": [
-        { "type": "number" },
-        { "type": "number" }
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
       ],
       "minItems": 2,
       "maxItems": 2
     },
     "person": {
       "type": "object",
-      "required": ["track_id", "bbox", "confidence", "face", "head_pose", "posture"],
+      "required": [
+        "track_id",
+        "bbox",
+        "confidence",
+        "face",
+        "head_pose",
+        "posture",
+        "source"
+      ],
       "additionalProperties": false,
       "properties": {
         "track_id": {
-          "type": ["integer", "null"],
+          "type": [
+            "integer",
+            "null"
+          ],
           "description": "Stable ID from Stage 2 tracker. Always null in Stage 1 output."
         },
-        "bbox": { "$ref": "#/$defs/bbox" },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
         "face": {
-          "type": ["object", "null"],
-          "required": ["bbox", "landmarks", "ear"],
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "bbox",
+            "landmarks",
+            "ear"
+          ],
           "additionalProperties": false,
           "properties": {
             "bbox": {
               "oneOf": [
-                { "$ref": "#/$defs/bbox" },
-                { "type": "null" }
+                {
+                  "$ref": "#/$defs/bbox"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "landmarks": {
               "oneOf": [
                 {
                   "type": "array",
-                  "items": { "$ref": "#/$defs/landmark" },
+                  "items": {
+                    "$ref": "#/$defs/landmark"
+                  },
                   "minItems": 468,
                   "maxItems": 478
                 },
-                { "type": "null" }
+                {
+                  "type": "null"
+                }
               ]
             },
             "ear": {
-              "type": ["number", "null"],
+              "type": [
+                "number",
+                "null"
+              ],
               "minimum": 0,
               "maximum": 1
             }
           }
         },
         "head_pose": {
-          "type": ["object", "null"],
-          "required": ["yaw", "pitch", "roll", "gaze_label"],
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "yaw",
+            "pitch",
+            "roll",
+            "gaze_label"
+          ],
           "additionalProperties": false,
           "properties": {
-            "yaw":   { "type": "number", "minimum": -180, "maximum": 180 },
-            "pitch": { "type": "number", "minimum": -180, "maximum": 180 },
-            "roll":  { "type": "number", "minimum": -180, "maximum": 180 },
+            "yaw": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "pitch": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "roll": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
             "gaze_label": {
               "type": "string",
-              "enum": ["teacher", "left", "right", "down", "back"]
+              "enum": [
+                "teacher",
+                "left",
+                "right",
+                "down",
+                "back"
+              ]
             }
           }
         },
         "posture": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "description": "Raw body-pose geometry (backend/posture.py). NOT a posture or engagement classification -- see that module's docstring for why a bowed/upright label was tried and rejected as unvalidated. null when MediaPipe Pose found no body in the person's crop.",
-          "required": ["nose", "left_shoulder", "right_shoulder", "shoulder_mid", "hip_mid", "vertical_lean", "facing_direction"],
+          "required": [
+            "nose",
+            "left_shoulder",
+            "right_shoulder",
+            "shoulder_mid",
+            "hip_mid",
+            "vertical_lean",
+            "facing_direction"
+          ],
           "additionalProperties": false,
           "properties": {
-            "nose": { "oneOf": [{ "$ref": "#/$defs/landmark" }, { "type": "null" }] },
-            "left_shoulder": { "oneOf": [{ "$ref": "#/$defs/landmark" }, { "type": "null" }] },
-            "right_shoulder": { "oneOf": [{ "$ref": "#/$defs/landmark" }, { "type": "null" }] },
-            "shoulder_mid": { "oneOf": [{ "$ref": "#/$defs/landmark" }, { "type": "null" }] },
-            "hip_mid": { "oneOf": [{ "$ref": "#/$defs/landmark" }, { "type": "null" }] },
+            "nose": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "left_shoulder": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "right_shoulder": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shoulder_mid": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hip_mid": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "vertical_lean": {
-              "type": ["number", "null"],
+              "type": [
+                "number",
+                "null"
+              ],
               "description": "nose.y - shoulder_mid.y, normalised by crop height. A raw feature, not a validated bowed/upright signal."
             },
             "facing_direction": {
-              "oneOf": [{ "$ref": "#/$defs/landmark" }, { "type": "null" }],
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "description": "Unit vector perpendicular to the shoulder line. Sign is an UNCONFIRMED guess -- real-image validation was inconclusive given this project's camera angle. Do not rely on its sign."
             }
           }
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "yolo",
+            "face_seeded"
+          ],
+          "description": "How this student was found. \"yolo\" = the body was detected directly and bbox is a real detection. \"face_seeded\" = only the face was detected (YOLO missed the occluded body) and bbox is ESTIMATED from face geometry, not measured. See backend/students.py."
         }
       }
     },
     "object_detection": {
       "type": "object",
-      "required": ["cls", "bbox", "confidence"],
+      "required": [
+        "cls",
+        "bbox",
+        "confidence"
+      ],
       "additionalProperties": false,
       "properties": {
         "cls": {
           "type": "string",
-          "enum": ["cell phone", "laptop", "book"]
+          "enum": [
+            "cell phone",
+            "laptop",
+            "book"
+          ]
         },
-        "bbox": { "$ref": "#/$defs/bbox" },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
       }
     }
   }

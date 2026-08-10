@@ -75,6 +75,93 @@ def _phone(bbox=(10, 10, 20, 20)) -> dict:
     return {"cls": "cell phone", "bbox": list(bbox), "confidence": 0.8}
 
 
+def _book(bbox=(10, 10, 20, 20)) -> dict:
+    return {"cls": "book", "bbox": list(bbox), "confidence": 0.5}
+
+
+def _laptop(bbox=(10, 10, 20, 20)) -> dict:
+    return {"cls": "laptop", "bbox": list(bbox), "confidence": 0.6}
+
+
+# --------------------------------------------------------------------------- #
+# The writing / on-task signal (head down over a book)
+#
+# Added after a reviewer asked why a student writing in a book with a pen was
+# not identified as working. Before this, they landed in the same ambiguous
+# bucket as a disengaged student.
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("down_label", ["down", "back"])
+def test_head_down_over_a_book_is_writing_not_ambiguous(down_label: str) -> None:
+    """The whole point of the category: a bowed head over a book is on-task."""
+    p = _person(gaze_label=down_label, bbox=(0, 0, 100, 200))
+    assert classify_frame(p, [_book()]).orientation == "head_down_writing"
+
+
+def test_writing_is_never_classified_as_an_off_task_device_case() -> None:
+    p = _person(gaze_label="down", bbox=(0, 0, 100, 200))
+    result = classify_frame(p, [_book()])
+    assert result.orientation not in (
+        "head_down_with_device",
+        "head_down_no_device",
+    )
+
+
+def test_phone_beats_book_when_both_are_near_the_same_student() -> None:
+    """Contradictory evidence resolves to the more concerning reading.
+
+    Crediting a student as "working" because a book happens to be open on the
+    desk while they are on a phone is the easier error to make and the worse
+    one, so the phone must win regardless of argument order.
+    """
+    p = _person(gaze_label="down", bbox=(0, 0, 100, 200))
+    assert (
+        classify_frame(p, [_book(), _phone()]).orientation
+        == "head_down_with_device"
+    )
+    assert (
+        classify_frame(p, [_phone(), _book()]).orientation
+        == "head_down_with_device"
+    )
+
+
+def test_book_not_overlapping_the_student_does_not_count_as_writing() -> None:
+    """Someone else's book across the room must not mark this student on-task."""
+    p = _person(gaze_label="down", bbox=(0, 0, 100, 200))
+    far_book = _book(bbox=(500, 500, 20, 20))
+    assert classify_frame(p, [far_book]).orientation == "head_down_no_device"
+
+
+def test_laptop_is_deliberately_not_a_writing_signal() -> None:
+    """A laptop is genuinely ambiguous (computer lab vs ordinary classroom).
+
+    Config comments in DetectionConfig record that img04 is a real computer lab
+    and img01 is not, so a laptop cannot be read as either on- or off-task. It
+    must leave the student in the ambiguous bucket rather than be guessed at.
+    """
+    p = _person(gaze_label="down", bbox=(0, 0, 100, 200))
+    assert classify_frame(p, [_laptop()]).orientation == "head_down_no_device"
+
+
+def test_book_does_not_override_attending_teacher() -> None:
+    """A book on the desk is irrelevant while the student is looking up."""
+    p = _person(gaze_label="teacher")
+    assert classify_frame(p, [_book()]).orientation == "attending_teacher"
+
+
+def test_writing_category_is_registered_in_all_orientations() -> None:
+    """A category missing from ALL_ORIENTATIONS silently vanishes from reports.
+
+    The window distribution and classroom summary both iterate
+    ALL_ORIENTATIONS, so adding a Literal member without adding it here would
+    classify students into a bucket that is never displayed.
+    """
+    from backend.attention import ALL_ORIENTATIONS
+
+    assert "head_down_writing" in ALL_ORIENTATIONS
+
+
 # --------------------------------------------------------------------------- #
 # classify_frame
 # --------------------------------------------------------------------------- #

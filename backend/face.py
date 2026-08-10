@@ -1,53 +1,58 @@
-"""Face landmark + EAR analysis for ClassGraph Stage 1 (Perception).
+"""Face detection + landmark + EAR analysis for ClassGraph Stage 1.
 
-Wraps MediaPipe Face Mesh to produce, per person, the 468 canonical face-mesh
-landmarks (in **image** coordinates, not crop coordinates), a face bounding box,
-and an eye-aspect-ratio (EAR) value used downstream for drowsiness/attention.
+Produces, per person, a face bounding box, the 468 canonical face-mesh
+landmarks (in **image** coordinates, not crop coordinates), and an
+eye-aspect-ratio (EAR) value used downstream for drowsiness/attention.
 
-Design (Person B):
+Two detector backends, selected by :data:`FaceConfig.detector`
+------------------------------------------------------------
 
-* One Face Mesh inference is run per **person crop**, not over the whole frame.
-  MediaPipe's face detector downscales its input to a small fixed size, so a
-  face that is small *relative to the frame* is destroyed before detection can
-  run. Cropping to the person box first restores the face's relative size.
-  Measured on real footage:
+**``"scrfd"`` (default).** :mod:`backend.face_detect` runs SCRFD over the
+**whole frame** to find face boxes; MediaPipe Face Mesh then runs on each face
+box (padded by :data:`FaceConfig.scrfd_landmark_padding`) purely to fit
+landmarks and compute EAR. Face Mesh's own detector is bypassed entirely.
 
-  =========================  ==============  =================
-  Input                      Whole frame     Per-person crops
-  =========================  ==============  =================
-  3840x2160 clip, 1 student  0 faces         1 / 1
-  1920x1088 classroom CCTV   0 faces         8 / 20
-  =========================  ==============  =================
+**``"mediapipe"``.** The original path, kept only so the two can be compared
+(``tools/bench_faces.py``): one Face Mesh inference per **person crop**, using
+Face Mesh's internal BlazeFace detector.
 
-* Each crop is padded by :data:`FaceConfig.person_crop_padding` so a head near
-  the box edge is not clipped, and landmarks are mapped back to **image**
-  coordinates.
-* Candidates are assigned greedily by containment, highest score first, so an
-  overlapping pair of person boxes cannot claim the same physical face twice
-  (see :data:`FaceConfig.assign_min_containment` and
+Why the default changed, measured on ``dataset/img01.jpg`` (1920x1088 classroom
+CCTV, ~50 students visible, 30 persons found by YOLO):
+
+===========================================  ============
+Approach                                     Faces found
+===========================================  ============
+Face Mesh on whole frame (original bug)      0
+Face Mesh per person crop (previous fix)     10
+SCRFD on whole frame (current default)       **48**
+===========================================  ============
+
+This supersedes the earlier conclusion recorded here that ~42-45% was the
+ceiling for this camera angle. That figure was a property of **BlazeFace**, not
+of the camera: BlazeFace is built for short-range, selfie-distance faces, while
+SCRFD was trained for the WIDER FACE "hard" split where ~79% of faces are under
+32x32 px. The previous rejection of BlazeFace-as-pre-detector (58 faces, worse
+than 98) remains valid and is *why* a different detector family was needed —
+the mistake was concluding the angle was at fault rather than the model.
+
+A real remaining limit: a student bowed flat over a desk shows the camera the
+crown of their head. SCRFD recovers many such cases (it detects heavily
+downturned heads), but not all, and no face model can recover a face that is
+not in frame. :mod:`backend.posture` exists for that population.
+
+Assignment
+----------
+
+* Faces are bound to person boxes greedily by containment, highest detector
+  score first, so an overlapping pair of person boxes cannot claim the same
+  physical face twice (see :data:`FaceConfig.assign_min_containment` and
   :data:`FaceConfig.duplicate_face_iou`).
 * The returned list is **aligned index-wise** with ``person_bboxes``: a person
   with no matching face keeps its slot with all fields ``None``.
-
-Rejected alternative — chaining MediaPipe's dedicated ``face_detection``
-(BlazeFace) before Face Mesh, to get a tighter face box. It sounds like the
-natural next step after the crop fix, and BlazeFace does beat Face Mesh's
-internal detector on some images, but measured over 236 persons in 12 real
-classroom frames it is clearly worse:
-
-    Face Mesh on the person crop (current)   98 faces   42%
-    two-stage BlazeFace -> Face Mesh, best   58 faces   25%
-    union of both (BlazeFace as fallback)   106 faces   45%
-
-BlazeFace is the bottleneck at classroom distances, and the union buys 3
-percentage points for a second model on every miss — not worth the complexity.
-Tried across ``model_selection`` 0/1, confidence 0.5/0.3/0.2 and padding
-0.25/0.5; every variant lost.
-
-Note 130 of those 236 persons (55%) have no face either method can find. From an
-overhead camera a student bowed over a desk has no face in view, so roughly 45%
-is the ceiling for this angle regardless of model choice. Improving it is a
-camera-placement problem, not a code problem.
+* SCRFD now finds *more faces than YOLO finds persons* (48 vs 30 on img01), so
+  some detected faces have no containing person box and are dropped by
+  assignment. That is a **person-detection** shortfall, not a face one; it is
+  counted and reported by ``tools/bench_faces.py`` rather than hidden.
 
 This module does not compute head pose (Person C) or track identities
 (Stage 2). Landmarks are the canonical 468 mesh points; the 10 iris points that
@@ -91,6 +96,14 @@ class FaceResult:
         landmarks: List of ``num_landmarks`` ``(x, y)`` points in image pixels,
             or ``None``.
         ear: Mean eye-aspect-ratio over both eyes, or ``None``.
+
+    Note:
+        With the SCRFD backend, ``face_bbox`` can be present while
+        ``landmarks`` and ``ear`` are ``None``: SCRFD found the face but Face
+        Mesh could not fit a mesh to it. That combination is useful, not a
+        failure — head pose only needs the box, so such a person still yields a
+        gaze signal. Under the old MediaPipe-only path this case was
+        unrepresentable, and every mesh failure silently became "no face".
     """
 
     face_bbox: Bbox | None
@@ -323,9 +336,19 @@ class FaceAnalyzer:
                 f"Failed to initialise MediaPipe Face Mesh: {exc}"
             ) from exc
 
+        # SCRFD is built lazily-but-eagerly here (not per-frame) so a missing
+        # insightface install fails at construction with a clear message rather
+        # than mid-run on the first frame.
+        self._face_detector = None
+        if self.config.detector == "scrfd":
+            from backend.face_detect import FaceDetector
+
+            self._face_detector = FaceDetector(self.config)
+
         self._closed: bool = False
         logger.info(
-            "FaceAnalyzer ready: max_faces=%d refine=%s num_landmarks=%d",
+            "FaceAnalyzer ready: detector=%s max_faces=%d refine=%s num_landmarks=%d",
+            self.config.detector,
             self.config.max_num_faces,
             self.config.refine_landmarks,
             self.config.num_landmarks,
@@ -428,8 +451,199 @@ class FaceAnalyzer:
             faces.append((face_bbox, pts, ear))
         return faces
 
+    def _padded_face_region(self, face_box: Bbox, img_w: int, img_h: int) -> Bbox:
+        """Expand a SCRFD face box for landmark fitting, clamped to the image.
+
+        Unlike :meth:`_padded_region` (which pads a *person* box and was
+        measured to be actively harmful there), padding is wanted here: SCRFD
+        returns a tight face box, and Face Mesh fits more reliably with a little
+        context around the face.
+
+        Args:
+            face_box: The SCRFD face box ``(x, y, w, h)`` in image pixels.
+            img_w: Image width in pixels.
+            img_h: Image height in pixels.
+
+        Returns:
+            The padded region ``(x, y, w, h)``, clamped to the image bounds.
+        """
+        x, y, w, h = face_box
+        pad_w = round(w * self.config.scrfd_landmark_padding)
+        pad_h = round(h * self.config.scrfd_landmark_padding)
+        x0 = max(0, x - pad_w)
+        y0 = max(0, y - pad_h)
+        x1 = min(img_w, x + w + pad_w)
+        y1 = min(img_h, y + h + pad_h)
+        return (x0, y0, max(0, x1 - x0), max(0, y1 - y0))
+
+    def _landmarks_for_face(
+        self, frame: np.ndarray, face_box: Bbox
+    ) -> tuple[list[Point] | None, float | None]:
+        """Fit Face Mesh landmarks inside an already-detected face box.
+
+        Args:
+            frame: The full ``(H, W, 3)`` BGR image.
+            face_box: A face box ``(x, y, w, h)`` from SCRFD, in image pixels.
+
+        Returns:
+            ``(landmarks, ear)`` in image coordinates, or ``(None, None)`` when
+            Face Mesh cannot fit a mesh to this crop. The caller keeps the
+            SCRFD box regardless — a box without landmarks is still usable for
+            head pose.
+        """
+        img_h, img_w = frame.shape[:2]
+        region = self._padded_face_region(face_box, img_w, img_h)
+        found = self._detect_faces(frame, region)
+        if not found:
+            return (None, None)
+        # A face-box crop contains exactly one face by construction; if Face
+        # Mesh reports several, the largest is the intended one.
+        _bbox, pts, ear = max(found, key=lambda f: f[0][2] * f[0][3])
+        return (pts, ear)
+
+    def detect_faces(self, frame: np.ndarray) -> list:
+        """Run the whole-frame face detector and return its raw detections.
+
+        Exposed so a caller that also needs the raw face list (e.g.
+        :func:`backend.students.augment_persons`, which seeds students from
+        faces person detection missed) can reuse one detection pass instead of
+        paying for a second — SCRFD is the most expensive stage in the
+        pipeline.
+
+        Args:
+            frame: A ``(H, W, 3)`` BGR image.
+
+        Returns:
+            A list of :class:`~backend.face_detect.DetectedFace`, sorted by
+            descending confidence. Empty when the ``"mediapipe"`` backend is
+            configured, which has no whole-frame detection step.
+        """
+        if self._face_detector is None:
+            return []
+        return self._face_detector.detect(frame)
+
+    def _analyze_scrfd(
+        self,
+        frame: np.ndarray,
+        boxes: list[Bbox],
+        detections: list | None = None,
+    ) -> list[FaceResult]:
+        """Bind whole-frame SCRFD faces to person boxes and fit landmarks.
+
+        Args:
+            frame: A ``(H, W, 3)`` BGR image.
+            boxes: Person boxes ``(x, y, w, h)`` in image pixels.
+            detections: Pre-computed face detections for this frame. Detected
+                here when ``None``.
+
+        Returns:
+            One :class:`FaceResult` per person box, in the same order.
+        """
+        assert self._face_detector is not None  # guaranteed by __init__
+        if detections is None:
+            detections = self._face_detector.detect(frame)
+
+        # Greedy assignment, strongest detection first (SCRFD returns them
+        # sorted). Each face goes to the person box that contains most of it,
+        # and neither a face nor a person can be claimed twice.
+        assigned: dict[int, Bbox] = {}
+        matched_faces = 0
+        for det in detections:
+            best_idx, best_score = -1, 0.0
+            for person_idx, person_box in enumerate(boxes):
+                if person_idx in assigned:
+                    continue
+                score = _containment(det.bbox, person_box)
+                if score > best_score:
+                    best_idx, best_score = person_idx, score
+            if best_idx >= 0 and best_score >= self.config.assign_min_containment:
+                assigned[best_idx] = det.bbox
+                matched_faces += 1
+
+        results: list[FaceResult] = []
+        for person_idx in range(len(boxes)):
+            face_box = assigned.get(person_idx)
+            if face_box is None:
+                results.append(FaceResult(face_bbox=None, landmarks=None, ear=None))
+                continue
+            pts, ear = self._landmarks_for_face(frame, face_box)
+            results.append(FaceResult(face_bbox=face_box, landmarks=pts, ear=ear))
+
+        # Unmatched faces mean SCRFD saw a student that YOLO's person detector
+        # missed — a person-detection shortfall. Logged, never silently dropped.
+        unmatched = len(detections) - matched_faces
+        if unmatched > 0:
+            logger.debug(
+                "%d of %d SCRFD faces had no containing person box "
+                "(person detection missed them).",
+                unmatched,
+                len(detections),
+            )
+        return results
+
+    def _analyze_mediapipe(
+        self, frame: np.ndarray, boxes: list[Bbox]
+    ) -> list[FaceResult]:
+        """Original path: one Face Mesh pass per person crop.
+
+        Kept for benchmarking against the SCRFD backend only — it finds roughly
+        a fifth as many faces (see the module docstring).
+
+        Args:
+            frame: A ``(H, W, 3)`` BGR image.
+            boxes: Person boxes ``(x, y, w, h)`` in image pixels.
+
+        Returns:
+            One :class:`FaceResult` per person box, in the same order.
+        """
+        img_h, img_w = frame.shape[:2]
+
+        candidates: list[tuple[float, int, tuple[Bbox, list[Point], float | None]]] = []
+        detected = 0
+        for person_idx, person_box in enumerate(boxes):
+            region = self._padded_region(person_box, img_w, img_h)
+            for face in self._detect_faces(frame, region):
+                detected += 1
+                score = _containment(face[0], person_box)
+                if score >= self.config.assign_min_containment:
+                    candidates.append((score, person_idx, face))
+
+        # Greedy assignment, best containment first. Ties break on person index
+        # so the result is deterministic. A face already claimed by another
+        # person (overlapping boxes see the same head) is not reused.
+        candidates.sort(key=lambda c: (-c[0], c[1]))
+        assigned: dict[int, tuple[Bbox, list[Point], float | None]] = {}
+        taken: list[Bbox] = []
+        for _score, person_idx, face in candidates:
+            if person_idx in assigned:
+                continue
+            if any(_iou(face[0], t) > self.config.duplicate_face_iou for t in taken):
+                continue
+            assigned[person_idx] = face
+            taken.append(face[0])
+
+        results: list[FaceResult] = []
+        for person_idx in range(len(boxes)):
+            face = assigned.get(person_idx)
+            if face is None:
+                results.append(FaceResult(face_bbox=None, landmarks=None, ear=None))
+            else:
+                face_bbox, pts, ear = face
+                results.append(FaceResult(face_bbox=face_bbox, landmarks=pts, ear=ear))
+
+        logger.debug(
+            "analyze(mediapipe): %d persons, %d faces across crops, %d matched.",
+            len(boxes),
+            detected,
+            len(assigned),
+        )
+        return results
+
     def analyze(
-        self, frame: np.ndarray, person_bboxes: Sequence[Sequence[float]]
+        self,
+        frame: np.ndarray,
+        person_bboxes: Sequence[Sequence[float]],
+        detected_faces: Sequence | None = None,
     ) -> list[FaceResult]:
         """Analyze one frame and bind faces to the given person boxes.
 
@@ -437,6 +651,10 @@ class FaceAnalyzer:
             frame: A ``(H, W, 3)`` BGR image as returned by OpenCV.
             person_bboxes: Person boxes ``(x, y, w, h)`` from ``detection.py``,
                 in image pixels.
+            detected_faces: Optional pre-computed output of
+                :meth:`detect_faces` for this same frame, to avoid a second
+                detection pass. Ignored by the ``"mediapipe"`` backend, which
+                detects inside each person crop instead.
 
         Returns:
             A list of :class:`FaceResult`, one per entry in ``person_bboxes`` and
@@ -464,47 +682,10 @@ class FaceAnalyzer:
         if not boxes:
             return []
 
-        img_h, img_w = frame.shape[:2]
-
-        # One Face Mesh pass per person crop. Collect every (person, face)
-        # candidate that clears the containment threshold.
-        candidates: list[tuple[float, int, tuple[Bbox, list[Point], float | None]]] = []
-        detected = 0
-        for person_idx, person_box in enumerate(boxes):
-            region = self._padded_region(person_box, img_w, img_h)
-            for face in self._detect_faces(frame, region):
-                detected += 1
-                score = _containment(face[0], person_box)
-                if score >= self.config.assign_min_containment:
-                    candidates.append((score, person_idx, face))
-
-        # Greedy assignment, best containment first. Ties break on person index
-        # so the result is deterministic. A face already claimed by another
-        # person (overlapping boxes see the same head) is not reused.
-        candidates.sort(key=lambda c: (-c[0], c[1]))
-        assigned: dict[int, tuple[Bbox, list[Point], float | None]] = {}
-        taken: list[Bbox] = []
-        for score, person_idx, face in candidates:
-            if person_idx in assigned:
-                continue
-            if any(_iou(face[0], t) > self.config.duplicate_face_iou for t in taken):
-                continue
-            assigned[person_idx] = face
-            taken.append(face[0])
-
-        results: list[FaceResult] = []
-        for person_idx in range(len(boxes)):
-            face = assigned.get(person_idx)
-            if face is None:
-                results.append(FaceResult(face_bbox=None, landmarks=None, ear=None))
-            else:
-                face_bbox, pts, ear = face
-                results.append(FaceResult(face_bbox=face_bbox, landmarks=pts, ear=ear))
-
-        logger.debug(
-            "analyze: %d persons, %d faces detected across crops, %d matched.",
-            len(boxes),
-            detected,
-            len(assigned),
-        )
-        return results
+        if self._face_detector is not None:
+            return self._analyze_scrfd(
+                frame,
+                boxes,
+                None if detected_faces is None else list(detected_faces),
+            )
+        return self._analyze_mediapipe(frame, boxes)

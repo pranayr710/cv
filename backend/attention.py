@@ -70,16 +70,33 @@ already applied to the code below -- category identifiers are unchanged):
                               not sanctioned peer talk)               own exception
                                                                        needs audio too
     head_down_with_device -> Off-task Motor                         reasonably clean
+    head_down_writing     -> Active Engaged Time                    clean when the
+                                                                     book is detected
     head_down_no_device   -> ambiguous: Active Engaged Time         NO clean mapping
                               (silent reading/writing) OR             exists -- see below
                               Off-task Passive
     posture_only          -> no BOSS analogue (CV artifact)         n/a
     no_signal              -> no BOSS analogue (CV artifact)         n/a
 
-The one honestly unresolved cell, ``head_down_no_device``, is not a gap
-unique to this project: BOSS's own two hardest categories to tell apart by
-eye are exactly "quiet, head down, reading/writing" (on-task) versus "quiet,
-head down, spaced out" (off-task) -- a trained human observer resolves it by
+``head_down_writing`` was added after a reviewer asked the obvious question:
+if a student is writing in a book with a pen, the system should say so. Before
+it existed, a studying student and a disengaged one both landed in
+``head_down_no_device`` and the pipeline could not credit anyone for working.
+A detected book near a bowed head is the one piece of positive evidence
+available in the existing schema, so it gets its own on-task category.
+
+Its limit is the book detector, not the logic: COCO's ``book`` class was
+trained on bookshelves and closed books, not an open notebook seen from an
+elevated classroom camera, so it misses. Every miss lands the student back in
+``head_down_no_device`` -- an under-count of engagement, never an over-count,
+which is the right direction for this error to run. Fine-tuning on
+SCB-Dataset's ``write``/``read`` labels is the real fix if the threshold
+adjustment in ``DetectionConfig.object_conf_per_class`` is not enough.
+
+The remaining unresolved cell, ``head_down_no_device``, is not a gap unique to
+this project: BOSS's own two hardest categories to tell apart by eye are
+exactly "quiet, head down, reading/writing" (on-task) versus "quiet, head
+down, spaced out" (off-task) -- a trained human observer resolves it by
 watching for sustained duration and context a bounding box cannot see
 either. Leaving this bucket ambiguous mirrors the established literature's
 own unresolved difficulty; forcing a confident split here would be less
@@ -87,6 +104,12 @@ honest than the established instrument itself is willing to be. Off-task
 Verbal (BOSS) has no equivalent here at all -- it is defined by audible
 sound, which this vision-only pipeline does not have access to; this is a
 genuine, permanent gap, not an oversight.
+
+Not implemented yet, and worth naming rather than quietly omitting: pairing
+the book with a **wrist keypoint** would separate "writing" from "a book is
+merely open on the desk". :mod:`backend.posture` currently extracts only
+nose/shoulder/hip landmarks, so the wrists are not available without extending
+that module and the schema again. Deferred deliberately, not overlooked.
 
 What this module does NOT claim:
 
@@ -150,6 +173,7 @@ Orientation = Literal[
     "attending_teacher",
     "oriented_away",
     "head_down_with_device",
+    "head_down_writing",
     "head_down_no_device",
     "posture_only",
     "no_signal",
@@ -159,6 +183,7 @@ ALL_ORIENTATIONS: tuple[Orientation, ...] = (
     "attending_teacher",
     "oriented_away",
     "head_down_with_device",
+    "head_down_writing",
     "head_down_no_device",
     "posture_only",
     "no_signal",
@@ -263,12 +288,34 @@ def classify_frame(
         return FrameSignal(orientation="oriented_away", eyes_closed=eyes_closed)
 
     person_bbox: Bbox = tuple(person["bbox"])  # type: ignore[assignment]
-    has_device = any(
-        obj["cls"] in cfg.device_object_classes
-        and _bbox_overlaps(person_bbox, tuple(obj["bbox"]), cfg.device_proximity_iou)
-        for obj in objects
-    )
-    orientation = "head_down_with_device" if has_device else "head_down_no_device"
+
+    def _near(classes: tuple[str, ...]) -> bool:
+        """Whether any object of these classes overlaps this person's box."""
+        return any(
+            obj["cls"] in classes
+            and _bbox_overlaps(
+                person_bbox, tuple(obj["bbox"]), cfg.device_proximity_iou
+            )
+            for obj in objects
+        )
+
+    # A bowed head means different things depending on what is under it. Phone
+    # is checked first: when both a phone and a book are detected near the same
+    # student the evidence is contradictory, and the more concerning reading is
+    # the safer default -- crediting a student as "working" on the strength of a
+    # book that happens to be open on the desk would be the easier error to make
+    # and the worse one to make.
+    if _near(cfg.device_object_classes):
+        orientation: Orientation = "head_down_with_device"
+    elif _near(cfg.writing_object_classes):
+        orientation = "head_down_writing"
+    else:
+        # Still genuinely ambiguous: a bowed head with nothing detected near it
+        # is equally consistent with reading, writing on loose paper, or
+        # disengagement. Kept as its own bucket rather than guessed at -- and
+        # note book detection is the weakest link feeding the branch above, so
+        # some students who *are* writing land here.
+        orientation = "head_down_no_device"
     return FrameSignal(orientation=orientation, eyes_closed=eyes_closed)
 
 

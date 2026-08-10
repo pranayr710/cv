@@ -69,7 +69,15 @@ class DetectorLike(Protocol):
 
 
 class FaceAnalyzerLike(Protocol):
-    """Anything exposing ``analyze(frame, person_bboxes) -> list[FaceResult]``."""
+    """Anything exposing ``analyze(frame, person_bboxes) -> list[FaceResult]``.
+
+    An implementation may *optionally* also expose
+    ``detect_faces(frame) -> list[DetectedFace]``. When it does, the pipeline
+    reuses that whole-frame face list to recover students whose bodies person
+    detection missed (see :mod:`backend.students`). When it does not — a test
+    fake, or the ``"mediapipe"`` backend, which has no whole-frame step — that
+    recovery is simply skipped.
+    """
 
     def analyze(
         self, frame: np.ndarray, person_bboxes: Sequence[Sequence[float]]
@@ -235,6 +243,11 @@ def _assemble_frame(
                 "track_id": None if track_id is None else int(track_id),
                 "bbox": [int(v) for v in person.bbox],
                 "confidence": float(person.confidence),
+                # "face_seeded" marks a student whose bbox is estimated from
+                # their face because person detection missed the occluded body.
+                # Kept in the output so no consumer mistakes an estimate for a
+                # measurement — see backend/students.py.
+                "source": getattr(person, "source", "yolo"),
                 "face": _face_to_json(face),
                 "head_pose": _headpose_to_json(hp),
                 "posture": _posture_to_json(posture),
@@ -398,8 +411,32 @@ def process_video(
                     timestamp_ms = 0
 
                 persons, objects = detector.detect(frame)
+
+                # Face detection runs once here and its result is threaded into
+                # both consumers. Two reasons: it is the most expensive stage in
+                # the pipeline, and student seeding must see the same face list
+                # the face-to-person assignment will see, or the two could
+                # disagree about whether a student is already covered.
+                # detect_faces is optional on the interface, so an analyzer
+                # without it (test fake, mediapipe backend) just skips seeding.
+                detect_faces = getattr(face_analyzer, "detect_faces", None)
+                detected_faces = detect_faces(frame) if detect_faces else []
+                if detected_faces:
+                    from backend.students import augment_persons
+
+                    persons = augment_persons(
+                        persons,
+                        detected_faces,
+                        frame.shape[:2],
+                        config.students,
+                    )
+
                 person_bboxes = [p.bbox for p in persons]
-                faces = face_analyzer.analyze(frame, person_bboxes)
+                faces = (
+                    face_analyzer.analyze(frame, person_bboxes, detected_faces)
+                    if detected_faces
+                    else face_analyzer.analyze(frame, person_bboxes)
+                )
                 face_bboxes = [f.face_bbox for f in faces]
                 headposes = headpose_estimator.estimate(frame, face_bboxes)
                 # Posture runs on every person, not just faceless ones: it is
