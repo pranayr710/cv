@@ -237,6 +237,49 @@ A `face_bbox` present with `landmarks=None` is now a representable, useful state
 
 ---
 
+## 12. First evaluation against human labels — and the writing proxy failing it
+
+A 481-image labelled dataset arrived (Roboflow YOLO export, 4,603 hand-drawn student boxes, 8 behaviour classes: `look_forward`, `turn_head`, `using_device`, `read`, `write`, `sleep`, `stand`, `handrise`; all 1920×1080). Every detection number in this project up to here was **self-measured** — counted by eye, or compared against another model's output. This is the first evaluation against **human labels**.
+
+**Student detection, 98 images stratified across all 11 source clips:**
+
+| Metric | Value |
+|---|---|
+| Ground-truth students | 819 |
+| Precision | **82.2%** |
+| Recall | **90.6%** |
+| F1 | **86.2%** |
+
+**Recall and face coverage by ground-truth behaviour:**
+
+| Behaviour | GT boxes | Recall | Has a face |
+|---|---|---|---|
+| look_forward | 413 | 86.9% | 99.0% |
+| turn_head | 121 | 90.9% | 95.9% |
+| using_device | 103 | 98.1% | 91.3% |
+| write | 60 | 100.0% | 98.3% |
+| read | 53 | 96.2% | 90.6% |
+| sleep | 46 | 84.8% | **73.9%** |
+| stand | 20 | 95.0% | 80.0% |
+
+`sleep` has the worst face coverage, which is the expected direction — a sleeping student's face is against the desk or hidden in their arms — but it is also the behaviour we would most want a face for.
+
+**A measurement trap that would have produced a false conclusion.** The first run scored precision 54% / recall 60% at IoU ≥ 0.5. That contradicted face coverage of 99% on the same students, so it got checked rather than reported. Rendering ground-truth and detected boxes on one frame showed **11 GT students and 11 detected students — the same 11 people** — with only 7 pairs clearing IoU 0.5. The cause is an annotation-convention mismatch: this dataset's boxes are tight head+torso regions, YOLO's are full-body. Scoring "did we find this student" by mutual centre containment instead gives the 90.6% above. Both modes are kept in `tools/eval_detection.py` (`--match centre|iou`) so the choice is visible rather than buried.
+
+**The writing signal measured, and it fails.** The book-proximity proxy from §11.3 was tested against the ground-truth `write`/`read` labels:
+
+| Metric | Value |
+|---|---|
+| Precision | **31.9%** |
+| Recall | **20.7%** |
+| F1 | **25.1%** |
+
+This confirms with real numbers what §11.3 flagged as a suspicion: COCO's `book` class is not a usable proxy for "this student is writing." It was the honest stopgap available without labels; labels now exist, so it should be replaced by fine-tuning on the `write`/`read` classes directly (664 labelled boxes). Reported rather than quietly retained — a 25% F1 signal must not be presented as a working feature.
+
+**Assessment of the dataset itself — usable, with one caveat that could invalidate results.** 481 frames come from only **11 source videos**, so consecutive frames are near-duplicates and the largest single clip is 24.5% of all images. Any train/validation split must be **by clip, not by frame**, or scores will be inflated by memorised near-identical frames. `tools/analyse_labelled.py` reports this, and the evaluation sampler stratifies by clip for the same reason. Two further limits: severe class imbalance (`handrise` 26 boxes, `stand` 60 — too few to train), and a median of 10 students per image versus up to ~56 in the existing 13-image set, so it does **not** stress the small-face/crowding problem that motivated SCRFD. The two sets are complementary, not substitutes.
+
+---
+
 ## Where things stand, in numbers
 
 | Metric | Session start | Now |
@@ -245,6 +288,8 @@ A `face_bbox` present with `landmarks=None` is now a representable, useful state
 | CUDA confirmed working | No | **Yes — RTX 4050** |
 | Faces bound to a student (13 images) | 0 | **360 (90.5% of students)** |
 | Students found (13-image sample) | 139 | **398** |
+| Student detection vs human labels | Never measured | **P 82.2% / R 90.6% / F1 86.2%** |
+| Writing signal vs human labels | Never measured | **F1 25.1% — fails, needs fine-tuning** |
 | Gaze `"down"` label reachable | No (bug) | Yes |
 | Real end-to-end run completed | Never | Yes — 321 frames, schema-valid |
 | Stage 2 (tracking) | Not started | Done (ByteTrack) |
