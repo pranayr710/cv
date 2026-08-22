@@ -59,6 +59,21 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 logger = logging.getLogger(__name__)
 
 
+class _EmptyPosture:
+    """Stands in for a posture that was deliberately not computed.
+
+    ``keypoints_detected=False`` makes :func:`_posture_to_json` serialise it as
+    ``null`` -- identical to MediaPipe finding no body. That is intentional: a
+    skipped computation and a failed one are both "no posture data", and giving
+    them different shapes would push a special case into every consumer.
+    """
+
+    keypoints_detected = False
+
+
+_EMPTY_POSTURE = _EmptyPosture()
+
+
 # --------------------------------------------------------------------------- #
 # Structural interfaces (duck-typed) so real modules and test fakes both fit.
 # --------------------------------------------------------------------------- #
@@ -556,9 +571,25 @@ def process_video(
                 )
                 face_bboxes = [f.face_bbox for f in faces]
                 headposes = headpose_estimator.estimate(frame, face_bboxes)
-                # Posture runs on every person, not just faceless ones: it is
-                # a face-independent signal by design (see backend/posture.py).
-                postures = posture_analyzer.analyze(frame, person_bboxes)
+                # Posture normally runs on every person, not just faceless
+                # ones: it is a face-independent signal by design (see
+                # backend/posture.py), and backend.peer_interaction needs it for
+                # BOTH students of a pair. CONFIG.posture.only_when_faceless
+                # trades that away for ~19% of frame latency -- off by default;
+                # see that setting for the full trade-off.
+                if config.posture.only_when_faceless:
+                    faceless = [
+                        i for i, f in enumerate(faces) if f.face_bbox is None
+                    ]
+                    postures = [_EMPTY_POSTURE] * len(persons)
+                    if faceless:
+                        computed = posture_analyzer.analyze(
+                            frame, [person_bboxes[i] for i in faceless]
+                        )
+                        for slot, result in zip(faceless, computed):
+                            postures[slot] = result
+                else:
+                    postures = posture_analyzer.analyze(frame, person_bboxes)
                 # Expression consumes the same face boxes as head pose; it needs
                 # no landmarks, so it covers every student who has a face box.
                 expressions = expression_recognizer.classify(frame, face_bboxes)

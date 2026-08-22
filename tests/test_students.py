@@ -187,3 +187,29 @@ def test_config_defaults_are_consistent() -> None:
     faces = [_face(150, 150, 50, 50)]
     assert len(augment_persons(persons, faces, FRAME)) == 1
     assert CONFIG.students.seed_min_face_score >= CONFIG.face.scrfd_det_thresh
+
+
+# --------------------------------------------------------------------------- #
+# Opt-in posture skipping (CONFIG.posture.only_when_faceless)
+#
+# Off by default on purpose: it saves ~19% of frame latency but leaves
+# backend.peer_interaction unable to pair students, since that needs shoulder
+# keypoints for BOTH people. These pin the default and the trade-off.
+# --------------------------------------------------------------------------- #
+
+
+def test_posture_runs_for_everyone_by_default() -> None:
+    """The default must not silently disable peer-interaction detection."""
+    assert CONFIG.posture.only_when_faceless is False
+
+
+def test_empty_posture_sentinel_serialises_as_null() -> None:
+    """A skipped posture must look identical to a failed one downstream.
+
+    Giving "not computed" a different shape from "not found" would push a
+    special case into every consumer of the JSONL.
+    """
+    from backend.integrate import _EMPTY_POSTURE, _posture_to_json
+
+    assert _EMPTY_POSTURE.keypoints_detected is False
+    assert _posture_to_json(_EMPTY_POSTURE) is None

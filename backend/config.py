@@ -490,6 +490,29 @@ class PostureConfig:
     model_complexity: int = 1
     static_image_mode: bool = True
 
+    # Run posture ONLY for students with no detected face, instead of for
+    # everyone. This is an opt-in performance trade, off by default, because it
+    # is not free and the cost is easy to take by accident.
+    #
+    # The case for turning it on: posture is 21% of pipeline latency (1162 ms of
+    # 5456 ms per 1920x1080 frame with ~14 students), and it exists as a
+    # face-INDEPENDENT fallback. When that rationale was written, face coverage
+    # was ~42%, so running it on everyone was nearly all useful. After the SCRFD
+    # swap face coverage is ~89%, so most of that 21% now recomputes a fallback
+    # for students who already have a better signal.
+    #
+    # The case against, and why the default stays False:
+    # backend.peer_interaction requires BOTH students' shoulder keypoints to
+    # detect a pair oriented toward each other. With this enabled, posture is
+    # present only for faceless students, so peer detection would only ever fire
+    # between two faceless students -- effectively disabling it. Saving 19% of
+    # runtime by silently breaking a whole feature is a bad trade, and a worse
+    # one to make invisibly.
+    #
+    # Turn it on when peer-interaction detection is not needed for a given run
+    # (e.g. a latency-sensitive live demo), with that consequence understood.
+    only_when_faceless: bool = False
+
     # Recovery of a faceless person's pose keypoints, measured across 167
     # faceless persons in 13 real classroom images:
     #   0.2 -> 111/167 (66%)

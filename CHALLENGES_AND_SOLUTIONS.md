@@ -383,6 +383,129 @@ The last row is stated as a gap rather than filled with the least-bad option. Ph
 
 ---
 
+## 16. The behaviour model: final numbers
+
+Fine-tuned YOLOv11m on 423 labelled frames from 8 clips, validated on 2 held-out
+clips (58 images, 650 labelled students). Best **mAP50 0.437 at epoch 45**, early
+stopped at 58. Config that fits a 6.4 GB card: batch 4, imgsz 960, 5.03 GB used,
+~40 s/epoch.
+
+**The question it was built to answer:**
+
+| Writing signal (`write`/`read`) | Precision | Recall | F1 |
+|---|---|---|---|
+| Book proximity (replaced) | 31.9% | 20.7% | **25.1%** |
+| Fine-tuned model | 55.8% | 78.6% | **65.3%** |
+
+**Per class**, held out:
+
+| Class | GT | Precision | Recall | F1 |
+|---|---|---|---|---|
+| look_forward | 246 | 62.2% | 85.0% | 71.8% |
+| write | 91 | 62.2% | 75.8% | **68.3%** |
+| sleep | 41 | 65.6% | 51.2% | 57.5% |
+| turn_head | 128 | 78.3% | 36.7% | 50.0% |
+| read | 49 | 33.7% | 59.2% | 43.0% |
+| using_device | 90 | 55.9% | 21.1% | **30.6%** |
+| handrise / stand | 4 / 1 | - | - | unmeasurable |
+
+**Resolution: 960 beats 1920, the opposite of the person detector.** Evaluated at
+the pipeline's 1920 the writing signal *drops* from F1 65.3% to 55.6%, and
+student recall from 70.5% to 67.1%. Matching train and test resolution matters
+more than absolute resolution here. Measured rather than assumed, since the
+reverse holds for YOLO person detection (section 11.2).
+
+### 16.1 Splitting detection failures from classification failures
+
+Scores said `using_device` was weak; they did not say why. Reporting where each
+error goes did:
+
+| `using_device` outcome | Share |
+|---|---|
+| Labelled `look_forward` | 27% |
+| Labelled `read` | 17% |
+| Labelled `write` | 16% |
+| Never found at all | 16% |
+| **Correct** | **21%** |
+
+Phone use is not being *missed*, it is being read as **ordinary desk activity**.
+A student head-down over a phone and one head-down over a notebook look alike
+from a classroom camera. That is a genuine visual ambiguity, and it explains why
+the earlier confidence sweep could not fix it: there was no threshold to find.
+Solving it needs a different signal (reliable phone object detection, which COCO
+does not provide at this resolution), not more training on these labels.
+
+The same view independently justified deferring `turn_head` to head pose: 24% of
+it is labelled `look_forward` and a further 27% is never found, so the behaviour
+model loses roughly half that class before classification even begins.
+
+### 16.2 The metric that actually matters
+
+Per-class F1 of 43-72% reads as weak, but no teacher asks whether a student's
+pose class is `read` or `write` -- they ask whether the student is working.
+`read` mistaken for `write` is a wrong class but a **correct engagement
+reading**, and only the binary scores that honestly.
+
+| Engagement (on-task vs off-task) | Value |
+|---|---|
+| Overall agreement, given detection | **82.3%** |
+| Overall agreement, strict | 73.7% |
+| Detecting off-task -- precision | **91.1%** |
+| Detecting off-task -- recall | 36.9% |
+
+**That precision/recall shape is right for this application, not merely
+flattering.** When the system says a student is off-task it is right 91% of the
+time, and it misses roughly two thirds of off-task students. Wrongly flagging an
+attentive student to a teacher is far worse than staying quiet about a distracted
+one -- and this project already cites a deployed system that harmed students by
+doing the former. The errors fall on the safer side.
+
+`turn_head` is excluded from the binary entirely (133 ground-truth boxes, left
+ungraded and reported as ungraded). The CSCL literature is explicit that a
+student turned toward a neighbour cannot be called on- or off-task from vision
+alone; the field's own answer when it needed that distinction was to add a
+microphone.
+
+---
+
+## 17. Throughput: the existing FPS claim is stale by ~19x
+
+Measured per frame, GPU idle, on 1920x1080 frames with ~14 students each:
+
+| Stage | ms | Share | Device |
+|---|---|---|---|
+| SCRFD faces | 959 | **39%** | CPU |
+| Posture | 662 | **27%** | CPU |
+| Expression | 263 | 11% | CPU |
+| SixDRepNet pose | 250 | 10% | GPU |
+| FaceMesh landmarks | 137 | 6% | CPU |
+| YOLO detect | 130 | 5% | GPU |
+| Behaviour | 45 | 2% | GPU |
+| **TOTAL** | **2446** | | **0.41 FPS** |
+
+**Section 5 of this document claims 7.8-11 FPS. That figure predates SCRFD,
+expression and behaviour, and must not be presented.** The honest current number
+is **0.41 FPS**, with **83% of frame time CPU-bound**.
+
+Three identified recoveries, none yet applied:
+
+1. **`onnxruntime-gpu`.** SCRFD and expression are 50% of frame time running on
+   CPU while the GPU idles. The single largest lever. Not attempted yet because
+   it needs a CUDA/cuDNN version match and could destabilise a working
+   environment -- worth doing deliberately, not casually.
+2. **`CONFIG.posture.only_when_faceless`.** Posture is 27% of frame time and
+   exists as a face-independent *fallback*, yet runs for everyone. That was right
+   when face coverage was 42%; at 89% most of it is redundant. Implemented, but
+   **off by default**, because `backend.peer_interaction` needs shoulder
+   keypoints for *both* students of a pair and would be effectively disabled.
+   Saving 19% by silently breaking a feature is a bad trade.
+3. **Frame sampling.** The design does not need per-frame throughput:
+   `backend.attention` judges 15-second windows, never single frames. At 0.41 FPS
+   a 15-second window still collects ~6 samples, so the system is usable as
+   designed even now. But "real-time" should not be claimed.
+
+---
+
 ## Where things stand, in numbers
 
 | Metric | Session start | Now |
@@ -392,7 +515,9 @@ The last row is stated as a gap rather than filled with the least-bad option. Ph
 | Faces bound to a student (13 images) | 0 | **360 (90.5% of students)** |
 | Students found (13-image sample) | 139 | **398** |
 | Student detection vs human labels | Never measured | **P 82.2% / R 90.6% / F1 86.2%** |
-| Writing signal vs human labels | Never measured | **F1 25.1% — fails, needs fine-tuning** |
+| Writing signal vs human labels | Never measured | **F1 65.3%** (was 25.1% via book proxy) |
+| Engagement (on/off-task) agreement | Never measured | **82.3%**, off-task precision 91.1% |
+| Pipeline throughput | claimed 7.8 FPS | **0.41 FPS measured**, 83% CPU-bound |
 | Gaze `"down"` label reachable | No (bug) | Yes |
 | Real end-to-end run completed | Never | Yes — 321 frames, schema-valid |
 | Stage 2 (tracking) | Not started | Done (ByteTrack) |
