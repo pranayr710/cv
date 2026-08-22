@@ -65,6 +65,13 @@ def evaluate(weights: Path, data_root: Path, sizes: list[int], conf: float) -> N
         cls_fp: Counter[str] = Counter()
         cls_fn: Counter[str] = Counter()
         gt_total: Counter[str] = Counter()
+        # (ground_truth_class, predicted_class) -> count, for students that were
+        # found but labelled wrongly. Scores alone say a class is weak; this
+        # says what it is being mistaken for, which is what points at a fix.
+        confusion: Counter[tuple[str, str]] = Counter()
+        # Ground-truth students no predicted box bound to at all -- a detection
+        # miss rather than a classification error, and a different problem.
+        missed: Counter[str] = Counter()
         w_tp = w_fp = w_fn = 0
 
         for img_path in val_images:
@@ -124,10 +131,12 @@ def evaluate(weights: Path, data_root: Path, sizes: list[int], conf: float) -> N
             for gi, (g_cls, _g_box) in enumerate(gt):
                 if gi not in matched:
                     cls_fn[g_cls] += 1
+                    missed[g_cls] += 1
                     if g_cls in WRITING_CLASSES:
                         w_fn += 1
                     continue
                 p_cls = preds[matched[gi]][0]
+                confusion[(g_cls, p_cls)] += 1
                 if p_cls == g_cls:
                     cls_tp[g_cls] += 1
                 else:
@@ -164,6 +173,27 @@ def evaluate(weights: Path, data_root: Path, sizes: list[int], conf: float) -> N
             flag = "  <- too little data" if gt_total[name] < 10 else ""
             print(f"  {name:<15}{gt_total[name]:>5}{cp * 100:>7.1f}%"
                   f"{cr * 100:>7.1f}%{cf * 100:>7.1f}%{flag}")
+
+        # Split the two failure modes apart. A class can score badly because
+        # the student was never found (detection) or because they were found and
+        # mislabelled (classification), and those need different fixes.
+        print()
+        print("WHERE THE ERRORS GO (found, but labelled wrongly)")
+        wrong = [(pair, c) for pair, c in confusion.items() if pair[0] != pair[1]]
+        if not wrong:
+            print("  no class confusions")
+        for (g_cls, p_cls), count in sorted(wrong, key=lambda kv: -kv[1])[:8]:
+            share = count / gt_total[g_cls] * 100 if gt_total[g_cls] else 0.0
+            print(f"  {g_cls:<14} -> {p_cls:<14}{count:>5}"
+                  f"  ({share:.0f}% of all {g_cls})")
+
+        print()
+        print("NOT FOUND AT ALL (no predicted box bound to the student)")
+        if not missed:
+            print("  every ground-truth student was found")
+        for g_cls, count in missed.most_common(6):
+            share = count / gt_total[g_cls] * 100 if gt_total[g_cls] else 0.0
+            print(f"  {g_cls:<14}{count:>5}  ({share:.0f}% of all {g_cls})")
 
         wp, wr, wf = _prf(w_tp, w_fp, w_fn)
         print("\nWRITING SIGNAL (write/read), head-to-head")
