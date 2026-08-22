@@ -330,6 +330,59 @@ Landmark coverage is 78.2% here versus ~15% on the crowded exam frame measured e
 
 ---
 
+## 14. The gaze labels were meaningless on an off-centre camera
+
+**Found by following up an anomaly rather than shipping it.** The end-to-end run in §13.3 produced `gaze_label` `"right"` for 320 of 383 faces (84%). A signal that returns one value 84% of the time is not measuring anything, so it got investigated instead of reported.
+
+**The head-pose model was correct.** Rendering yaw per face showed the students really are rotated +26° to +77° relative to that camera, median +37°, because the camera is corner-mounted and the board is off-frame to the left.
+
+**What was wrong was the label's meaning.** `classify_gaze` treats yaw ≈ 0 as "attending", which silently assumes *the camera sits where the teacher does*. It does not. So every attending student was bucketed as looking away — and `backend/attention.py` feeds `oriented_away` into its off-task reasoning, so this would have corrupted **every engagement figure** derived from this footage. This is the same class of bug as the pitch-sign inversion in §3: the model was fine, the interpretation was not.
+
+**Fix:** `HeadPoseConfig.yaw_reference_deg`, subtracted from yaw before bucketing, so labels mean "relative to the front of the room" rather than "relative to the lens". Default 0.0, so front-mounted cameras are unaffected.
+
+| Label | Before | After (ref +37°) |
+|---|---|---|
+| teacher | 5.2% | **37.9%** |
+| left | 1.6% | 14.1% |
+| right | **83.6%** | 9.9% |
+| down | 9.7% | **38.1%** |
+
+The calibrated split matches what the frame shows: roughly a third attending, a third heads-down writing.
+
+`estimate_yaw_reference()` derives the value from pooled yaw samples, and `tools/calibrate_gaze.py` runs it over a finished JSONL and prints the before/after split. It takes the **median** deliberately — a mean would be dragged off-target by the genuinely-turned-away minority, which is exactly the population the reference must ignore — and refuses to estimate from under 20 samples, since a wrong reference is worse than none.
+
+**The assumption, stated rather than buried:** this rests on *most students facing the front most of the time*. True for an ordinary lesson; **false for group-work footage**, where it would confidently return the wrong reference. A derived value must be checked against one rendered frame before adoption.
+
+**Honest cost:** with a reference set, a student looking straight at the camera now reads as `left`, not `teacher`. That is correct for a corner camera — facing the lens means facing away from the board — and it is pinned by a test so it is not later mistaken for a regression.
+
+---
+
+## 15. Assigning each signal to the model that actually measures it best
+
+The fine-tuned behaviour model (§16) scored F1 25.0% on `turn_head`. But "facing forward versus turned" is precisely what a head-pose model exists to measure, so both were tested on the same ground truth (371 labelled boxes with a usable face) instead of assuming the newer model should own it.
+
+| Detecting `turn_head` | Precision | Recall | F1 |
+|---|---|---|---|
+| Fine-tuned behaviour model | 79.2% | 14.8% | 25.0% |
+| Head pose, uncalibrated | 34.9% | 84.1% | 49.3% |
+| **Head pose, calibrated** | 51.8% | 81.0% | **63.2%** |
+
+Calibrated head pose is **2.5× better** than the behaviour model here. This also independently confirms §14 on a *different camera and dataset*: calibration alone moved head pose from 49.3% to 63.2%. The reference estimated for this second camera was +35.5°, close to the +37.4° of the first — both are off-centre mounts.
+
+**Resulting division of labour, each assignment made by measurement:**
+
+| Signal | Owner | Evidence |
+|---|---|---|
+| Finding students | SCRFD + YOLO | recall 90.6% vs 70.5% for the behaviour model |
+| `look_forward` / `turn_head` | Calibrated head pose | F1 63.2% vs 25.0% |
+| `write` / `read` | Fine-tuned behaviour model | F1 67.9% vs 25.1% for the book proxy |
+| `sleep` | Fine-tuned behaviour model | F1 59.4% |
+| Phone / `using_device` | **No good owner yet** | 14.4% recall — a real, open gap |
+
+The last row is stated as a gap rather than filled with the least-bad option. Phone use is one of the most important off-task signals, and neither COCO's `cell phone` class nor the fine-tuned model detects it reliably on this footage.
+
+---
+
 ## Where things stand, in numbers
 
 | Metric | Session start | Now |
