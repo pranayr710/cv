@@ -79,7 +79,9 @@ class HeadPoseResult:
 def classify_gaze(yaw: float, pitch: float, config: HeadPoseConfig) -> GazeLabel:
     """Map a (yaw, pitch) pair to a coarse gaze label.
 
-    Precedence follows the Stage 1 spec:
+    Yaw is first re-expressed relative to :data:`HeadPoseConfig.yaw_reference_deg`
+    so the buckets mean "relative to the front of the room" rather than
+    "relative to the camera". Precedence then follows the Stage 1 spec:
 
     1. ``|yaw| < yaw_side`` and ``|pitch| < pitch_down`` -> ``"teacher"``
     2. ``yaw  >=  yaw_side``   -> ``"right"``
@@ -103,6 +105,13 @@ def classify_gaze(yaw: float, pitch: float, config: HeadPoseConfig) -> GazeLabel
     """
     if not (math.isfinite(yaw) and math.isfinite(pitch)):
         raise ValueError(f"yaw/pitch must be finite, got yaw={yaw}, pitch={pitch}.")
+
+    # Re-express yaw relative to where "attending" actually points for this
+    # camera. With a corner-mounted camera, students facing the board sit at
+    # yaw ~+37 deg, not ~0, and without this every attending student is
+    # bucketed as looking away. See HeadPoseConfig.yaw_reference_deg for the
+    # measurement that exposed this.
+    yaw = yaw - config.yaw_reference_deg
 
     yaw_side = config.yaw_side_threshold
     pitch_down = config.pitch_down_threshold
@@ -392,3 +401,72 @@ class HeadPoseEstimator:
             )
 
         return results
+
+
+def estimate_yaw_reference(
+    yaws: Sequence[float], min_samples: int = 20
+) -> float | None:
+    """Estimate which yaw angle corresponds to "facing the front of the room".
+
+    Solves a problem that is invisible until it corrupts the output: the gaze
+    buckets in :func:`classify_gaze` measure rotation relative to the *camera*,
+    and treat yaw ~0 as attending. That only holds if the camera sits where the
+    teacher and board are. On a corner-mounted camera it is simply false --
+    measured on one real clip, 320 of 383 faces (84%) were labelled ``"right"``
+    with a median yaw of +37 deg, because the students were correctly detected
+    as facing a board off-frame to the left. The angles were right and the
+    labels were wrong.
+
+    The estimate is the **median yaw** across many students and frames. That
+    works because of an assumption worth stating plainly rather than hiding:
+    **most students face the front most of the time.** In a normal lesson that
+    holds. It would not hold for footage of a group-work session where the class
+    is deliberately turned toward each other, and it would quietly produce a
+    wrong reference there -- so a value derived this way should be sanity-checked
+    against one rendered frame before being trusted, not applied blind.
+
+    The median (not the mean) is deliberate: it is unaffected by the minority of
+    students who genuinely are turned away, which is exactly the population that
+    would drag a mean off-target.
+
+    Args:
+        yaws: Yaw angles in degrees, pooled across students and frames of one
+            session filmed by one fixed camera.
+        min_samples: Refuse to estimate from fewer than this many angles. A
+            reference computed from a handful of faces is noise, and a wrong
+            reference is worse than none because it silently shifts every label.
+
+    Returns:
+        The estimated reference yaw in degrees, to be set as
+        :data:`HeadPoseConfig.yaw_reference_deg`, or ``None`` when there are too
+        few samples to estimate honestly.
+
+    Example:
+        >>> ref = estimate_yaw_reference([36.0, 38.0, 40.0] * 10)
+        >>> round(ref)
+        38
+    """
+    finite = [float(y) for y in yaws if math.isfinite(y)]
+    if len(finite) < min_samples:
+        logger.warning(
+            "Only %d finite yaw samples (need %d) -- not estimating a yaw "
+            "reference. Leaving it at its configured value.",
+            len(finite),
+            min_samples,
+        )
+        return None
+    finite.sort()
+    n = len(finite)
+    median = (
+        finite[n // 2]
+        if n % 2
+        else (finite[n // 2 - 1] + finite[n // 2]) / 2.0
+    )
+    logger.info(
+        "Estimated yaw reference %.1f deg from %d samples (range %.1f to %.1f).",
+        median,
+        n,
+        finite[0],
+        finite[-1],
+    )
+    return median

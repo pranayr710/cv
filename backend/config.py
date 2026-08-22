@@ -283,6 +283,28 @@ class HeadPoseConfig:
     weights: str = "sixdrepnet_300w_lp_alpha1.pth"
     device: Literal["cuda", "cpu", "auto"] = "auto"
 
+    # Where "attending" actually points, in degrees of yaw, for THIS camera.
+    #
+    # The gaze buckets below measure head rotation relative to the *camera*, and
+    # the "teacher" bucket assumes the camera sits roughly where the teacher and
+    # board are. A corner- or side-mounted camera breaks that assumption
+    # completely, and it does so silently.
+    #
+    # Found on real footage: a 40-frame clip from a corner-mounted classroom
+    # camera produced gaze_label "right" for 320 of 383 faces (84%), median yaw
+    # +37 deg, with only 6 faces negative. Rendering yaw on the frame showed the
+    # head-pose model was CORRECT -- the students really are rotated ~+26 to +77
+    # deg relative to that camera, because they are facing a board that is
+    # off-frame to the left. The angles were right; the *label* was wrong. Every
+    # attending student was being classified as looking away, which in turn
+    # feeds backend.attention's "oriented_away" bucket and would have corrupted
+    # every engagement figure computed from this footage.
+    #
+    # This offset is subtracted from yaw before bucketing, so 0.0 means "camera
+    # is at the front, co-located with the teacher". Estimate it per deployment
+    # with backend.headpose.estimate_yaw_reference() rather than guessing.
+    yaw_reference_deg: float = 0.0
+
     # Gaze bucket thresholds in degrees. Yaw = left/right, Pitch = up/down.
     # Ordered evaluation: "teacher" (frontal) > "down" > "back" > "left"/"right".
     yaw_side_threshold: float = 20.0  # |yaw| >= this -> left or right
