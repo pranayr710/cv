@@ -239,7 +239,10 @@ def test_real_model_loads_and_emits_a_reported_label() -> None:
     cv2.circle(frame, (150, 150), 80, (200, 180, 170), -1)
     results = recognizer.classify(frame, [(70, 70, 160, 160)])
     assert len(results) == 1
-    assert results[0] is None or results[0].label in CONFIG.expression.reported_labels
+    # "uncertain" is a valid outcome, not a failure: a synthetic blob is exactly
+    # the kind of input the model should decline to label confidently.
+    allowed = (*CONFIG.expression.reported_labels, CONFIG.expression.uncertain_label)
+    assert results[0] is None or results[0].label in allowed
 
 
 def test_real_model_class_set_matches_the_mapping() -> None:

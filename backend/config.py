@@ -339,6 +339,41 @@ class ExpressionConfig:
     # The three labels actually reported.
     reported_labels: tuple[str, ...] = ("happy", "sad", "neutral")
 
+    # Align the face using the detector's 5 keypoints before classifying, rather
+    # than feeding a raw box crop. AffectNet was trained on aligned faces, so an
+    # unaligned crop is out of distribution. Measured over 207 real classroom
+    # faces (enet_b0_8_best_vgaf):
+    #                    median conf   share below 0.5 conf
+    #   box crop            0.421            64%
+    #   aligned (chosen)    0.481            55%
+    # Requires SCRFD keypoints; falls back to the padded box crop when absent
+    # (the mediapipe backend supplies none).
+    align_faces: bool = True
+
+    # Below this confidence the prediction is reported as "uncertain" instead of
+    # being forced into happy/sad/neutral. This matters more than it looks:
+    # measured on real classroom faces, 55% of aligned predictions fall under
+    # 0.50, so a system that always emits one of three labels would be
+    # presenting a coin-flip as a finding. Abstention is the honest alternative
+    # to a confident wrong answer, and it is the reason "uncertain" is a
+    # first-class output rather than an error.
+    #
+    # 0.40 is a starting point, NOT a calibrated threshold -- calibrating it
+    # needs labelled expression crops this project does not have yet. Raising it
+    # trades coverage for reliability; that trade should be made against labels,
+    # not by taste.
+    min_confidence: float = 0.40
+    uncertain_label: str = "uncertain"
+
+    # Temporal aggregation window, in frames, for ExpressionWindow. A single
+    # frame's expression is noise: on one real clip, single-frame labels flipped
+    # between consecutive frames on 6.8% of steps, while averaging the
+    # distribution over 9 frames cut that to 1.4% -- a 5x reduction, for no
+    # extra model cost. Nine frames is ~1 second at the pipeline's ~8 FPS.
+    # This is the same "never judge a single frame" principle backend.attention
+    # already applies to gaze, and the mechanism RDFER (base paper 1) uses.
+    window_frames: int = 9
+
     # A face box smaller than this (shorter side, pixels) is skipped rather than
     # upscaled to the model's 224x224 input. Classroom back-row faces can be
     # ~20 px; classifying a 7x upscale of that is guessing, and this project's

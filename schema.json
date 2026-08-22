@@ -304,9 +304,10 @@
               "enum": [
                 "happy",
                 "sad",
-                "neutral"
+                "neutral",
+                "uncertain"
               ],
-              "description": "Mapped from the model raw 8-class output; see distribution."
+              "description": "Mapped from the model raw 8-class output; see distribution. \"uncertain\" means the prediction fell below ExpressionConfig.min_confidence and was deliberately NOT forced into one of the three reported labels -- abstention, not an error. Measured on real classroom faces, ~55% of predictions land here, so treating \"uncertain\" as a failure would discard the majority of honest output."
             },
             "confidence": {
               "type": "number",

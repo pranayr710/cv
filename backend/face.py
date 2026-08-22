@@ -96,6 +96,10 @@ class FaceResult:
         landmarks: List of ``num_landmarks`` ``(x, y)`` points in image pixels,
             or ``None``.
         ear: Mean eye-aspect-ratio over both eyes, or ``None``.
+        kps: The detector's 5 keypoints for this face (SCRFD only), carried
+            through so :mod:`backend.expression` can align the face before
+            classifying it — alignment measurably improves confidence. ``None``
+            under the mediapipe backend, which produces no such keypoints.
 
     Note:
         With the SCRFD backend, ``face_bbox`` can be present while
@@ -109,6 +113,7 @@ class FaceResult:
     face_bbox: Bbox | None
     landmarks: list[Point] | None
     ear: float | None
+    kps: object | None = None
 
 
 def _euclidean(a: Point, b: Point) -> float:
@@ -546,7 +551,7 @@ class FaceAnalyzer:
         # Greedy assignment, strongest detection first (SCRFD returns them
         # sorted). Each face goes to the person box that contains most of it,
         # and neither a face nor a person can be claimed twice.
-        assigned: dict[int, Bbox] = {}
+        assigned: dict[int, object] = {}
         matched_faces = 0
         for det in detections:
             best_idx, best_score = -1, 0.0
@@ -557,17 +562,21 @@ class FaceAnalyzer:
                 if score > best_score:
                     best_idx, best_score = person_idx, score
             if best_idx >= 0 and best_score >= self.config.assign_min_containment:
-                assigned[best_idx] = det.bbox
+                assigned[best_idx] = det
                 matched_faces += 1
 
         results: list[FaceResult] = []
         for person_idx in range(len(boxes)):
-            face_box = assigned.get(person_idx)
-            if face_box is None:
+            det = assigned.get(person_idx)
+            if det is None:
                 results.append(FaceResult(face_bbox=None, landmarks=None, ear=None))
                 continue
-            pts, ear = self._landmarks_for_face(frame, face_box)
-            results.append(FaceResult(face_bbox=face_box, landmarks=pts, ear=ear))
+            pts, ear = self._landmarks_for_face(frame, det.bbox)
+            results.append(
+                FaceResult(
+                    face_bbox=det.bbox, landmarks=pts, ear=ear, kps=det.kps
+                )
+            )
 
         # Unmatched faces mean SCRFD saw a student that YOLO's person detector
         # missed — a person-detection shortfall. Logged, never silently dropped.
