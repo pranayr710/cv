@@ -280,6 +280,56 @@ This confirms with real numbers what §11.3 flagged as a suspicion: COCO's `book
 
 ---
 
+## 13. Making the expression signal reliable, and verifying Part 1 end to end
+
+### 13.1 Three measured improvements to expression
+
+Expression shipped working but weak: median confidence 0.42, with 67% of predictions below 0.50. Three levers were tested on real classroom faces.
+
+| Lever | Result | Kept? |
+|---|---|---|
+| **Face alignment** using SCRFD's 5 keypoints | median confidence 0.421 → **0.481**; sub-0.5 predictions 64% → **55%** | Yes |
+| **Temporal averaging** over 9 frames | consecutive-frame label flips 6.8% → **1.4%** (5x fewer) | Yes |
+| **Larger model** (`enet_b2_8`) | median confidence **0.271**, 98% under 0.5 — much worse | **Rejected** |
+
+Alignment matters because AffectNet was trained on *aligned* faces, so a raw box crop was out of distribution. Temporal averaging matters because a student's expression does not genuinely change five times a second — that flipping was measurement error, and it is removed for free. Distributions are averaged rather than labels voted on, so many weak-but-consistent frames can outvote one confidently-wrong frame.
+
+Verified in the shipped pipeline, not just in the experiment (20 held-out images, 270 students classified):
+
+| | median confidence | abstentions |
+|---|---|---|
+| box crop (old) | 0.419 | 125 / 270 (46%) |
+| aligned (shipped) | **0.470** | **92 / 270 (34%)** |
+
+Alignment turns 33 abstentions into usable labels. Worth noting honestly: `sad` predictions dropped from 9 to 3 under alignment, which suggests some of the box-crop `sad` labels were artifacts of a misaligned crop rather than real signal.
+
+### 13.2 Abstention — the answer to "we cannot be right all the time"
+
+Since 55% of predictions fall below 0.50 confidence, a system that always emitted one of happy/sad/neutral would be presenting a coin flip as a finding. Below `min_confidence` the output is now **`"uncertain"`** — a first-class label in the schema, not an error state.
+
+`min_confidence = 0.40` is explicitly **a starting point, not a calibrated threshold**. Calibrating it requires labelled expression crops that do not exist yet, and the trade of coverage against reliability should be made against labels rather than by taste.
+
+### 13.3 Part 1 verified end to end
+
+A 40-frame 1920x1080 clip was rebuilt from consecutive dataset frames and run through the complete Stage 1+2 pipeline. **All 40 frame records validate against `schema.json`.**
+
+| Signal | Coverage of student-frames |
+|---|---|
+| Face box | 88.9% |
+| Face-mesh landmarks | 78.2% |
+| Head pose / gaze | 88.9% |
+| Posture geometry | 90.7% |
+| **Expression** | **86.5%** |
+| Track id assigned | 98.6% |
+
+431 student-frames, 14 distinct track ids, 176 objects. Expression broke down as 235 neutral, 19 sad, 3 happy, **116 uncertain (31%)** — the abstention rule doing visible work.
+
+Landmark coverage is 78.2% here versus ~15% on the crowded exam frame measured earlier. The difference is face size, not code: this footage has ~10 students at medium distance, that one had ~50 at distance. Both numbers are real; neither generalises to the other.
+
+**One anomaly worth flagging rather than burying:** gaze came back `right` for 320 of 383 faces (84%). That is plausible as camera geometry — a side-mounted camera makes students facing the teacher all appear turned one way — but a signal that returns one value 84% of the time is not discriminating, and it needs checking against the head-pose sign convention before any gaze-derived claim is trusted on this footage. Not investigated yet; recorded so it is not mistaken for a working signal.
+
+---
+
 ## Where things stand, in numbers
 
 | Metric | Session start | Now |
