@@ -506,6 +506,27 @@ Three identified recoveries, none yet applied:
 
 ---
 
+## 18. Generalization test on an independent classroom dataset -- fails hard
+
+A second, wholly independent labelled dataset arrived (629 images, different classroom, different country/camera style, CC BY 4.0, Roboflow: `classroom-na2vo/classroom-student-dataset`), plus an 11-minute continuous classroom video. Unlike the 13-image and 481-image sets already used, this one was collected by someone else entirely -- the right test of whether the fine-tuned behaviour model learned classroom behaviour or memorised its own 8 training clips.
+
+**It memorised the 8 clips.** Running the model (unmodified, never trained on this data) against its `test` split, with classes mapped `Using Phone -> using_device`, `Reading -> read`, `Sleeping -> sleep`, `Writing -> write`, `Hand Rising -> handrise`:
+
+| | In-distribution (own held-out clips) | This independent dataset |
+|---|---|---|
+| Overall F1 | 65.3% (writing) | **7.3%** |
+| `using_device` recall | 21% | 5.4% |
+| `write` recall | 75.8% | **0.0%** |
+| `handrise` recall | unmeasurable (22 boxes) | **0.0%** |
+
+**Verified by rendering, not trusted as a number alone** -- a mismatch this large could be a box-convention artifact rather than a real failure, so a frame was rendered with both ground truth and predictions before drawing any conclusion. It confirmed a genuine failure: in a classroom with 10+ students visibly reading, writing, raising hands and using phones, the model produced only 2 boxes total, and both were wrong.
+
+**Root cause, visible in the same render: a labelling-density mismatch, not only a visual domain shift.** This new dataset labels *only* the notable behaviours -- phone use, sleeping, hand-raising -- and leaves attentive students completely unannotated. Our own training data labels every visible student, including plain `look_forward`. Naively merging the two would teach the model that a normal attentive student (boxed as `look_forward` in one dataset) is background/nothing (unboxed in the other), which is a direct label conflict, not just more data. A retrain was deliberately NOT attempted this session for that reason -- it needs curation (re-labelling attentive students in the new set, or restricting its use to eval-only) before it can safely join training, not a quick merge.
+
+**What this dataset is used for instead, right now:** an honest, permanent generalization check, kept separate from the training pool. The 7.3% F1 is the real ceiling on any claim of "this works in a general classroom" until either more diverse training data is curated or the model is explicitly scoped to "classrooms similar to the training footage."
+
+---
+
 ## Where things stand, in numbers
 
 | Metric | Session start | Now |
