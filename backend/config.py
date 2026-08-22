@@ -316,6 +316,76 @@ class HeadPoseConfig:
 
 
 @dataclass(frozen=True)
+class BehaviourConfig:
+    """Fine-tuned per-student behaviour classification -- see backend/behaviour.py.
+
+    Replaces the book-proximity proxy, which failed against human labels
+    (precision 31.9%, recall 20.7%, F1 25.1% for "is this student writing").
+    Training the behaviour directly rather than inferring it from a proxy object
+    lifted that to F1 ~62-68% on held-out clips.
+
+    This model is a **classifier layer on top of** the existing student
+    detection, NOT a replacement for it. Measured on the same held-out data:
+
+    ======================================  ==========  =======
+    Finding students                        Precision   Recall
+    ======================================  ==========  =======
+    SCRFD + YOLO pipeline                     82.2%      90.6%
+    This behaviour model alone                89.8%      70.5%
+    ======================================  ==========  =======
+
+    It is more precise but finds ~20 points fewer students, and a missed student
+    is invisible to every downstream signal, so recall wins for detection.
+    """
+
+    # Produced by tools/train_behaviour.py. Under runs/ which is gitignored, so
+    # a fresh clone must retrain (or be pointed at a copied checkpoint) rather
+    # than silently running an untrained model.
+    weights: str = "runs/behaviour/yolo11m_b4/weights/best.pt"
+    device: Literal["cuda", "cpu", "auto"] = "auto"
+
+    # Trained at 960 for VRAM reasons (batch 4 on a 6.4 GB card); inference uses
+    # the same size, since matching train/test resolution is the safer default.
+    imgsz: int = 960
+
+    # Detection confidence. Swept on held-out clips, and lowering it does NOT
+    # help -- for the weakest class, `using_device`, recall moves 20.0% -> 24.4%
+    # -> 26.7% at conf 0.30 -> 0.15 -> 0.08 while precision collapses 58.1% ->
+    # 45.8% -> 37.5%. That is a model/data limitation, not a threshold to tune,
+    # so 0.30 stays.
+    conf: float = 0.30
+    iou: float = 0.50
+
+    # Class order must match the training data.yaml exactly. A mismatch here
+    # silently relabels every prediction.
+    class_names: tuple[str, ...] = (
+        "handrise", "look_forward", "read", "sleep",
+        "stand", "turn_head", "using_device", "write",
+    )
+
+    # Classes with too little training data to be trusted. `stand` had 59
+    # training boxes and `handrise` 22, and on the held-out split they scored
+    # F1 0.0% and 4.1% respectively. Predictions for these are dropped rather
+    # than reported, because a class measured at 4% F1 is noise wearing a label.
+    untrusted_classes: tuple[str, ...] = ("handrise", "stand")
+
+    # Classes this model is NOT the best owner of. `turn_head` is a head
+    # ORIENTATION question, and calibrated head pose measures it far better
+    # (F1 63.2% vs this model's 25.0% on the same 371 labelled boxes), so it is
+    # deferred to backend.headpose instead of reported twice with the weaker
+    # answer winning. See CHALLENGES_AND_SOLUTIONS.md section 15.
+    deferred_classes: tuple[str, ...] = ("turn_head", "look_forward")
+
+    # Minimum fraction of a behaviour box that must fall inside a student's box
+    # (or vice versa) to bind them. Mutual-centre containment is used rather
+    # than IoU because the two box conventions differ: this model was trained on
+    # tight head+torso annotations while the pipeline's students are full-body
+    # or face-seeded boxes. IoU 0.5 rejected 4 of 11 correct pairs on a real
+    # frame -- see tools/eval_detection.py.
+    require_mutual_centre: bool = True
+
+
+@dataclass(frozen=True)
 class ExpressionConfig:
     """Facial-expression classification -- see backend/expression.py.
 
@@ -676,6 +746,7 @@ class Config:
     )
     headpose: HeadPoseConfig = field(default_factory=HeadPoseConfig)
     expression: ExpressionConfig = field(default_factory=ExpressionConfig)
+    behaviour: BehaviourConfig = field(default_factory=BehaviourConfig)
     posture: PostureConfig = field(default_factory=PostureConfig)
     attention: AttentionConfig = field(default_factory=AttentionConfig)
     peer_interaction: PeerInteractionConfig = field(
