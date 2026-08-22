@@ -48,6 +48,7 @@ import numpy as np
 from backend.config import CONFIG, Config
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    from backend.behaviour import BehaviourClassifier
     from backend.detection import Detector, Obj, Person
     from backend.expression import ExpressionRecognizer
     from backend.face import FaceAnalyzer, FaceResult
@@ -109,6 +110,14 @@ class ExpressionLike(Protocol):
     ) -> list[object | None]: ...
 
 
+class BehaviourLike(Protocol):
+    """Anything exposing ``classify(frame, student_bboxes) -> list[result|None]``."""
+
+    def classify(
+        self, frame: np.ndarray, student_bboxes: Sequence[Sequence[float]]
+    ) -> list[object | None]: ...
+
+
 class PersonTrackerLike(Protocol):
     """Anything exposing ``update(persons) -> list[track_id|None]``."""
 
@@ -158,6 +167,29 @@ def _headpose_to_json(hp: HeadPoseResult | None) -> dict | None:
         "pitch": float(hp.pitch),
         "roll": float(hp.roll),
         "gaze_label": hp.gaze_label,
+    }
+
+
+def _behaviour_to_json(behaviour) -> dict | None:
+    """Serialise a BehaviourResult into the ``behaviour`` object, or ``None``.
+
+    Args:
+        behaviour: The per-student
+            :class:`~backend.behaviour.BehaviourResult`, or ``None`` when no
+            behaviour bound to this student or the model is unavailable.
+
+    Returns:
+        A dict matching the schema's ``behaviour`` object, or ``None``.
+        ``reliability`` is included deliberately: it travels with the value so a
+        weak class (``using_device``, ~20% recall) cannot be read downstream as
+        though it were as solid as ``write``.
+    """
+    if behaviour is None:
+        return None
+    return {
+        "label": behaviour.label,
+        "confidence": float(behaviour.confidence),
+        "reliability": behaviour.reliability,
     }
 
 
@@ -233,6 +265,7 @@ def _assemble_frame(
     headposes: list[HeadPoseResult | None],
     postures: list[PostureResult],
     expressions: list[object | None],
+    behaviours: list[object | None],
     track_ids: list[int | None],
     objects: list[Obj],
 ) -> dict:
@@ -266,18 +299,20 @@ def _assemble_frame(
         == len(headposes)
         == len(postures)
         == len(expressions)
+        == len(behaviours)
         == len(track_ids)
     ):
         raise ValueError(
             "Misaligned per-person lists: "
             f"persons={len(persons)}, faces={len(faces)}, "
             f"headposes={len(headposes)}, postures={len(postures)}, "
-            f"expressions={len(expressions)}, track_ids={len(track_ids)}."
+            f"expressions={len(expressions)}, behaviours={len(behaviours)}, "
+            f"track_ids={len(track_ids)}."
         )
 
     person_records = []
-    for person, face, hp, posture, expression, track_id in zip(
-        persons, faces, headposes, postures, expressions, track_ids
+    for person, face, hp, posture, expression, behaviour, track_id in zip(
+        persons, faces, headposes, postures, expressions, behaviours, track_ids
     ):
         person_records.append(
             {
@@ -293,6 +328,7 @@ def _assemble_frame(
                 "head_pose": _headpose_to_json(hp),
                 "posture": _posture_to_json(posture),
                 "expression": _expression_to_json(expression),
+                "behaviour": _behaviour_to_json(behaviour),
             }
         )
 
@@ -334,6 +370,33 @@ def _build_expression_recognizer(config: Config) -> ExpressionRecognizer:
     return ExpressionRecognizer(config.expression)
 
 
+def _build_behaviour_classifier(config: Config) -> BehaviourClassifier | None:
+    """Construct the behaviour classifier, or ``None`` if it is unavailable.
+
+    Unlike the other components this one is **optional**: its weights are
+    produced by ``tools/train_behaviour.py`` and live under gitignored
+    ``runs/``, so a fresh clone has none. The pipeline stays fully usable
+    without it (``behaviour`` is simply ``null`` in the output) rather than
+    refusing to run, but the absence is logged rather than passing silently --
+    a missing behaviour signal should be visible, not mysterious.
+
+    Args:
+        config: The full pipeline config.
+
+    Returns:
+        A classifier, or ``None`` when the fine-tuned weights are missing.
+    """
+    from backend.behaviour import BehaviourClassifier
+
+    try:
+        return BehaviourClassifier(config.behaviour)
+    except FileNotFoundError as exc:
+        logger.warning(
+            "Behaviour classification disabled: %s", exc
+        )
+        return None
+
+
 def _build_headpose_estimator(config: Config) -> HeadPoseEstimator:
     """Construct the real :class:`~backend.headpose.HeadPoseEstimator` from config."""
     from backend.headpose import HeadPoseEstimator
@@ -365,6 +428,7 @@ def process_video(
     headpose_estimator: HeadPoseLike | None = None,
     posture_analyzer: PostureAnalyzerLike | None = None,
     expression_recognizer: ExpressionLike | None = None,
+    behaviour_classifier: BehaviourLike | None = None,
     person_tracker: PersonTrackerLike | None = None,
 ) -> int:
     """Run the full Stage 1+2 pipeline over a video and write JSONL output.
@@ -408,6 +472,8 @@ def process_video(
     headpose_estimator = headpose_estimator or _build_headpose_estimator(config)
     posture_analyzer = posture_analyzer or _build_posture_analyzer(config)
     expression_recognizer = expression_recognizer or _build_expression_recognizer(config)
+    if behaviour_classifier is None:
+        behaviour_classifier = _build_behaviour_classifier(config)
     person_tracker = person_tracker or _build_person_tracker(config)
 
     sample_rate = max(int(config.pipeline.sample_rate), 1)
@@ -496,6 +562,14 @@ def process_video(
                 # Expression consumes the same face boxes as head pose; it needs
                 # no landmarks, so it covers every student who has a face box.
                 expressions = expression_recognizer.classify(frame, face_bboxes)
+                # Behaviour is bound to the student boxes, not the face boxes:
+                # it reads posture and desk context, so it works for students
+                # whose face was never found.
+                behaviours = (
+                    behaviour_classifier.classify(frame, person_bboxes)
+                    if behaviour_classifier is not None
+                    else [None] * len(persons)
+                )
                 # Tracking runs on every processed frame, in order: its motion
                 # model assumes fixed spacing between consecutive updates, so
                 # this must stay inside the sample_rate-filtered branch.
@@ -509,6 +583,7 @@ def process_video(
                     headposes,
                     postures,
                     expressions,
+                    behaviours,
                     track_ids,
                     objects,
                 )

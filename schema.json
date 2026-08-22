@@ -85,7 +85,8 @@
         "head_pose",
         "posture",
         "source",
-        "expression"
+        "expression",
+        "behaviour"
       ],
       "additionalProperties": false,
       "properties": {
@@ -324,6 +325,44 @@
                 "type": "number"
               },
               "description": "Full raw 8-class AffectNet distribution, so the 8-to-3 collapse stays auditable."
+            }
+          }
+        },
+        "behaviour": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "label",
+            "confidence",
+            "reliability"
+          ],
+          "additionalProperties": false,
+          "description": "What this student is doing, from the fine-tuned behaviour model (backend/behaviour.py). null when no behaviour box bound to this student, when the prediction was a class the model is not trusted for, or when the fine-tuned weights are absent. Classes handrise/stand are never reported (F1 4.1% and 0.0% held out) and turn_head/look_forward are deferred to head pose, which measures them better (F1 63.2% vs 25.0%).",
+          "properties": {
+            "label": {
+              "type": "string",
+              "enum": [
+                "read",
+                "sleep",
+                "using_device",
+                "write"
+              ],
+              "description": "The behaviour class. Only classes this model is the best available owner of."
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "reliability": {
+              "type": "string",
+              "enum": [
+                "measured",
+                "weak"
+              ],
+              "description": "How much this class can be trusted, carried WITH the value so a weak signal cannot be read as a strong one. \"weak\" means poor held-out recall -- using_device reaches only ~20%. Consumers must respect this rather than treating all labels alike."
             }
           }
         }
