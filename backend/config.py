@@ -360,7 +360,7 @@ class BehaviourConfig:
     # Produced by tools/train_behaviour.py. Under runs/ which is gitignored, so
     # a fresh clone must retrain (or be pointed at a copied checkpoint) rather
     # than silently running an untrained model.
-    weights: str = "runs/behaviour/yolo11m_b4/weights/best.pt"
+    weights: str = "runs/behaviour/merged4_aug/weights/best.pt"
     device: Literal["cuda", "cpu", "auto"] = "auto"
 
     # Trained at 960 for VRAM reasons (batch 4 on a 6.4 GB card); inference uses
@@ -377,23 +377,23 @@ class BehaviourConfig:
 
     # Class order must match the training data.yaml exactly. A mismatch here
     # silently relabels every prediction.
-    class_names: tuple[str, ...] = (
-        "handrise", "look_forward", "read", "sleep",
-        "stand", "turn_head", "using_device", "write",
-    )
+    class_names: tuple[str, ...] = ("read", "sleep", "using_device", "write")
 
-    # Classes with too little training data to be trusted. `stand` had 59
-    # training boxes and `handrise` 22, and on the held-out split they scored
-    # F1 0.0% and 4.1% respectively. Predictions for these are dropped rather
-    # than reported, because a class measured at 4% F1 is noise wearing a label.
-    untrusted_classes: tuple[str, ...] = ("handrise", "stand")
+    # Previously dropped `handrise`/`stand` (22 and 59 training boxes, F1 4.1%
+    # and 0.0%). The retrained model does not have those classes at all -- they
+    # were excluded from the merged dataset -- so there is nothing left to
+    # suppress here. Kept as an empty tuple rather than removed so the
+    # suppression mechanism stays available if a future class needs it.
+    untrusted_classes: tuple[str, ...] = ()
 
-    # Classes this model is NOT the best owner of. `turn_head` is a head
-    # ORIENTATION question, and calibrated head pose measures it far better
-    # (F1 63.2% vs this model's 25.0% on the same 371 labelled boxes), so it is
-    # deferred to backend.headpose instead of reported twice with the weaker
-    # answer winning. See CHALLENGES_AND_SOLUTIONS.md section 15.
-    deferred_classes: tuple[str, ...] = ("turn_head", "look_forward")
+    # `turn_head`/`look_forward` were deferred to backend.headpose, which
+    # measures head orientation far better (F1 63.2% vs 25.0% on the same
+    # boxes). That decision is now baked into the model itself: both classes
+    # were excluded from the merged training set entirely, which also dissolved
+    # the label-density conflict that had blocked merging the second dataset
+    # (see tools/merge_behaviour_datasets.py). Nothing left to defer at
+    # inference time; head pose still owns orientation.
+    deferred_classes: tuple[str, ...] = ()
 
     # Minimum fraction of a behaviour box that must fall inside a student's box
     # (or vice versa) to bind them. Mutual-centre containment is used rather

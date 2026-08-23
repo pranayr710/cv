@@ -76,10 +76,23 @@ logger = logging.getLogger(__name__)
 
 Bbox = tuple[int, int, int, int]
 
-#: Classes whose held-out recall is poor enough that the value must carry a
-#: warning with it. ``using_device`` reaches only ~20% recall and ``sleep``
-#: ~39-46%; see the module docstring.
-_WEAK_CLASSES: frozenset[str] = frozenset({"using_device", "sleep"})
+#: Classes whose held-out accuracy is poor enough that the value must carry a
+#: warning with it. Re-measured after the merged-dataset retrain, and the
+#: membership CHANGED -- so this is kept in sync with measurement rather than
+#: left as a stale assumption:
+#:
+#:   class          precision  recall    F1     was
+#:   using_device      79.7%   65.6%   72.0%   30.6%  -> no longer weak
+#:   write             73.8%   68.1%   70.9%   68.3%  -> fine
+#:   sleep             75.0%   58.5%   65.8%   57.5%  -> borderline, acceptable
+#:   read              45.9%   57.1%   50.9%   43.0%  -> WEAK: <half its
+#:                                                       predictions are right
+#:
+#: ``using_device`` was the headline weakness before the retrain (~20% recall)
+#: and is now one of the strongest classes. ``read`` is now the weak one, and is
+#: confused with ``write`` in both directions -- an understandable confusion
+#: (both are head-down-at-a-desk) but one a consumer must not read as certain.
+_WEAK_CLASSES: frozenset[str] = frozenset({"read"})
 
 
 @dataclass(frozen=True)

@@ -5,10 +5,14 @@ these run without the fine-tuned weights (which live under gitignored ``runs/``
 and do not exist on a fresh clone).
 
 Test coverage:
-    1. Untrusted classes (`handrise`, `stand`) never reach the output.
-    2. Deferred classes (`turn_head`, `look_forward`) never reach the output,
-       because head pose measures them better.
-    3. Weak classes carry a "weak" reliability tag with the value.
+    1. Suppression defaults are now empty -- the classes that used to be
+       filtered here (handrise/stand as untrusted, turn_head/look_forward as
+       deferred to head pose) were excluded from the retrained model's dataset
+       entirely, moving the decision from inference into the data.
+    2. The suppression MECHANISM still works, so a future weak class can be
+       filtered without new code.
+    3. Weak classes carry a "weak" reliability tag with the value -- membership
+       re-measured after the retrain (using_device is no longer weak; read is).
     4. Results stay index-aligned with the input students.
     5. Binding is one-to-one and prefers the strongest detection.
     6. Missing weights fail loudly rather than falling back to a COCO model.
@@ -110,27 +114,33 @@ _INSIDE = (120, 120, 160, 260)
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("cls", ["handrise", "stand"])
-def test_untrusted_classes_are_never_reported(cls: str) -> None:
-    """These scored F1 4.1% and 0.0% held out — noise wearing a label."""
-    clf = _classifier([(cls, 0.99, _INSIDE)])
-    assert clf.classify(_frame(), [_STUDENT]) == [None]
+def test_suppression_defaults_are_empty_after_the_retrain() -> None:
+    """The old suppression lists (handrise/stand as untrusted, turn_head/
+    look_forward as deferred to head pose) are now empty, because those classes
+    were excluded from the merged training set entirely -- the decision moved
+    from inference-time filtering into the dataset itself. The mechanism is
+    still exercised below; this pins that nothing is being silently filtered."""
+    assert CONFIG.behaviour.untrusted_classes == ()
+    assert CONFIG.behaviour.deferred_classes == ()
+    assert set(CONFIG.behaviour.class_names) == {
+        "read", "sleep", "using_device", "write"
+    }
 
 
-@pytest.mark.parametrize("cls", ["turn_head", "look_forward"])
-def test_deferred_classes_are_never_reported(cls: str) -> None:
-    """Head orientation belongs to head pose (F1 63.2% vs this model's 25.0%).
-
-    Reporting it here too would let the weaker answer win downstream.
-    """
-    clf = _classifier([(cls, 0.99, _INSIDE)])
+def test_configured_suppression_still_filters_a_class() -> None:
+    """The suppression MECHANISM must keep working even though its default
+    lists are now empty -- a future weak class should be suppressible without
+    new code."""
+    cfg = replace(BehaviourConfig(), untrusted_classes=("sleep",))
+    clf = _classifier([("sleep", 0.99, _INSIDE)], cfg)
     assert clf.classify(_frame(), [_STUDENT]) == [None]
 
 
 def test_suppressed_detection_does_not_block_a_surfaced_one() -> None:
     """A filtered class must not consume the student's binding slot."""
+    cfg = replace(BehaviourConfig(), untrusted_classes=("sleep",))
     clf = _classifier(
-        [("look_forward", 0.99, _INSIDE), ("write", 0.40, _INSIDE)]
+        [("sleep", 0.99, _INSIDE), ("write", 0.40, _INSIDE)], cfg
     )
     result = clf.classify(_frame(), [_STUDENT])[0]
     assert result is not None
@@ -144,11 +154,15 @@ def test_suppressed_detection_does_not_block_a_surfaced_one() -> None:
 
 @pytest.mark.parametrize(
     ("cls", "expected"),
-    [("write", "measured"), ("read", "measured"),
-     ("using_device", "weak"), ("sleep", "weak")],
+    [("write", "measured"), ("sleep", "measured"),
+     ("using_device", "measured"), ("read", "weak")],
 )
 def test_reliability_tag_matches_measured_strength(cls: str, expected: str) -> None:
-    """using_device reaches only ~20% recall; the tag stops it reading as solid."""
+    """Membership CHANGED after the merged-dataset retrain, and these
+    assertions were updated to match measurement rather than left stale:
+    using_device went 30.6% -> 72.0% F1 (no longer weak) and read is now the
+    weakest at 50.9% with sub-50% precision. See backend/behaviour.py's
+    _WEAK_CLASSES table for the full before/after."""
     clf = _classifier([(cls, 0.8, _INSIDE)])
     result = clf.classify(_frame(), [_STUDENT])[0]
     assert result is not None
@@ -248,16 +262,16 @@ def test_summary_counts_and_flags_weak_labels() -> None:
     results = [
         BehaviourResult("write", 0.9, "measured"),
         BehaviourResult("write", 0.8, "measured"),
-        BehaviourResult("using_device", 0.5, "weak"),
+        BehaviourResult("read", 0.5, "weak"),
         None,
     ]
     summary = summarise_behaviour(results)
     assert summary["students"] == 4
     assert summary["classified"] == 3
     assert summary["unavailable"] == 1
-    assert summary["counts"] == {"write": 2, "using_device": 1}
+    assert summary["counts"] == {"write": 2, "read": 1}
     # The consumer cannot read the counts without seeing which are unreliable.
-    assert summary["weak_labels"] == ["using_device"]
+    assert summary["weak_labels"] == ["read"]
 
 
 def test_summary_reports_no_weak_labels_when_none_present() -> None:
