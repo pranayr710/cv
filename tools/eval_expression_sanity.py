@@ -1,31 +1,42 @@
-"""Sanity-check ExpressionRecognizer against FER2013's own happy/sad/neutral labels.
+"""Sanity-check ExpressionRecognizer against real happy/sad/neutral labels.
 
 **What this proves, and what it explicitly does not.**
 
 Before this, expression accuracy was completely unmeasured -- coverage and
 confidence were reported, correctness never was, because this project has no
-labelled classroom expression data. FER2013 (28,709 labelled faces, downloaded
-from https://huggingface.co/datasets/SmolVEncoder/fer2013, Apache-2.0) provides
-real happy/sad/neutral ground truth, so this is the first time the model's
-*correctness* is measured against any label at all rather than only its
-coverage and confidence.
+labelled classroom expression data. Two public labelled sets were run through
+this same script, and comparing them is itself informative:
 
-It is a sanity check, not a validation, and the difference matters:
+============================================  ========  ========  =======
+Dataset                                       Accuracy  Sad recall  Res.
+============================================  ========  ========  =======
+FER2013 (huggingface SmolVEncoder/fer2013)      56.7%     31.7%    48x48 gray
+Kaggle himanshuydv11/facial-emotion-dataset     80.5%     75.4%    197x197 RGB
+============================================  ========  ========  =======
 
-* FER2013 faces are 48x48 grayscale web photos, mostly Western-skewed, posed or
-  candid stock/movie stills -- not classroom footage, not this project's real
-  population, and not the resolution or lighting this pipeline actually sees.
-* If the model performs badly HERE, it should not be trusted on classroom
-  footage either -- this is a necessary-but-not-sufficient bar.
-* If it performs well here, that says only "the model works on its own
-  training distribution restated in a fresh split" -- it says NOTHING about
-  accuracy on South Asian classroom faces at 20-70px, which remains completely
-  unmeasured. See backend/expression.py's "Known unvalidated for this
-  population" section; this script does not close that gap.
+`sad` recall roughly doubling is a real finding: FER2013's weak `sad` score was
+at least partly an **image-quality artifact**, not purely the model being bad at
+sad faces -- at real resolution and colour the same model does much better on
+the same emotion. That is still not evidence the model works well at the 20-70px
+grayscale-ish quality this pipeline actually gets from a classroom camera, which
+sits between these two datasets' quality and is closer to FER2013's.
+
+It is a sanity check, not a validation, and the difference matters regardless of
+which dataset is used:
+
+* Neither dataset is classroom footage, this project's real population, or shot
+  at the resolution/lighting this pipeline actually sees.
+* If the model performs badly on one of these, it should not be trusted on
+  classroom footage either -- this is a necessary-but-not-sufficient bar.
+* A good score says only "the model works on its own training distribution
+  restated in a fresh split" -- it says NOTHING about accuracy on South Asian
+  classroom faces at 20-70px, which remains completely unmeasured. See
+  backend/expression.py's "Known unvalidated for this population" section;
+  this script does not close that gap, on either dataset.
 
 Run:
-    python -m tools.eval_expression_sanity
     python -m tools.eval_expression_sanity --root dataset/fer2013_sample
+    python -m tools.eval_expression_sanity --root dataset/kaggle_emotion_sample
 """
 
 from __future__ import annotations
@@ -70,8 +81,8 @@ def evaluate(root: Path) -> None:
             if result.label == true_label:
                 correct += 1
 
-    print(f"\n{root}: {total} labelled crops (FER2013, NOT this project's "
-          f"population -- see module docstring)\n")
+    print(f"\n{root}: {total} labelled crops (public sanity-check data, NOT "
+          f"this project's classroom population -- see module docstring)\n")
     print(f"overall accuracy   : {correct / total * 100:.1f}% ({correct}/{total})")
     print(f"abstained          : {uncertain / total * 100:.1f}% ({uncertain}/{total})")
 

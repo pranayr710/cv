@@ -61,6 +61,23 @@ Western-skewed in-the-wild data. Accuracy on South Asian classroom faces is
 :mod:`backend.fairness_audit`. The audit harness there should be pointed at this
 model once labelled data exists. Until then, no accuracy claim is made here.
 
+Two public sanity checks exist (``tools/eval_expression_sanity.py``), and
+comparing them is itself informative:
+
+==========================================  ========  ==========  ==========
+Dataset                                      Accuracy  Sad recall  Resolution
+==========================================  ========  ==========  ==========
+FER2013 (48x48 grayscale)                      56.7%       31.7%   low
+Kaggle facial-emotion-dataset (197x197 RGB)    80.5%       75.4%   high
+==========================================  ========  ==========  ==========
+
+Sad recall roughly doubling with resolution says the FER2013 weakness was partly
+an image-quality artifact, not purely the model being bad at sad faces. Neither
+number is a classroom-accuracy claim -- both are public, non-classroom, non-South-Asian
+datasets. This pipeline's real face crops (20-70px, classroom camera) sit closer
+to FER2013's quality than the Kaggle set's, so the honest expectation is nearer
+the lower number than the higher one until real labelled classroom crops exist.
+
 Usage:
     from backend.expression import ExpressionRecognizer
     recognizer = ExpressionRecognizer()
