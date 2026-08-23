@@ -148,6 +148,38 @@ def test_concentration_uses_engagement_precedence(tmp_path) -> None:
     assert conc["concentration_pct"] == pytest.approx(0.0)
 
 
+def test_100pct_with_no_behaviour_readings_is_flagged_as_undetectable(tmp_path) -> None:
+    """The real bug this guards against: 'off' is only reachable through a
+    behaviour reading, so a student who never gets one reads 100%
+    concentration purely from absence of evidence -- caught on real
+    out-of-distribution footage where the behaviour model found zero
+    detections for an entire video. Must be surfaced, not silently trusted."""
+    p = tmp_path / "run.jsonl"
+    _write_jsonl(p, [
+        _frame(0, 0, [_person(1, gaze_label="teacher")]),
+        _frame(1, 1000, [_person(1, gaze_label="teacher")]),
+    ])
+    profiles = build_profiles(p)
+    conc = profiles[1]["concentration"]
+    assert conc["concentration_pct"] == pytest.approx(100.0)
+    assert conc["off_task_detectable"] is False
+    assert "caveat" in conc
+
+
+def test_100pct_with_behaviour_readings_present_is_not_flagged(tmp_path) -> None:
+    """A student who genuinely never behaved off-task, WITH behaviour readings
+    actually available, is a real finding and must not be second-guessed."""
+    p = tmp_path / "run.jsonl"
+    _write_jsonl(p, [
+        _frame(0, 0, [_person(1, gaze_label="teacher", behaviour=("write", "measured"))]),
+    ])
+    profiles = build_profiles(p)
+    conc = profiles[1]["concentration"]
+    assert conc["concentration_pct"] == pytest.approx(100.0)
+    assert conc["off_task_detectable"] is True
+    assert "caveat" not in conc
+
+
 def test_person_with_no_person_id_is_skipped(tmp_path) -> None:
     """track_id present but person_id null: no stable key to file them under."""
     p = tmp_path / "run.jsonl"

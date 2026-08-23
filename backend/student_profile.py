@@ -23,6 +23,18 @@ Grouping is by ``person_id``, not ``track_id``, specifically because
 split one real student into several profiles across a single occlusion gap,
 defeating the entire point of adding re-identification.
 
+A real absence-of-evidence trap this module guards against explicitly: "off"
+is only reachable through a behaviour reading (see
+:mod:`backend.engagement` — a bare non-attending gaze is deliberately left
+"unknown", never "off"). A student who never once gets a behaviour reading
+(e.g. the behaviour model finds zero detections on unfamiliar footage — a real
+case hit on out-of-distribution video, same generalization failure documented
+in ``CHALLENGES_AND_SOLUTIONS.md`` section 18) will show 100% concentration
+purely because off-task was structurally unreachable, not because they were
+attentive. ``concentration.off_task_detectable`` and ``concentration.caveat``
+surface this directly on the profile rather than requiring a reader to
+cross-reference the separate ``behaviour.classified`` count to notice it.
+
 Usage (CLI):
     python -m backend.student_profile --jsonl outputs/stage1.jsonl --out outputs/students.json
 
@@ -155,6 +167,30 @@ def build_profiles(
     for person_id, seen_count in frames_seen.items():
         behaviour_summary = _tally(behaviour_labels[person_id])
         behaviour_summary["weak_labels"] = sorted(behaviour_reliability[person_id])
+        concentration = summarise_engagement(engagement_verdicts[person_id])
+
+        # Off-task can ONLY be reached through a behaviour reading (see
+        # backend.engagement -- a bare non-attending gaze is deliberately left
+        # "unknown", never "off"). So if this student never once got a
+        # behaviour reading, "off" was structurally unreachable for them, and
+        # a resulting 100% concentration_pct is an absence-of-evidence
+        # artifact, not a finding. Found for real: the behaviour model
+        # returned zero readings on an out-of-distribution video (a different
+        # generalization failure, same shape as CHALLENGES_AND_SOLUTIONS.md
+        # section 18) and every student's concentration silently read ~100%.
+        # Surfaced here rather than left for a reader to notice by
+        # cross-referencing two unrelated fields.
+        if behaviour_summary["classified"] == 0 and concentration["frames"] > 0:
+            concentration["off_task_detectable"] = False
+            concentration["caveat"] = (
+                "No behaviour reading was ever obtained for this student, so "
+                "off-task states (phone/sleep) could not be detected at all -- "
+                "concentration_pct reflects gaze only and should not be read "
+                "as a real attentiveness score."
+            )
+        else:
+            concentration["off_task_detectable"] = True
+
         profiles[person_id] = {
             "person_id": person_id,
             # A negative id means this student was never matched by face --
@@ -167,7 +203,7 @@ def build_profiles(
             "duration_ms": last_ms[person_id] - first_ms[person_id],
             "expression": _tally(expression_labels[person_id]),
             "behaviour": behaviour_summary,
-            "concentration": summarise_engagement(engagement_verdicts[person_id]),
+            "concentration": concentration,
         }
     return profiles
 
