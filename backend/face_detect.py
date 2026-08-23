@@ -72,13 +72,19 @@ class DetectedFace:
             classification: AffectNet was trained on aligned faces, and feeding
             an unaligned box crop instead measurably costs confidence (median
             0.421 unaligned vs 0.481 aligned over 207 real classroom faces;
-            share of predictions below 0.5 confidence 64% vs 55%). Not used for
-            identity — no face embeddings exist anywhere in this project.
+            share of predictions below 0.5 confidence 64% vs 55%).
+        embedding: A 512-d L2-normalised ArcFace embedding (InsightFace's
+            ``normed_embedding``), or ``None`` when
+            :data:`FaceConfig.enable_recognition` is off. Consumed only by
+            :mod:`backend.identity` for within-video re-identification — see
+            that module for the scope and privacy boundary (embeddings are
+            never written to output or kept past one video).
     """
 
     bbox: Bbox
     score: float
     kps: np.ndarray | None = None
+    embedding: np.ndarray | None = None
 
 
 def _clamped_xywh(
@@ -177,14 +183,18 @@ class FaceDetector:
             ) from exc
 
         try:
-            # Only the detection sub-model is loaded. The pack also ships
-            # recognition/landmark/genderage models; those are deliberately
-            # excluded — recognition especially, since persistent face
-            # embeddings are exactly what this project's identity design
-            # avoids (tracking resets every session; see backend/tracking.py).
+            # "recognition" additionally loads the pack's bundled ArcFace
+            # embedding model (w600k_r50.onnx) when enabled — see
+            # FaceConfig.enable_recognition for why this is no longer always
+            # excluded, and backend/identity.py for the privacy boundary on
+            # what happens to the embeddings it produces. landmark/genderage
+            # sub-models remain excluded; nothing in this project uses them.
+            modules = ["detection"]
+            if self.config.enable_recognition:
+                modules.append("recognition")
             self._app = FaceAnalysis(
                 name=self.config.scrfd_model_pack,
-                allowed_modules=["detection"],
+                allowed_modules=modules,
             )
             # Prepared again on the first frame if that frame is smaller than
             # the configured det_size (see _effective_det_size). InsightFace
@@ -265,6 +275,12 @@ class FaceDetector:
                 kps=(
                     np.asarray(f.kps, dtype=np.float32)
                     if getattr(f, "kps", None) is not None
+                    else None
+                ),
+                embedding=(
+                    np.asarray(f.normed_embedding, dtype=np.float32)
+                    if self.config.enable_recognition
+                    and getattr(f, "embedding", None) is not None
                     else None
                 ),
             )

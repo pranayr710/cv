@@ -79,6 +79,7 @@
       "type": "object",
       "required": [
         "track_id",
+        "person_id",
         "bbox",
         "confidence",
         "face",
@@ -365,6 +366,13 @@
               "description": "How much this class can be trusted, carried WITH the value so a weak signal cannot be read as a strong one. \"weak\" means poor held-out recall -- using_device reaches only ~20%. Consumers must respect this rather than treating all labels alike."
             }
           }
+        },
+        "person_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Stable, re-identified person id for THIS video only (see backend/identity.py), distinct from track_id. Unlike track_id, this is intended to stay the same for one physical student across brief full occlusion or leaving-and-re-entering frame, as long as their face is seen again -- recovered by matching a face embedding against faces already seen earlier in this same video. null when track_id is null. A NEGATIVE value marks a person minted without ever being matched by face (no trustworthy face was available for them) -- distinguished from a real gallery id (>=1) so a consumer never mistakes an unverified id for a re-identified one. Never persisted or reused across different videos."
         }
       }
     },

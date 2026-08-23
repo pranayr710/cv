@@ -393,12 +393,15 @@ def _frame_record(
         "persons": [
             {
                 "track_id": None,  # filled by ByteTrack in Stage 2
+                "person_id": None,  # filled by backend.identity in Stage 2
                 "bbox": list(p.bbox),
                 "confidence": p.confidence,
                 "source": p.source,
                 "face": None,  # Person B fills this in
                 "head_pose": None,  # Person C fills this in
                 "posture": None,  # integrate.py fills this in
+                "expression": None,  # backend.expression fills this in
+                "behaviour": None,  # backend.behaviour fills this in
             }
             for p in persons
         ],

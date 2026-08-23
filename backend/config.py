@@ -171,6 +171,25 @@ class FaceConfig:
     # stray box in engagement statistics.
     scrfd_det_thresh: float = 0.30
 
+    # Also load buffalo_l's bundled ArcFace recognition sub-model
+    # (w600k_r50.onnx) and compute a 512-d embedding per face. Previously left
+    # off deliberately -- "persistent face embeddings are exactly what this
+    # project's identity design avoids" -- because the earlier identity design
+    # only needed motion-based tracking to survive within a single video.
+    #
+    # That assumption changed: a student who is briefly fully occluded or turns
+    # away and back needs to keep the SAME id, which position-based tracking
+    # alone cannot guarantee (measured: 28 track ids for at most 9 concurrent
+    # people on one real continuous clip -- see backend/identity.py). Enabling
+    # this lets a reappearing face be matched back to its earlier id.
+    #
+    # The privacy property that motivated the original "off" default is
+    # unchanged and still enforced: embeddings live only in
+    # backend.identity.IdentityGallery, which is built fresh per video and
+    # discarded after (see that module's docstring and its regression tests).
+    # No embedding is ever written to output or persisted across videos.
+    enable_recognition: bool = True
+
     # SCRFD returns a tight face box. Face Mesh needs a little context around
     # it to fit the mesh reliably, so the crop handed to Face Mesh is padded by
     # this fraction of the box size. Distinct from person_crop_padding below,
@@ -740,6 +759,48 @@ class TrackingConfig:
 
 
 @dataclass(frozen=True)
+class IdentityConfig:
+    """Within-video face-recognition re-identification -- see backend/identity.py.
+
+    Fills the gap ByteTrack alone cannot: a student who is briefly fully
+    occluded, turns away, or leaves and re-enters frame gets a NEW track_id
+    from motion tracking, because there is nothing to associate across the
+    gap. Matching the reappearing face against faces already seen in this
+    video recovers the original identity instead.
+
+    Scope, stated plainly: this is re-identification WITHIN one video only.
+    The gallery is built fresh per video (per
+    :class:`~backend.identity.IdentityGallery` instance) and discarded when
+    that instance goes out of scope -- no embedding is written to output or
+    reused across videos. This preserves the project's existing
+    session-reset identity property; it only makes identity more robust
+    *inside* one session, which is what was asked for.
+    """
+
+    # Minimum cosine similarity between L2-normalised ArcFace embeddings to
+    # count as the same person. 0.35 is a commonly-cited ballpark for this
+    # embedding family (buffalo_l / w600k_r50), NOT a threshold calibrated
+    # against this project's own population -- there is no labelled
+    # same/different-identity pair data to calibrate it against yet. Treat as
+    # a starting point: raise it if two different students get merged into
+    # one id, lower it if the same student keeps splitting into new ids.
+    match_threshold: float = 0.35
+
+    # A face below this SCRFD detection score is not trusted to register or
+    # match an identity -- a low-confidence detection can carry a distorted
+    # embedding, and a wrong merge (two different people sharing one id) is a
+    # worse failure than a missed re-identification (one person split across
+    # two ids, which is what already happens today without this module).
+    min_face_score_for_identity: float = 0.50
+
+    # A person's stored embedding is updated toward each new sighting by this
+    # weight (exponential moving average), rather than replaced outright, so
+    # one poor-quality frame does not overwrite a good representative
+    # embedding built from many earlier sightings.
+    embedding_update_rate: float = 0.3
+
+
+@dataclass(frozen=True)
 class PipelineConfig:
     """Shared integration (Day 4) settings."""
 
@@ -759,6 +820,42 @@ class PipelineConfig:
 
 
 @dataclass(frozen=True)
+class EngagementConfig:
+    """Per-student concentration scoring -- see backend/engagement.py.
+
+    Combines the two REAL signals a live frame actually carries --
+    ``head_pose.gaze_label`` and ``behaviour.label`` -- into a single on-task /
+    off-task / unknown verdict per frame, then a concentration percentage per
+    student. This is deliberately not a new classifier: it is the same
+    precedence and honesty rules already established elsewhere in this
+    project, applied consistently rather than re-invented per module.
+
+    * A phone/sleep behaviour reading wins over an attentive-looking gaze, the
+      same precedence :mod:`backend.attention` already uses (a contradictory
+      reading resolves to the more concerning one, since crediting a student
+      as working on the strength of a stray "attending" gaze while they hold a
+      phone is the worse error).
+    * Gaze alone (`left`/`right`/`down`/`back` with no behaviour reading) is
+      NOT treated as off-task -- :mod:`backend.attention`'s own documented
+      reasoning: gaze aversion and peer-oriented turning are both real,
+      opposite-reading confounds for a bare gaze label. Verdict is left
+      ``None`` (unknown) rather than guessed at.
+    """
+
+    # behaviour.label values that count as on-task regardless of gaze.
+    on_task_behaviours: tuple[str, ...] = ("write", "read")
+
+    # behaviour.label values that count as off-task -- checked BEFORE
+    # on_task_behaviours and before gaze, so a phone/sleep reading always wins
+    # a contradiction.
+    off_task_behaviours: tuple[str, ...] = ("using_device", "sleep")
+
+    # gaze_label values that count as on-task when no behaviour reading is
+    # available or none of the above applied.
+    attending_gaze_labels: tuple[str, ...] = ("teacher",)
+
+
+@dataclass(frozen=True)
 class Config:
     """Top-level config — compose all modules."""
 
@@ -768,8 +865,10 @@ class Config:
         default_factory=StudentResolutionConfig
     )
     headpose: HeadPoseConfig = field(default_factory=HeadPoseConfig)
+    identity: IdentityConfig = field(default_factory=IdentityConfig)
     expression: ExpressionConfig = field(default_factory=ExpressionConfig)
     behaviour: BehaviourConfig = field(default_factory=BehaviourConfig)
+    engagement: EngagementConfig = field(default_factory=EngagementConfig)
     posture: PostureConfig = field(default_factory=PostureConfig)
     attention: AttentionConfig = field(default_factory=AttentionConfig)
     peer_interaction: PeerInteractionConfig = field(

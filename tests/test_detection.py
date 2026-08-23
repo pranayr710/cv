@@ -264,6 +264,51 @@ def test_jsonl_output_matches_schema(
     assert len(set(seen_ids)) == len(seen_ids)
 
 
+def test_jsonl_schema_holds_with_real_persons_present(
+    detector: Detector, schema: dict, tmp_path: Path
+) -> None:
+    """Regression: the black-frame schema test above cannot catch a missing
+    per-person field, because black frames produce an empty ``persons`` list
+    and the per-person required fields are never exercised. Found for real:
+    ``_frame_record`` was missing ``expression``/``behaviour`` (added to the
+    schema's required list by later stages) for months, undetected, because
+    every existing schema test happened to use empty-detection frames. This
+    test uses a real classroom frame specifically so ``persons`` is non-empty.
+    """
+    image_path = _find_classroom_image()
+    if image_path is None:
+        pytest.skip("No classroom images in dataset/ (gitignored).")
+    frame = cv2.imread(str(image_path))
+    assert frame is not None
+
+    video_path = tmp_path / "real_clip.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    h, w = frame.shape[:2]
+    writer = cv2.VideoWriter(str(video_path), fourcc, 5.0, (w, h))
+    assert writer.isOpened()
+    try:
+        for _ in range(3):
+            writer.write(frame)
+    finally:
+        writer.release()
+
+    out_path = tmp_path / "real.jsonl"
+    run_on_video(video_path, out_path, detector=detector)
+
+    validator = jsonschema.Draft202012Validator(schema)
+    lines = out_path.read_text(encoding="utf-8").strip().splitlines()
+    any_persons = False
+    for line in lines:
+        record = json.loads(line)
+        validator.validate(record)  # every required field must be present
+        if record["persons"]:
+            any_persons = True
+    assert any_persons, (
+        f"Expected at least one detected person in {image_path.name} to "
+        f"actually exercise per-person schema validation."
+    )
+
+
 def test_detect_rejects_bad_input(detector: Detector) -> None:
     """Non-array and malformed frames raise explicit, typed errors."""
     with pytest.raises(TypeError):

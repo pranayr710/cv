@@ -100,6 +100,13 @@ class FaceResult:
             through so :mod:`backend.expression` can align the face before
             classifying it — alignment measurably improves confidence. ``None``
             under the mediapipe backend, which produces no such keypoints.
+        embedding: A 512-d L2-normalised ArcFace embedding (SCRFD backend with
+            :data:`~backend.config.FaceConfig.enable_recognition` on), carried
+            through for :mod:`backend.identity`'s within-video
+            re-identification. ``None`` otherwise.
+        score: The face detector's own confidence for this face (SCRFD only),
+            carried through so :mod:`backend.identity` can refuse to trust a
+            low-confidence detection's embedding. ``None`` under mediapipe.
 
     Note:
         With the SCRFD backend, ``face_bbox`` can be present while
@@ -114,6 +121,8 @@ class FaceResult:
     landmarks: list[Point] | None
     ear: float | None
     kps: object | None = None
+    embedding: object | None = None
+    score: float | None = None
 
 
 def _euclidean(a: Point, b: Point) -> float:
@@ -574,7 +583,8 @@ class FaceAnalyzer:
             pts, ear = self._landmarks_for_face(frame, det.bbox)
             results.append(
                 FaceResult(
-                    face_bbox=det.bbox, landmarks=pts, ear=ear, kps=det.kps
+                    face_bbox=det.bbox, landmarks=pts, ear=ear, kps=det.kps,
+                    embedding=det.embedding, score=det.score,
                 )
             )
 

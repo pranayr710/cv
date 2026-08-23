@@ -139,6 +139,17 @@ class PersonTrackerLike(Protocol):
     def update(self, persons: Sequence[Person]) -> list[int | None]: ...
 
 
+class IdentityResolverLike(Protocol):
+    """Anything exposing ``resolve(track_ids, embeddings, scores) -> list[id|None]``."""
+
+    def resolve(
+        self,
+        track_ids: Sequence[int | None],
+        embeddings: Sequence[object | None],
+        face_scores: Sequence[float | None] | None = None,
+    ) -> list[int | None]: ...
+
+
 def _face_to_json(face: FaceResult | None) -> dict | None:
     """Serialise a FaceResult into the frozen ``face`` object, or ``None``.
 
@@ -282,6 +293,7 @@ def _assemble_frame(
     expressions: list[object | None],
     behaviours: list[object | None],
     track_ids: list[int | None],
+    person_ids: list[int | None],
     objects: list[Obj],
 ) -> dict:
     """Build one JSONL record in the Stage 1 schema.
@@ -298,15 +310,24 @@ def _assemble_frame(
         track_ids: Stage 2 track ids, index-aligned with ``persons``. An entry
             is ``None`` when ByteTrack has not (yet) confirmed that person as a
             track this frame (see :mod:`backend.tracking`) — expected, not an
-            error.
+            error. Raw motion-based ids: NOT stable across occlusion — see
+            ``person_ids`` for the field that is.
+        person_ids: Re-identified, stable person ids, index-aligned with
+            ``persons`` (see :mod:`backend.identity`). Unlike ``track_id``,
+            this is intended to stay the same for one physical student for the
+            whole video, including across brief full occlusion or leaving and
+            re-entering frame, as long as their face is seen again. ``None``
+            wherever ``track_id`` is ``None``. A negative value marks a person
+            minted without ever being matched by face (no trustworthy face was
+            available) — stated plainly rather than presented as re-identified
+            when it was not.
         objects: Detected whitelisted objects.
 
     Returns:
         A JSON-serialisable dict matching ``schema.json``.
 
     Raises:
-        ValueError: If ``faces``/``headposes``/``postures``/``track_ids`` are
-            not aligned with ``persons``.
+        ValueError: If any per-person list is not aligned with ``persons``.
     """
     if not (
         len(persons)
@@ -316,22 +337,25 @@ def _assemble_frame(
         == len(expressions)
         == len(behaviours)
         == len(track_ids)
+        == len(person_ids)
     ):
         raise ValueError(
             "Misaligned per-person lists: "
             f"persons={len(persons)}, faces={len(faces)}, "
             f"headposes={len(headposes)}, postures={len(postures)}, "
             f"expressions={len(expressions)}, behaviours={len(behaviours)}, "
-            f"track_ids={len(track_ids)}."
+            f"track_ids={len(track_ids)}, person_ids={len(person_ids)}."
         )
 
     person_records = []
-    for person, face, hp, posture, expression, behaviour, track_id in zip(
-        persons, faces, headposes, postures, expressions, behaviours, track_ids
+    for person, face, hp, posture, expression, behaviour, track_id, person_id in zip(
+        persons, faces, headposes, postures, expressions, behaviours,
+        track_ids, person_ids,
     ):
         person_records.append(
             {
                 "track_id": None if track_id is None else int(track_id),
+                "person_id": None if person_id is None else int(person_id),
                 "bbox": [int(v) for v in person.bbox],
                 "confidence": float(person.confidence),
                 # "face_seeded" marks a student whose bbox is estimated from
@@ -445,6 +469,7 @@ def process_video(
     expression_recognizer: ExpressionLike | None = None,
     behaviour_classifier: BehaviourLike | None = None,
     person_tracker: PersonTrackerLike | None = None,
+    identity_resolver: IdentityResolverLike | None = None,
 ) -> int:
     """Run the full Stage 1+2 pipeline over a video and write JSONL output.
 
@@ -462,6 +487,10 @@ def process_video(
             None). Runs on every person independently of face/head-pose.
         person_tracker: Optional tracker to reuse (built from config if None).
             Must be fresh for this video — see :class:`backend.tracking.PersonTracker`.
+        identity_resolver: Optional resolver to reuse (built fresh for this
+            video if None). Must be fresh per video, same as
+            ``person_tracker`` — its face gallery is scoped to one call to
+            this function; see :mod:`backend.identity` for why.
 
     Returns:
         The number of frames processed and written.
@@ -490,6 +519,10 @@ def process_video(
     if behaviour_classifier is None:
         behaviour_classifier = _build_behaviour_classifier(config)
     person_tracker = person_tracker or _build_person_tracker(config)
+    if identity_resolver is None:
+        from backend.identity import IdentityResolver
+
+        identity_resolver = IdentityResolver(config.identity)
 
     sample_rate = max(int(config.pipeline.sample_rate), 1)
     log_every = max(int(config.pipeline.log_every_frames), 1)
@@ -605,6 +638,17 @@ def process_video(
                 # model assumes fixed spacing between consecutive updates, so
                 # this must stay inside the sample_rate-filtered branch.
                 track_ids = person_tracker.update(persons)
+                # Re-identification reconciles ByteTrack's track_id (which
+                # fragments under occlusion or camera motion -- measured 28
+                # ids for <=9 real people on one real clip) against faces seen
+                # earlier in THIS video, so a reappearing student gets their
+                # original id back. See backend/identity.py for scope and the
+                # privacy boundary: the gallery lives only for this call.
+                person_ids = identity_resolver.resolve(
+                    track_ids,
+                    [f.embedding for f in faces],
+                    [f.score for f in faces],
+                )
 
                 record = _assemble_frame(
                     frame_index,
@@ -616,6 +660,7 @@ def process_video(
                     expressions,
                     behaviours,
                     track_ids,
+                    person_ids,
                     objects,
                 )
                 fh.write(json.dumps(record) + "\n")
