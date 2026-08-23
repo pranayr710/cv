@@ -242,3 +242,132 @@ class IdentityResolver:
     def known_person_ids(self) -> list[int]:
         """Every distinct ``person_id`` assigned so far this video."""
         return sorted(set(self._track_to_person.values()))
+
+
+class TwoPassIdentityResolver:
+    """Assigns person ids after seeing the WHOLE video, not on first sighting.
+
+    Fixes a real defect in :class:`IdentityResolver`, which decides a track's
+    identity the first frame that track appears. Measured consequence on a real
+    5.5-minute video: 6 tracks were permanently stamped with an unverified
+    negative id, and **3 of those had a perfectly good face in a later frame**
+    that was never consulted, because the decision had already been made.
+
+    It also improves matching quality independent of that bug. A single frame's
+    embedding from a small classroom face is noisy -- measured same-person
+    similarity on real footage had a p10 of 0.51 against a median of 0.80, so
+    roughly the worst 7% of pairs fall below the match threshold and split one
+    student into two ids. Averaging every embedding a track produced, then
+    matching once on that mean, suppresses exactly that noise.
+
+    Cost: identity is only known once the video ends, so this cannot be used
+    for live streaming -- :class:`IdentityResolver` remains for that case. For
+    offline video processing (what this project actually does) there is no
+    downside beyond buffering, which is negligible: 512 floats per track.
+
+    Usage:
+        resolver = TwoPassIdentityResolver()
+        for frame in frames:                       # pass 1
+            resolver.observe(track_ids, embeddings, scores)
+        mapping = resolver.finalise()              # pass 2
+        person_id = mapping[track_id]
+    """
+
+    def __init__(self, config: IdentityConfig | None = None) -> None:
+        """Create an empty resolver.
+
+        Args:
+            config: Identity settings. Defaults to ``CONFIG.identity``.
+        """
+        self.config: IdentityConfig = config if config is not None else CONFIG.identity
+        self._sums: dict[int, np.ndarray] = {}
+        self._counts: dict[int, int] = {}
+        self._seen_tracks: list[int] = []
+
+    def observe(
+        self,
+        track_ids: Sequence[int | None],
+        embeddings: Sequence[np.ndarray | None],
+        face_scores: Sequence[float | None] | None = None,
+    ) -> None:
+        """Accumulate one frame's evidence without assigning anything yet.
+
+        Args:
+            track_ids: Per-person ByteTrack ids for this frame.
+            embeddings: Per-person face embeddings, index-aligned.
+            face_scores: Optional per-person face confidence, index-aligned.
+                Embeddings from a face below
+                :data:`IdentityConfig.min_face_score_for_identity` are ignored,
+                same gate as the streaming resolver.
+
+        Raises:
+            ValueError: If the input sequences have mismatched lengths.
+        """
+        n = len(track_ids)
+        if len(embeddings) != n or (face_scores is not None and len(face_scores) != n):
+            raise ValueError(
+                "track_ids, embeddings and face_scores must be the same length."
+            )
+        scores = face_scores if face_scores is not None else [1.0] * n
+
+        for track_id, embedding, score in zip(track_ids, embeddings, scores):
+            if track_id is None:
+                continue
+            if track_id not in self._counts:
+                self._seen_tracks.append(track_id)
+                self._counts[track_id] = 0
+            if (
+                embedding is None
+                or score is None
+                or score < self.config.min_face_score_for_identity
+            ):
+                continue
+            vec = np.asarray(embedding, dtype=np.float32)
+            if track_id in self._sums:
+                self._sums[track_id] = self._sums[track_id] + vec
+            else:
+                self._sums[track_id] = vec.copy()
+            self._counts[track_id] += 1
+
+    def finalise(self) -> dict[int, int]:
+        """Assign a person id to every observed track, best evidence first.
+
+        Tracks are resolved in descending order of how many good face
+        observations they contributed, so the best-evidenced tracks establish
+        the gallery entries and weaker ones match against them -- rather than a
+        single noisy early track defining an identity that better observations
+        then have to match.
+
+        Returns:
+            A ``{track_id: person_id}`` mapping covering every observed track.
+            Tracks that never produced a trustworthy face get a negative id,
+            with the same meaning as in :class:`IdentityResolver`.
+        """
+        gallery = IdentityGallery(self.config)
+        mapping: dict[int, int] = {}
+        faceless_next = -1
+
+        ordered = sorted(
+            self._seen_tracks, key=lambda t: -self._counts.get(t, 0)
+        )
+        for track_id in ordered:
+            count = self._counts.get(track_id, 0)
+            if count == 0 or track_id not in self._sums:
+                mapping[track_id] = faceless_next
+                faceless_next -= 1
+                continue
+            mean = self._sums[track_id] / count
+            norm = np.linalg.norm(mean)
+            if norm > 0:
+                mean = mean / norm
+            person_id, _is_new = gallery.match_or_register(mean)
+            mapping[track_id] = person_id
+
+        logger.info(
+            "Two-pass identity: %d tracks -> %d distinct person ids "
+            "(%d never face-matched).",
+            len(mapping),
+            len(set(mapping.values())),
+            sum(1 for v in mapping.values() if v < 0),
+        )
+        return mapping

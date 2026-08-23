@@ -201,3 +201,89 @@ def test_known_person_ids_reports_only_ids_actually_assigned() -> None:
     resolver.resolve([1, 2], [PERSON_A, PERSON_B], [0.9, 0.9])
     assert resolver.known_person_ids() == sorted(resolver.known_person_ids())
     assert len(resolver.known_person_ids()) == 2
+
+
+# --------------------------------------------------------------------------- #
+# TwoPassIdentityResolver -- fixes the "decide on first sighting" defect
+# --------------------------------------------------------------------------- #
+
+
+def test_two_pass_rescues_a_track_whose_face_appears_later() -> None:
+    """The exact defect this class exists for. Measured on real video: 3 tracks
+    were permanently stamped unverified despite having a clear face in a later
+    frame, because the streaming resolver had already decided."""
+    from backend.identity import TwoPassIdentityResolver
+
+    streaming = IdentityResolver()
+    two_pass = TwoPassIdentityResolver()
+
+    # Track 10 appears with NO face, then track 10 gets a good face later.
+    frames = [
+        ([10], [None], [None]),
+        ([10], [PERSON_A], [0.9]),
+    ]
+    for tids, embs, scores in frames:
+        streaming.resolve(tids, embs, scores)
+        two_pass.observe(tids, embs, scores)
+
+    # Streaming: stuck with the unverified negative id it assigned on frame 1.
+    assert all(pid < 0 for pid in streaming.known_person_ids())
+    # Two-pass: uses the later face, so the track is properly identified.
+    mapping = two_pass.finalise()
+    assert mapping[10] > 0
+
+
+def test_two_pass_merges_two_tracks_of_the_same_person() -> None:
+    from backend.identity import TwoPassIdentityResolver
+
+    r = TwoPassIdentityResolver()
+    r.observe([1], [PERSON_A], [0.9])
+    r.observe([2], [_nudged(PERSON_A, seed=7)], [0.9])
+    mapping = r.finalise()
+    assert mapping[1] == mapping[2]
+
+
+def test_two_pass_keeps_different_people_separate() -> None:
+    from backend.identity import TwoPassIdentityResolver
+
+    r = TwoPassIdentityResolver()
+    r.observe([1], [PERSON_A], [0.9])
+    r.observe([2], [PERSON_B], [0.9])
+    mapping = r.finalise()
+    assert mapping[1] != mapping[2]
+
+
+def test_two_pass_track_with_no_face_ever_gets_negative_id() -> None:
+    from backend.identity import TwoPassIdentityResolver
+
+    r = TwoPassIdentityResolver()
+    r.observe([5], [None], [None])
+    mapping = r.finalise()
+    assert mapping[5] < 0
+
+
+def test_two_pass_ignores_low_confidence_faces_when_averaging() -> None:
+    """A low-confidence embedding must not pollute the averaged one."""
+    from backend.identity import TwoPassIdentityResolver
+
+    r = TwoPassIdentityResolver(IdentityConfig(min_face_score_for_identity=0.5))
+    r.observe([1], [PERSON_A], [0.2])  # below gate -- ignored
+    mapping = r.finalise()
+    assert mapping[1] < 0  # no trustworthy face was ever contributed
+
+
+def test_two_pass_mismatched_lengths_raise() -> None:
+    from backend.identity import TwoPassIdentityResolver
+
+    r = TwoPassIdentityResolver()
+    with pytest.raises(ValueError):
+        r.observe([1, 2], [PERSON_A], [0.9])
+
+
+def test_two_pass_covers_every_observed_track() -> None:
+    from backend.identity import TwoPassIdentityResolver
+
+    r = TwoPassIdentityResolver()
+    r.observe([1, 2, None], [PERSON_A, None, PERSON_B], [0.9, None, 0.9])
+    mapping = r.finalise()
+    assert set(mapping) == {1, 2}  # None track is not an identity

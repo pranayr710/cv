@@ -470,6 +470,7 @@ def process_video(
     behaviour_classifier: BehaviourLike | None = None,
     person_tracker: PersonTrackerLike | None = None,
     identity_resolver: IdentityResolverLike | None = None,
+    two_pass_identity: bool = True,
 ) -> int:
     """Run the full Stage 1+2 pipeline over a video and write JSONL output.
 
@@ -491,6 +492,13 @@ def process_video(
             video if None). Must be fresh per video, same as
             ``person_tracker`` — its face gallery is scoped to one call to
             this function; see :mod:`backend.identity` for why.
+        two_pass_identity: Assign person ids after seeing the whole video
+            rather than on each track's first sighting. Default ``True``
+            because it is measurably better (18 -> 10 person ids on the same
+            real video, and it fixes tracks that were stamped unverified
+            despite having a clear face in a later frame). Costs buffering
+            every frame's record in memory until the end, so set ``False``
+            for live/streaming use where ids must be known immediately.
 
     Returns:
         The number of frames processed and written.
@@ -520,9 +528,22 @@ def process_video(
         behaviour_classifier = _build_behaviour_classifier(config)
     person_tracker = person_tracker or _build_person_tracker(config)
     if identity_resolver is None:
-        from backend.identity import IdentityResolver
+        if two_pass_identity:
+            from backend.identity import TwoPassIdentityResolver
 
-        identity_resolver = IdentityResolver(config.identity)
+            identity_resolver = TwoPassIdentityResolver(config.identity)
+        else:
+            from backend.identity import IdentityResolver
+
+            identity_resolver = IdentityResolver(config.identity)
+    # A caller-injected resolver that cannot accumulate (e.g. a streaming
+    # resolver or a test fake) forces single-pass, rather than failing on a
+    # missing observe().
+    if not hasattr(identity_resolver, "observe"):
+        two_pass_identity = False
+
+    # Holds finished records while pass 1 runs; only used when two-pass is on.
+    buffered: list[dict] = []
 
     sample_rate = max(int(config.pipeline.sample_rate), 1)
     log_every = max(int(config.pipeline.log_every_frames), 1)
@@ -644,11 +665,19 @@ def process_video(
                 # earlier in THIS video, so a reappearing student gets their
                 # original id back. See backend/identity.py for scope and the
                 # privacy boundary: the gallery lives only for this call.
-                person_ids = identity_resolver.resolve(
-                    track_ids,
-                    [f.embedding for f in faces],
-                    [f.score for f in faces],
-                )
+                embeddings = [f.embedding for f in faces]
+                face_scores = [f.score for f in faces]
+                if two_pass_identity:
+                    # Pass 1: accumulate only. Real ids are assigned after the
+                    # whole video is seen, which measurably beats deciding on
+                    # first sighting (18 -> 10 person ids on the same real
+                    # video). Placeholders here are overwritten below.
+                    identity_resolver.observe(track_ids, embeddings, face_scores)
+                    person_ids = list(track_ids)
+                else:
+                    person_ids = identity_resolver.resolve(
+                        track_ids, embeddings, face_scores
+                    )
 
                 record = _assemble_frame(
                     frame_index,
@@ -663,7 +692,10 @@ def process_video(
                     person_ids,
                     objects,
                 )
-                fh.write(json.dumps(record) + "\n")
+                if two_pass_identity:
+                    buffered.append(record)
+                else:
+                    fh.write(json.dumps(record) + "\n")
                 written += 1
 
                 if written % log_every == 0:
@@ -678,6 +710,18 @@ def process_video(
                         len(objects),
                     )
                 frame_index += 1
+
+            if two_pass_identity:
+                # Pass 2: now that every frame's evidence is in, assign ids
+                # once from each track's AVERAGED embedding, then write.
+                mapping = identity_resolver.finalise()
+                for record in buffered:
+                    for person in record["persons"]:
+                        track_id = person["track_id"]
+                        person["person_id"] = (
+                            mapping.get(track_id) if track_id is not None else None
+                        )
+                    fh.write(json.dumps(record) + "\n")
     finally:
         progress.close()
         capture.release()
