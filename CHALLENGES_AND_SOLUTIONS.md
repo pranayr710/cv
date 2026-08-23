@@ -527,6 +527,31 @@ A second, wholly independent labelled dataset arrived (629 images, different cla
 
 ---
 
+## 19. First tracking test on genuinely continuous footage -- calibration never fires
+
+Two "continuous classroom videos" handed over turned out to be edited research/documentary clips (Young Lives / CLASS observation series) with title cards and hard cuts -- confirmed by rendering frames and checking, not assumed from file length. A histogram-correlation cut detector (robust to camera motion, unlike a raw pixel-diff check that flagged ordinary movement as false cuts) found one genuinely continuous 204-second stretch inside one of them and it was verified by eye (a smooth camera pan with coherent subtitled dialogue, not a cut) before being used.
+
+**Result, processed at 1 fps (204 frames):**
+
+| | Value |
+|---|---|
+| Distinct track IDs assigned | 28 |
+| Max concurrent people in any frame | 9 |
+| ID-per-real-person ratio | 3.11 (1.0 = stable) |
+| Tracks surviving a continuous 60s | **0** |
+| Tracks spanning 90s | 2 |
+
+Zero tracks reach the 60 continuous seconds `backend/attention.py`'s per-student calibration requires. On this footage, calibration would never fire at all.
+
+**Two confounds this test cannot separate, both stated rather than glossed over:**
+
+1. **The camera pans.** This is handheld footage swinging between teacher and students, not the fixed classroom camera the system is designed around. A person crossing the frame between two 1-second samples can look like a different person to an IoU-based tracker (ByteTrack) -- expected under that motion, not necessarily a defect.
+2. **1 fps sampling was forced by compute cost**, not chosen to match a target rate. Processing every frame of 204s at the measured clean 0.41 FPS would take ~4 hours; this run sampled to get a result in-session. 1 fps is a large gap for any IoU tracker regardless of camera motion.
+
+So this is a real, useful measurement of what happens under camera motion + sparse sampling -- a **genuine deployment risk** if the real camera is not perfectly rigid or the live system cannot sample densely enough -- but it is **not** proof that ByteTrack is weak on a static camera at a reasonable sample rate. That test still does not exist and needs footage from a camera that does not move, ideally processed at a much higher sample rate than 1 fps once throughput (section 17) is improved.
+
+---
+
 ## Where things stand, in numbers
 
 | Metric | Session start | Now |
