@@ -76,6 +76,39 @@ def _tally(labels: list[str | None]) -> dict[str, object]:
     }
 
 
+def _phone_overlaps(person_bbox, objects, cfg) -> bool:
+    """Whether a phone-class object overlaps this student's box at all.
+
+    Independent of the fine-tuned behaviour model, so it still yields an
+    off-task signal when that model produces nothing. Uses "any positive
+    overlap" rather than an IoU threshold, matching
+    :data:`~backend.config.AttentionConfig.device_proximity_iou`'s own default
+    of ``0.0`` and its reasoning: a phone box and a student box barely overlap
+    even when the phone is plainly in that student's hands.
+
+    Args:
+        person_bbox: The student's ``[x, y, w, h]``.
+        objects: The frame's ``objects`` list.
+        cfg: The full config (reads ``engagement.fallback_off_task_objects``).
+
+    Returns:
+        ``True`` if any configured phone-class object overlaps.
+    """
+    if not cfg.engagement.use_object_fallback:
+        return False
+    px, py, pw, ph = person_bbox
+    for obj in objects:
+        if obj.get("cls") not in cfg.engagement.fallback_off_task_objects:
+            continue
+        ox, oy, ow, oh = obj["bbox"]
+        if (
+            max(0, min(px + pw, ox + ow) - max(px, ox)) > 0
+            and max(0, min(py + ph, oy + oh) - max(py, oy)) > 0
+        ):
+            return True
+    return False
+
+
 def build_profiles(
     jsonl_path: str | Path, config=None
 ) -> dict[int, dict[str, object]]:
@@ -124,6 +157,7 @@ def build_profiles(
     behaviour_labels: dict[int, list[str | None]] = defaultdict(list)
     behaviour_reliability: dict[int, set[str]] = defaultdict(set)
     engagement_verdicts: dict[int, list[str | None]] = defaultdict(list)
+    off_task_evidence: dict[int, bool] = defaultdict(bool)
 
     with src.open(encoding="utf-8") as fh:
         for line in fh:
@@ -159,9 +193,37 @@ def build_profiles(
                     else None
                 )
                 behaviour_label = behaviour["label"] if behaviour else None
-                engagement_verdicts[person_id].append(
-                    classify_engagement(gaze_label, behaviour_label, cfg.engagement)
+
+                # Fallback signals, used when the behaviour model produced
+                # nothing -- both already computed by the pipeline and
+                # previously discarded. See EngagementConfig for why.
+                face = person.get("face")
+                eyes_closed = None
+                if face and face.get("ear") is not None:
+                    eyes_closed = face["ear"] < cfg.face.ear_closed_threshold
+                phone_nearby = _phone_overlaps(
+                    person["bbox"], record.get("objects", []), cfg
                 )
+
+                engagement_verdicts[person_id].append(
+                    classify_engagement(
+                        gaze_label,
+                        behaviour_label,
+                        cfg.engagement,
+                        phone_nearby=phone_nearby,
+                        eyes_closed=eyes_closed,
+                    )
+                )
+                # Track whether ANY off-task-capable evidence was ever
+                # available for this student, across all three routes. Used
+                # below to decide whether a 100% score is a real finding or
+                # just absence of evidence.
+                if (
+                    behaviour_label is not None
+                    or phone_nearby
+                    or eyes_closed is not None
+                ):
+                    off_task_evidence[person_id] = True
 
     profiles: dict[int, dict[str, object]] = {}
     for person_id, seen_count in frames_seen.items():
@@ -169,24 +231,29 @@ def build_profiles(
         behaviour_summary["weak_labels"] = sorted(behaviour_reliability[person_id])
         concentration = summarise_engagement(engagement_verdicts[person_id])
 
-        # Off-task can ONLY be reached through a behaviour reading (see
-        # backend.engagement -- a bare non-attending gaze is deliberately left
-        # "unknown", never "off"). So if this student never once got a
-        # behaviour reading, "off" was structurally unreachable for them, and
-        # a resulting 100% concentration_pct is an absence-of-evidence
-        # artifact, not a finding. Found for real: the behaviour model
-        # returned zero readings on an out-of-distribution video (a different
-        # generalization failure, same shape as CHALLENGES_AND_SOLUTIONS.md
-        # section 18) and every student's concentration silently read ~100%.
-        # Surfaced here rather than left for a reader to notice by
-        # cross-referencing two unrelated fields.
-        if behaviour_summary["classified"] == 0 and concentration["frames"] > 0:
+        # "off" is only reachable through concrete evidence -- a behaviour
+        # reading, a nearby phone, or eyes-closed-while-head-down (see
+        # backend.engagement; a bare non-attending gaze is deliberately left
+        # "unknown", never "off"). If NONE of those three was ever available
+        # for this student, "off" was structurally unreachable and a resulting
+        # 100% concentration_pct is an absence-of-evidence artifact, not a
+        # finding.
+        #
+        # Found for real: the behaviour model returned zero readings across an
+        # entire out-of-distribution video (same generalization failure as
+        # CHALLENGES_AND_SOLUTIONS.md section 18) and every student silently
+        # read ~100%. The object/eye-closure fallbacks were added because of
+        # that, so this check now covers all three routes rather than only the
+        # behaviour one -- otherwise it would keep flagging students who DO
+        # have usable fallback evidence.
+        if not off_task_evidence[person_id] and concentration["frames"] > 0:
             concentration["off_task_detectable"] = False
             concentration["caveat"] = (
-                "No behaviour reading was ever obtained for this student, so "
-                "off-task states (phone/sleep) could not be detected at all -- "
-                "concentration_pct reflects gaze only and should not be read "
-                "as a real attentiveness score."
+                "No off-task evidence of any kind was available for this "
+                "student (no behaviour reading, no nearby phone detection, and "
+                "no eye-closure measurement), so off-task states could not be "
+                "detected at all -- concentration_pct reflects gaze only and "
+                "should not be read as a real attentiveness score."
             )
         else:
             concentration["off_task_detectable"] = True

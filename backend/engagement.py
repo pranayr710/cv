@@ -32,8 +32,11 @@ def classify_engagement(
     gaze_label: str | None,
     behaviour_label: str | None,
     config: EngagementConfig | None = None,
+    *,
+    phone_nearby: bool = False,
+    eyes_closed: bool | None = None,
 ) -> Verdict | None:
-    """Classify one frame's engagement from its gaze and behaviour readings.
+    """Classify one frame's engagement from every signal actually available.
 
     Args:
         gaze_label: ``person["head_pose"]["gaze_label"]``, or ``None`` if no
@@ -41,23 +44,47 @@ def classify_engagement(
         behaviour_label: ``person["behaviour"]["label"]``, or ``None`` if no
             behaviour reading was available this frame.
         config: Engagement settings. Defaults to ``CONFIG.engagement``.
+        phone_nearby: Whether a phone-class object from the frame's ``objects``
+            list overlaps this student's box. Independent of the behaviour
+            model, so it still works when that model produces nothing — see
+            :class:`~backend.config.EngagementConfig` for the measured reason
+            this fallback exists.
+        eyes_closed: Whether ``face.ear`` was below
+            :data:`~backend.config.FaceConfig.ear_closed_threshold`, or
+            ``None`` if no EAR was available. Only counts as off-task in
+            combination with a head-down gaze, which is what separates dozing
+            from an ordinary blink.
 
     Returns:
-        ``"off"`` if an off-task behaviour was read (checked first — a
-        contradictory attentive-looking gaze does not override it, matching
-        :mod:`backend.attention`'s own precedence for the same reason: the
-        more concerning reading is the safer default). ``"on"`` if an on-task
-        behaviour was read, or no behaviour reading contradicted an attending
-        gaze. ``None`` (unknown) when neither behaviour nor gaze gives usable
-        evidence — a bare gaze of "left"/"right"/"down"/"back" is deliberately
-        NOT treated as off-task on its own, for the same reason
-        :mod:`backend.attention` already documents: gaze aversion and
-        peer-oriented turning are real, opposite-reading confounds.
+        ``"off"``, ``"on"``, or ``None`` (unknown).
+
+        Precedence is deliberate and matches :mod:`backend.attention`: every
+        off-task route is checked before any on-task route, because a
+        contradictory attentive-looking gaze should not override concrete
+        evidence of disengagement — the more concerning reading is the safer
+        default when signals disagree.
+
+        ``None`` is returned when nothing gives usable evidence. A bare gaze of
+        ``"left"``/``"right"``/``"down"``/``"back"`` on its own is deliberately
+        NOT off-task, for the reason :mod:`backend.attention` documents at
+        length: gaze aversion during effortful thinking and turning toward a
+        peer are real, opposite-reading confounds.
     """
     cfg = config if config is not None else CONFIG.engagement
 
+    # --- off-task routes, all checked first --------------------------------- #
     if behaviour_label in cfg.off_task_behaviours:
         return "off"
+    if cfg.use_object_fallback and phone_nearby:
+        return "off"
+    if (
+        cfg.use_eye_closure_fallback
+        and eyes_closed
+        and gaze_label in cfg.eye_closure_gaze_labels
+    ):
+        return "off"
+
+    # --- on-task routes ----------------------------------------------------- #
     if behaviour_label in cfg.on_task_behaviours:
         return "on"
     if gaze_label in cfg.attending_gaze_labels:

@@ -486,10 +486,35 @@ class ExpressionConfig:
     window_frames: int = 9
 
     # A face box smaller than this (shorter side, pixels) is skipped rather than
-    # upscaled to the model's 224x224 input. Classroom back-row faces can be
-    # ~20 px; classifying a 7x upscale of that is guessing, and this project's
-    # rule is that an unusable signal is reported as absent, not invented.
-    min_face_px: int = 40
+    # upscaled to the model's 224x224 input, on the rule that an unusable signal
+    # is reported as absent rather than invented.
+    #
+    # Lowered from a guessed 40 to a MEASURED 25. The original 40 was set from
+    # the intuition that "classifying a 7x upscale is guessing"; that intuition
+    # was never tested and turned out to be far too conservative. Calibrated by
+    # downscaling 120 labelled faces (dataset/kaggle_emotion_sample) to each
+    # size, upscaling back to the model's 224px input -- exactly what the
+    # pipeline does to a small face -- and measuring real 3-class accuracy
+    # (random chance = 33%):
+    #
+    #   face size   accuracy
+    #   197px        89.3%   (original, undownscaled)
+    #    60px        84.0%
+    #    45px        78.8%
+    #    35px        70.3%
+    #    28px        68.2%
+    #    20px        54.7%
+    #    15px        35.1%   <- indistinguishable from chance, genuinely useless
+    #
+    # 25 sits just below the 28px point where accuracy is still 68% (2x chance)
+    # and above the 20px region where it collapses toward chance. The cost of
+    # the old 40 was severe and measured: on 640x360 classroom video (median
+    # face 28px) it rejected 91% of detected faces, giving 9.1% expression
+    # coverage where 25 gives ~66%.
+    #
+    # Re-measure this curve before moving the gate again -- it is model- and
+    # resolution-specific, not a universal constant.
+    min_face_px: int = 25
 
     # Padding around the face box before the crop, as a fraction of box size.
     # AffectNet training images include hair, jawline and some background;
@@ -853,6 +878,42 @@ class EngagementConfig:
     # gaze_label values that count as on-task when no behaviour reading is
     # available or none of the above applied.
     attending_gaze_labels: tuple[str, ...] = ("teacher",)
+
+    # --- Fallbacks for when the behaviour model produces nothing ------------ #
+    #
+    # Measured need, not speculation: on 640x360 out-of-distribution classroom
+    # video the fine-tuned behaviour model returned ZERO detections across all
+    # 801 person-observations (and still zero at conf 0.05, and still zero when
+    # the frame was upscaled 2x and 3x -- so it is a domain gap, not a
+    # resolution or threshold problem). Because "off" was only reachable via a
+    # behaviour reading, every student scored 100% concentration purely from
+    # absence of evidence.
+    #
+    # These fallbacks use signals the pipeline already computes and was
+    # discarding. Both are the SAME evidence backend.attention already treats
+    # as meaningful, so this is reusing a validated rule rather than inventing
+    # a new one:
+    #
+    # 1. A phone detected overlapping the student's box (COCO object detection,
+    #    independent of the behaviour model). backend.attention already uses
+    #    exactly this for its head_down_with_device category.
+    # 2. Eyes closed (EAR below FaceConfig.ear_closed_threshold) while the head
+    #    is down -- the drowsiness signal EAR was computed for in the first
+    #    place. EAR was available for 486/801 observations on that same video
+    #    and was being thrown away entirely.
+    #
+    # Deliberately NOT a fallback: a bare non-attending gaze. That stays
+    # "unknown" for the reason backend.attention documents at length -- gaze
+    # aversion during hard thinking and turning toward a peer are real,
+    # opposite-reading confounds.
+    use_object_fallback: bool = True
+    fallback_off_task_objects: tuple[str, ...] = ("cell phone",)
+
+    # Eyes closed alone is not enough (a blink, or a bad EAR reading on a small
+    # face). It counts as off-task only together with a head-down gaze, which is
+    # the posture that distinguishes dozing from blinking.
+    use_eye_closure_fallback: bool = True
+    eye_closure_gaze_labels: tuple[str, ...] = ("down",)
 
 
 @dataclass(frozen=True)
