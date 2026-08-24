@@ -418,6 +418,10 @@ def main() -> int:
     parser.add_argument("--report-only", action="store_true")
     parser.add_argument("--no-window", action="store_true")
     parser.add_argument("--yaw-reference", type=float, default=None)
+    parser.add_argument("--imgsz", type=int, default=None,
+                        help="Detector input size; default adapts to the frame.")
+    parser.add_argument("--warmup-frames", type=int, default=20,
+                        help="Frames to discard while the camera settles.")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
@@ -436,6 +440,7 @@ def main() -> int:
             camera=args.camera, gallery=args.gallery, out=args.out,
             seconds=args.seconds, no_window=args.no_window,
             yaw_reference=args.yaw_reference, verbose=args.verbose,
+            imgsz=args.imgsz, warmup_frames=args.warmup_frames,
         ))
         if code != 0:
             return code

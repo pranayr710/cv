@@ -162,6 +162,53 @@ def run(args) -> int:
         print(f"Could not open camera {args.camera}.")
         return 1
 
+    # Read one frame before building the detector, because the right imgsz
+    # depends on how big the frames actually are.
+    #
+    # DetectionConfig.imgsz is 1920, tuned for wide classroom shots where
+    # students are small. A webcam is the opposite case: a 640x480 frame with
+    # one person filling it. Upscaling that 3x does not just waste time, it
+    # DESTROYS the detection -- measured on a real webcam-sized frame, YOLO
+    # finds the person at imgsz 416 through 1600 and finds NOTHING at 1920.
+    # Person detection failing takes everything with it, because faces are
+    # bound to person boxes, so the whole session reports zero people while the
+    # picture on screen is perfectly clear.
+    #
+    # Capping the upscale at 2x keeps the small-subject benefit for large
+    # inputs and stays inside the range that works for webcam frames.
+    # Webcams open dark and take a second or two to settle their exposure.
+    # Measured on this machine: the first 40 frames came back at brightness
+    # 9-11 out of 255 while the room was lit. Starting immediately means the
+    # opening seconds of every session are unusable black frames.
+    ok = False
+    for _ in range(args.warmup_frames):
+        ok, probe = capture.read()
+        if not ok:
+            break
+    if not ok:
+        print(f"Camera {args.camera} opened but returned no frame.")
+        capture.release()
+        return 1
+    brightness = float(probe.mean())
+    if brightness < 20:
+        print(
+            f"  warning: the camera is returning a near-black image "
+            f"(brightness {brightness:.0f}/255). Check for a privacy shutter, "
+            f"Windows camera permissions, or another app holding the camera -- "
+            f"nothing can be detected in a black frame."
+        )
+    height, width = probe.shape[:2]
+    imgsz = args.imgsz or min(config.detection.imgsz, 2 * max(width, height))
+    if imgsz != config.detection.imgsz:
+        from dataclasses import replace as _replace
+
+        config = _replace(config, detection=_replace(config.detection, imgsz=imgsz))
+        logger.info(
+            "Frames are %dx%d; using imgsz=%d instead of %d.",
+            width, height, imgsz, CONFIG.detection.imgsz,
+        )
+    print(f"Camera {args.camera}: {width}x{height}, detecting at imgsz={imgsz}")
+
     detector = _build_detector(config)
     headpose = _build_headpose_estimator(config)
     posture = _build_posture_analyzer(config)
@@ -310,6 +357,20 @@ def main() -> int:
              "A webcam facing the student head-on needs 0 (the default); a "
              "camera mounted off to one side does not, and leaving it wrong "
              "makes every attention figure measure the camera angle instead.",
+    )
+    parser.add_argument(
+        "--imgsz",
+        type=int,
+        default=None,
+        help="Detector input size. Default caps the upscale at 2x the frame, "
+             "because the config's 1920 loses the person entirely on a 640px "
+             "webcam frame.",
+    )
+    parser.add_argument(
+        "--warmup-frames",
+        type=int,
+        default=20,
+        help="Frames to discard while the camera settles its exposure.",
     )
     parser.add_argument("--verbose", action="store_true", help="Show library logging.")
     args = parser.parse_args()
