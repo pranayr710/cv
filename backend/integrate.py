@@ -709,7 +709,21 @@ def process_video(
                     # whole video is seen, which measurably beats deciding on
                     # first sighting (18 -> 10 person ids on the same real
                     # video). Placeholders here are overwritten below.
-                    identity_resolver.observe(identity_keys, embeddings, face_scores)
+                    # Face size travels with the embedding so identity can tell
+                    # a trustworthy observation from a 13px one. Older
+                    # resolvers without the parameter still work.
+                    face_sizes = [
+                        None if f.face_bbox is None else int(min(f.face_bbox[2], f.face_bbox[3]))
+                        for f in faces
+                    ]
+                    try:
+                        identity_resolver.observe(
+                            identity_keys, embeddings, face_scores, face_sizes
+                        )
+                    except TypeError:
+                        identity_resolver.observe(
+                            identity_keys, embeddings, face_scores
+                        )
                     person_ids = list(identity_keys)
                 else:
                     person_ids = identity_resolver.resolve(

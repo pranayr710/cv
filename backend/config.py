@@ -919,6 +919,34 @@ class IdentityConfig:
     # track_id in the JSONL stays null for these.
     surrogate_key_base: int = 1_000_000
 
+    # --- quality-gated identity creation ---------------------------------- #
+    #
+    # The second half of docs/LITERATURE_REVIEW.md section 2. Only one half
+    # shipped (constrained clustering, commit 1b1d404); this is the other.
+    #
+    # A face too small or too weak to trust may still JOIN an identity -- it is
+    # matched against a cluster anchored by better observations, so the
+    # comparison means something. It may not FOUND one, because founding is
+    # checked against nothing at all. MagFace/AdaFace establish why the
+    # asymmetry is necessary: low-quality embeddings sit closer to the origin
+    # with higher angular variance, so their similarities are unreliable in
+    # BOTH directions -- spuriously high (merging two students) and spuriously
+    # low (splitting one). No single match_threshold is simultaneously safe for
+    # high- and low-quality faces in the same video, which is exactly what the
+    # threshold sweep measured: over 0.20-0.60 the id count never reached the
+    # 8-person ground truth, so no value of it can be the fix.
+    #
+    # Off by default: it changes how many people the pipeline reports, so it is
+    # a deliberate choice with a measured effect, not a silent default.
+    quality_gated_creation: bool = False
+
+    # Floors a cluster's BEST observation must clear to found an identity.
+    # Best, not median: one clear look at someone is enough to establish they
+    # exist, and demanding sustained quality would delete back-row students who
+    # are only ever seen well once.
+    min_face_score_to_found: float = 0.60
+    min_face_px_to_found: int = 20
+
     # Path to a registered-face gallery written by tools/register_faces.py.
     #
     # None (the default) keeps this project's session-scoped identity property
@@ -1007,6 +1035,23 @@ class ProfileConfig:
     # If a labelled multi-classroom set ever exists, revisit: this is a
     # measurement gap, not a claim that the problem is unsolvable.
     instructor_ids: tuple[int, ...] = ()
+
+    # Whether an identity that was never verified by face may enter the student
+    # roster. A negative person_id means identity could not confirm who this is
+    # -- either no usable face was ever read, or (with
+    # IdentityConfig.quality_gated_creation on) every face was too poor to
+    # found an identity.
+    #
+    # Counting those as students inflates the roster with people the system
+    # cannot actually identify, which is the failure this project's "honest
+    # we-don't-know" claim exists to avoid: an unidentified detection should be
+    # reported as unidentified, not silently promoted to a named student whose
+    # attention trend then gets plotted.
+    #
+    # On the audited clip before quality gating this rule changes nothing --
+    # all 4 unverified ids were already rejected as transient -- so it is a
+    # tightening that costs no existing student.
+    require_face_verified: bool = True
 
 
 @dataclass(frozen=True)

@@ -300,6 +300,9 @@ class TwoPassIdentityResolver:
         #: constraint the embeddings alone cannot supply.
         self._conflicts: dict[int, set[int]] = {}
         self._next_surrogate: int = self.config.surrogate_key_base
+        #: track_id -> face quality evidence (detector score, face short side in
+        #: pixels) per accepted observation, for quality-gated identity creation.
+        self._quality: dict[int, list[tuple[float, int]]] = {}
 
     def keys_for(
         self,
@@ -369,6 +372,7 @@ class TwoPassIdentityResolver:
         track_ids: Sequence[int | None],
         embeddings: Sequence[np.ndarray | None],
         face_scores: Sequence[float | None] | None = None,
+        face_sizes: Sequence[int | None] | None = None,
     ) -> None:
         """Accumulate one frame's evidence without assigning anything yet.
 
@@ -379,6 +383,10 @@ class TwoPassIdentityResolver:
                 Embeddings from a face below
                 :data:`IdentityConfig.min_face_score_for_identity` are ignored,
                 same gate as the streaming resolver.
+            face_sizes: Optional per-person face size in pixels (the shorter
+                side of the face box), index-aligned. Used only by
+                quality-gated identity creation; when absent, quality falls
+                back to the detector score alone.
 
         Raises:
             ValueError: If the input sequences have mismatched lengths.
@@ -388,7 +396,10 @@ class TwoPassIdentityResolver:
             raise ValueError(
                 "track_ids, embeddings and face_scores must be the same length."
             )
+        if face_sizes is not None and len(face_sizes) != n:
+            raise ValueError("face_sizes must be the same length as track_ids.")
         scores = face_scores if face_scores is not None else [1.0] * n
+        sizes = face_sizes if face_sizes is not None else [None] * n
 
         # Everything alive in this frame is mutually exclusive: one person
         # cannot occupy two boxes at once. Recorded before the face-quality
@@ -399,7 +410,9 @@ class TwoPassIdentityResolver:
             others = self._conflicts.setdefault(track_id, set())
             others.update(t for t in present if t != track_id)
 
-        for track_id, embedding, score in zip(track_ids, embeddings, scores):
+        for track_id, embedding, score, size in zip(
+            track_ids, embeddings, scores, sizes
+        ):
             if track_id is None:
                 continue
             if track_id not in self._counts:
@@ -411,6 +424,9 @@ class TwoPassIdentityResolver:
                 or score < self.config.min_face_score_for_identity
             ):
                 continue
+            self._quality.setdefault(track_id, []).append(
+                (float(score), int(size) if size is not None else -1)
+            )
             vec = np.asarray(embedding, dtype=np.float32)
             if track_id in self._sums:
                 self._sums[track_id] = self._sums[track_id] + vec
@@ -461,9 +477,24 @@ class TwoPassIdentityResolver:
 
         evidenced = [t for t in self._seen_tracks if t not in mapping]
         if evidenced:
-            for person_id, members in enumerate(
-                self._cluster(evidenced), start=1
-            ):
+            person_id = 0
+            for members in self._cluster(evidenced):
+                if not self._may_found_identity(members):
+                    # Quality-gated identity creation, the second half of
+                    # docs/LITERATURE_REVIEW.md section 2. This cluster is made
+                    # entirely of faces too small or too weak to trust, and it
+                    # failed to attach to any well-observed cluster. Letting it
+                    # found a person invents a student out of noise; refusing
+                    # only costs an id that was never reliable. MagFace/AdaFace:
+                    # low-quality embeddings have higher angular variance, so
+                    # their similarities are unreliable in BOTH directions and
+                    # no single threshold is safe for high- and low-quality
+                    # faces in one video.
+                    for track_id in members:
+                        mapping[track_id] = faceless_next
+                        faceless_next -= 1
+                    continue
+                person_id += 1
                 for track_id in members:
                     mapping[track_id] = person_id
 
@@ -475,6 +506,39 @@ class TwoPassIdentityResolver:
             sum(1 for v in mapping.values() if v < 0),
         )
         return mapping
+
+    def _may_found_identity(self, members: set[int]) -> bool:
+        """Whether this cluster is well enough observed to become a person.
+
+        A low-quality face may **join** an existing identity -- it still
+        carries evidence, and the cluster it joins is anchored by better
+        observations -- but it may not **found** one on its own. The asymmetry
+        is the point: joining is checked against a real reference, founding is
+        checked against nothing.
+
+        Args:
+            members: Track ids in one cluster.
+
+        Returns:
+            ``True`` when the gate is disabled, or when the cluster's best
+            observation clears both quality floors. Judged on the cluster's
+            **best** face rather than its median, because one clear look at
+            someone is enough to establish that they exist.
+        """
+        if not self.config.quality_gated_creation:
+            return True
+        evidence = [q for t in members for q in self._quality.get(t, ())]
+        if not evidence:
+            return False
+        best_score = max(score for score, _ in evidence)
+        sizes = [size for _, size in evidence if size >= 0]
+        # No size information supplied at all: fall back to score alone rather
+        # than rejecting everyone, so callers that never pass face_sizes keep
+        # working.
+        big_enough = (
+            max(sizes) >= self.config.min_face_px_to_found if sizes else True
+        )
+        return best_score >= self.config.min_face_score_to_found and big_enough
 
     def _cluster(self, evidenced: list[int]) -> list[set[int]]:
         """Constrained average-linkage clustering over evidenced tracks.
