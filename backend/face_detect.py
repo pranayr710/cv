@@ -47,6 +47,8 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
+import sys
 from dataclasses import dataclass
 
 import numpy as np
@@ -54,6 +56,48 @@ import numpy as np
 from backend.config import CONFIG, FaceConfig
 
 logger = logging.getLogger(__name__)
+
+_cuda_dll_dir_registered = False
+
+
+def _register_torch_cuda_dlls() -> None:
+    """Let onnxruntime's CUDA provider find the CUDA 12 runtime DLLs.
+
+    Measured cause of face detection/recognition running on CPU despite a
+    working GPU: onnxruntime-gpu's CUDAExecutionProvider is a separate DLL
+    (``onnxruntime_providers_cuda.dll``) that dynamically links against the
+    CUDA runtime (``cublasLt64_12.dll`` and friends) via the normal Windows DLL
+    search path -- it failed to load with "module not found" even though
+    ``torch.cuda.is_available()`` was True, because torch bundles its OWN copy
+    of those DLLs inside ``torch/lib`` and never puts that directory on PATH.
+
+    torch is already a hard dependency (ultralytics), and its ``torch/lib``
+    contains every CUDA 12 DLL onnxruntime needs (cudart, cublas, cublasLt,
+    cudnn, cufft, curand) -- confirmed by testing, not assumed. So this points
+    onnxruntime at torch's copy rather than requiring a separate CUDA Toolkit
+    install. Windows-only, since Linux/Mac resolve shared libraries
+    differently and do not have this failure mode; a no-op (not an error)
+    anywhere the registration cannot be made, so this must never be the reason
+    face detection fails to start -- it can only fail to speed it up.
+    """
+    global _cuda_dll_dir_registered
+    if _cuda_dll_dir_registered or sys.platform != "win32":
+        return
+    _cuda_dll_dir_registered = True
+    try:
+        import torch
+
+        torch_lib = os.path.join(os.path.dirname(torch.__file__), "lib")
+        if os.path.isdir(torch_lib):
+            os.add_dll_directory(torch_lib)
+            logger.info("Registered %s for onnxruntime's CUDA provider.", torch_lib)
+    except Exception:
+        logger.debug(
+            "Could not register torch's CUDA DLL directory; onnxruntime will "
+            "fall back to CPU if its own CUDA provider cannot load.",
+            exc_info=True,
+        )
+
 
 # A pixel bounding box: (x, y, w, h), top-left origin, integer pixels.
 Bbox = tuple[int, int, int, int]
@@ -172,6 +216,7 @@ class FaceDetector:
         """
         self.config: FaceConfig = config if config is not None else CONFIG.face
 
+        _register_torch_cuda_dlls()
         try:
             from insightface.app import FaceAnalysis
         except ImportError as exc:  # pragma: no cover - environment dependent

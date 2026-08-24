@@ -21,11 +21,21 @@ lap>=0.5.12
 # trained for the WIDER FACE "hard" split where ~79% of faces are under 32x32
 # px, i.e. back-row students. Model weights (buffalo_l) auto-download to
 # ~/.insightface on first use, like Ultralytics' YOLO weights.
-# NOTE: onnxruntime here is the CPU build. onnxruntime-gpu would cut face
-# detection latency substantially (currently the slowest stage, ~400 ms/frame on
-# CPU) but needs a CUDA/cuDNN version match — not swapped in blind.
+# onnxruntime-gpu, not the CPU build: with enable_recognition=True and
+# det_size=1600x1600 (both added later, see FaceConfig), a full video re-run
+# went from ~13 min to over 58 min on CPU before this was measured and swapped.
+# The GPU wheel needs the CUDA 12 runtime (cublasLt64_12.dll etc.), which is
+# NOT covered by just having a driver + torch's own CUDA build -- torch bundles
+# its own private copy in torch/lib and never puts it on PATH. Rather than
+# require a separate CUDA Toolkit install, backend/face_detect.py registers
+# torch's own DLL directory with Windows before importing insightface
+# (_register_torch_cuda_dlls), confirmed to make onnxruntime pick up
+# CUDAExecutionProvider with identical detection output (48/48 faces on
+# dataset/img01.jpg, CPU vs GPU). Windows-only; a no-op elsewhere, and a no-op
+# (never a crash) if torch or its DLL directory cannot be found, so this can
+# only fail to speed things up, never break face detection outright.
 insightface>=1.0,<2.0
-onnxruntime>=1.17,<2.0
+onnxruntime-gpu>=1.17,<2.0
 
 # MediaPipe (Person B) — still used, for the 468 face-mesh landmarks and EAR,
 # fitted inside the face boxes SCRFD supplies.
