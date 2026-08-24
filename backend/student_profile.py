@@ -254,12 +254,17 @@ def build_profiles(
         # have usable fallback evidence.
         if not off_task_evidence[person_id] and concentration["frames"] > 0:
             concentration["off_task_detectable"] = False
+            # Prepended onto the standing behavioral-proxy caveat that
+            # summarise_engagement always attaches, so BOTH honesty layers
+            # survive in the emitted record (this branch used to overwrite
+            # the standing one).
             concentration["caveat"] = (
                 "No off-task evidence of any kind was available for this "
                 "student (no behaviour reading, no nearby phone detection, and "
                 "no eye-closure measurement), so off-task states could not be "
-                "detected at all -- concentration_pct reflects gaze only and "
-                "should not be read as a real attentiveness score."
+                "detected at all -- the score reflects gaze only and should "
+                "not be read as a real attentiveness score. "
+                + concentration["caveat"]
             )
         else:
             concentration["off_task_detectable"] = True

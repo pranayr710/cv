@@ -33,7 +33,7 @@ independently hand-labelled classroom images, not self-reported.
 
 | Question | Decision | Why |
 |---|---|---|
-| Emotion taxonomy | happy / sad / neutral | 3-class request; framed as *expression*, never inferred emotion — see `backend/expression.py` docstring for the research and legal reasons that wording is load-bearing |
+| Facial expression taxonomy | happy / sad / neutral | 3-class request; framed as *facial expression classification*, never inferred emotion — see `backend/expression.py` docstring for the research and legal reasons that wording is load-bearing |
 | Book/pen | Kept, retrained as a real behaviour class | The proxy (book detected near a bowed head) scored F1 25.1%; a fine-tuned classifier on human-labelled `write`/`read` reached **77.9%** |
 | `handrise` / `stand` | Removed from the model entirely | Too little training data (22, 59 boxes) to report honestly |
 | `turn_head` / `look_forward` | Head pose owns orientation; both excluded from the behaviour model | Calibrated head pose scores F1 63.2% vs the behaviour model's 25.0% on the same boxes. Excluding them also dissolved the label conflict blocking a second dataset, enabling the 4.3x data increase behind the 68.0% figure above |
@@ -51,3 +51,17 @@ independently hand-labelled classroom images, not self-reported.
 
 Built in an earlier phase of this project, deliberately paused per direct
 instruction to get Part 1 right first. Not touched during this phase.
+
+### Stage 5 scaffolding (Person C, added 2026-08-25)
+
+Engineering-ahead-of-inputs, each piece stating its own status: the
+ARG+GCN group module (`backend/group_activity.py`) is untrained/unvalidated
+until B's scene graph and the OUC-CGE download exist; the O6 reporting layer
+(`backend/reporting.py`, `tools/dashboard.py`) renders class-level trends by
+default with drill-down only behind an explicit flag; external-eval tooling
+(`tools/prepare_ouccge.py`, `tools/eval_group_activity.py`) enforces
+split-by-source-recording; and `docs/PRIVACY_ETHICS.md`,
+`docs/BOSS_VALIDATION.md` (+ `tools/boss_agreement.py`),
+`docs/OUC_CGE_PREP.md`, and `docs/RENAME_HANDOFF.md` land the month-3
+ethics/validation/rename deliverables. No measured numbers yet from any of
+it — none may be quoted until the inputs exist.

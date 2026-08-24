@@ -967,7 +967,7 @@ class ProfileConfig:
     #
     # The audit found the TEACHER being reported as a student, with the highest
     # sighting count of any identity (125). The tracking was right; the ROLE was
-    # wrong. She receives a concentration score and skews every class aggregate.
+    # wrong. She receives an on-task proxy score and skews every class aggregate.
     #
     # Four ways to tell teacher from student were measured on the audited video,
     # all from signals the pipeline already computes, against the known teacher
@@ -995,14 +995,22 @@ class ProfileConfig:
 
 @dataclass(frozen=True)
 class EngagementConfig:
-    """Per-student concentration scoring -- see backend/engagement.py.
+    """Per-student behavioral proxy scoring -- see backend/engagement.py.
 
     Combines the two REAL signals a live frame actually carries --
     ``head_pose.gaze_label`` and ``behaviour.label`` -- into a single on-task /
-    off-task / unknown verdict per frame, then a concentration percentage per
-    student. This is deliberately not a new classifier: it is the same
-    precedence and honesty rules already established elsewhere in this
-    project, applied consistently rather than re-invented per module.
+    off-task / unknown verdict per frame, then an observed on-task percentage
+    per student. The output is a *behavioral proxy score* (an "observed
+    on-task indicator"), never a measurement of internal concentration: it is
+    a hand-authored precedence rule with no external validation yet, and its
+    structure is a documented adaptation of BOSS (Behavioral Observation of
+    Students in Schools), which codes off-task behaviour independently of head
+    orientation -- the same choice this config encodes. See
+    ``backend/engagement.py`` (``BEHAVIORAL_PROXY_CAVEAT``) and
+    ``docs/LITERATURE_REVIEW.md`` section 5. This is deliberately not a new
+    classifier: it is the same precedence and honesty rules already
+    established elsewhere in this project, applied consistently rather than
+    re-invented per module.
 
     * A phone/sleep behaviour reading wins over an attentive-looking gaze, the
       same precedence :mod:`backend.attention` already uses (a contradictory
@@ -1035,7 +1043,7 @@ class EngagementConfig:
     # 801 person-observations (and still zero at conf 0.05, and still zero when
     # the frame was upscaled 2x and 3x -- so it is a domain gap, not a
     # resolution or threshold problem). Because "off" was only reachable via a
-    # behaviour reading, every student scored 100% concentration purely from
+    # behaviour reading, every student scored 100% on-task purely from
     # absence of evidence.
     #
     # These fallbacks use signals the pipeline already computes and was

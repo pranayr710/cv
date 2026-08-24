@@ -27,6 +27,29 @@ activity) is built but deliberately paused until Part 1 is solid.
   for bringing a new session up to speed on Week 1 state. Historical; see
   PART1_PLAN.md for current state instead.
 
+## Stage 5 (Person C) — group activity & reporting
+
+Scaffolding is in place ahead of its inputs (B's scene graph, the OUC-CGE
+download); every piece states its own honest status:
+
+- `backend/group_activity.py` — ARG-style relation graph + GCN readout for
+  clip-level engagement (high/medium/low), abstention-first. Untrained and
+  unvalidated by design until its inputs exist.
+- `backend/reporting.py` + `tools/dashboard.py` — O6 reporting: class-level
+  trends by default, per-student drill-down only behind an explicit
+  `--per-student` flag, gaps rendered rather than smoothed over.
+- `tools/prepare_ouccge.py` / `tools/eval_group_activity.py` — external
+  evaluation set preparation + harness (splits grouped by source recording;
+  see [docs/OUC_CGE_PREP.md](docs/OUC_CGE_PREP.md)).
+- `tools/boss_agreement.py` + [docs/BOSS_VALIDATION.md](docs/BOSS_VALIDATION.md)
+  — Cohen's kappa between blind human BOSS coding and system verdicts.
+- [docs/PRIVACY_ETHICS.md](docs/PRIVACY_ETHICS.md) — framing vs EU AI Act
+  Art 5(1)(f), India DPDP retention policy, anonymisation evidence, access
+  control.
+- [docs/RENAME_HANDOFF.md](docs/RENAME_HANDOFF.md) — wording patches pending
+  file owners ("concentration" → behavioral proxy score; "emotion detection"
+  → facial expression classification).
+
 ## Running it
 
 ```
@@ -45,5 +68,5 @@ is simply `null`) if the weights aren't present.
 pytest
 ```
 
-194 tests, no ML weights required for most of them (model-backed tests skip
+236 tests, no ML weights required for most of them (model-backed tests skip
 cleanly when a dependency is absent rather than faking a pass).
