@@ -446,6 +446,16 @@ class EnrolledIdentityResolver(TwoPassIdentityResolver):
         for index, members in enumerate(clusters):
             person = assigned.get(index)
             if person is None:
+                # Same rule the unregistered resolver applies: a cluster made
+                # only of faces too poor to trust may not found an identity.
+                # Matching a registered reference is the one thing that can
+                # override this -- there the comparison is against a known
+                # good face, so the evidence does not stand on its own.
+                if not self._may_found_identity(members):
+                    for track_id in members:
+                        mapping[track_id] = faceless_next
+                        faceless_next -= 1
+                    continue
                 person_id = next_unregistered
                 next_unregistered += 1
             else:
