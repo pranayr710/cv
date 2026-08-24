@@ -287,3 +287,79 @@ def test_two_pass_covers_every_observed_track() -> None:
     r.observe([1, 2, None], [PERSON_A, None, PERSON_B], [0.9, None, 0.9])
     mapping = r.finalise()
     assert set(mapping) == {1, 2}  # None track is not an identity
+
+
+# --------------------------------------------------------------------------- #
+# Poster rejection -- found by a visual audit, not by any metric
+# --------------------------------------------------------------------------- #
+
+
+def _fake_crop(seed: int, size: int = 60):
+    """A noisy colour crop, standing in for a real face."""
+    rng = np.random.default_rng(seed)
+    return rng.integers(0, 255, size=(size, size, 3), dtype=np.uint8)
+
+
+def test_identical_crops_are_detected_as_a_printed_face() -> None:
+    """A wall poster is pixel-identical every frame. Measured on real footage:
+    posters scored 0.906-0.909 invariance vs 0.311-0.817 for students."""
+    from backend.identity import appearance_invariance, is_static_face
+
+    poster = _fake_crop(1)
+    crops = [poster.copy() for _ in range(10)]
+    score = appearance_invariance(crops)
+    assert score is not None and score > 0.95
+    assert is_static_face(crops) is True
+
+
+def test_varying_crops_are_not_a_printed_face() -> None:
+    from backend.identity import appearance_invariance, is_static_face
+
+    crops = [_fake_crop(i) for i in range(10)]
+    score = appearance_invariance(crops)
+    assert score is not None and score < 0.5
+    assert is_static_face(crops) is False
+
+
+def test_invariance_is_robust_to_lighting_change() -> None:
+    """Global brightness drift across a video must not read as a changing face,
+    nor mask a genuinely static one -- crops are normalised per crop."""
+    from backend.identity import appearance_invariance
+
+    base = _fake_crop(2)
+    brightened = [
+        np.clip(base.astype(np.int16) + delta, 0, 255).astype(np.uint8)
+        for delta in range(0, 100, 10)
+    ]
+    score = appearance_invariance(brightened)
+    assert score is not None and score > 0.95
+
+
+def test_too_few_crops_never_rejects() -> None:
+    """Insufficient evidence must not reject a student -- a person seen in 4
+    frames would trivially look invariant. Measured case: id 12 scored 0.872
+    (above threshold) on 4 sightings and was correctly NOT rejected."""
+    from backend.identity import appearance_invariance, is_static_face
+
+    poster = _fake_crop(3)
+    few = [poster.copy() for _ in range(2)]
+    assert appearance_invariance(few) is None
+    assert is_static_face(few) is False
+
+    cfg = IdentityConfig(static_face_min_sightings=8)
+    seven = [poster.copy() for _ in range(7)]
+    assert is_static_face(seven, cfg) is False
+
+
+def test_rejection_can_be_disabled() -> None:
+    from backend.identity import is_static_face
+
+    poster = _fake_crop(4)
+    crops = [poster.copy() for _ in range(10)]
+    assert is_static_face(crops, IdentityConfig(reject_static_faces=False)) is False
+
+
+def test_empty_crops_are_handled() -> None:
+    from backend.identity import appearance_invariance
+
+    assert appearance_invariance([]) is None

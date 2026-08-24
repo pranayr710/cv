@@ -158,6 +158,9 @@ def build_profiles(
     behaviour_reliability: dict[int, set[str]] = defaultdict(set)
     engagement_verdicts: dict[int, list[str | None]] = defaultdict(list)
     off_task_evidence: dict[int, bool] = defaultdict(bool)
+    # Set by tools/reject_static_faces.py when an identity was measured to
+    # be a printed face (wall poster) rather than a student.
+    is_poster: dict[int, bool] = defaultdict(bool)
 
     with src.open(encoding="utf-8") as fh:
         for line in fh:
@@ -170,6 +173,9 @@ def build_profiles(
                 person_id = person.get("person_id")
                 if person_id is None:
                     continue
+
+                if person.get("is_poster"):
+                    is_poster[person_id] = True
 
                 frames_seen[person_id] += 1
                 first_ms[person_id] = min(first_ms.get(person_id, ts_ms), ts_ms)
@@ -258,12 +264,32 @@ def build_profiles(
         else:
             concentration["off_task_detectable"] = True
 
+        # Reject entries that are not students. Marked rather than deleted
+        # (ProfileConfig.report_rejected) so a reviewer can see what was
+        # dropped and why -- silently discarding detections is how a pipeline
+        # starts misreporting its own recall.
+        rejected: str | None = None
+        if is_poster[person_id]:
+            rejected = (
+                "printed face: appearance did not change across its sightings, "
+                "measured as a wall poster/portrait rather than a student "
+                "(see backend/identity.py appearance_invariance)"
+            )
+        elif seen_count < cfg.profile.min_frames_for_profile:
+            rejected = (
+                f"transient: seen in only {seen_count} frame(s), below the "
+                f"{cfg.profile.min_frames_for_profile}-frame minimum -- almost "
+                f"certainly detection noise rather than a student"
+            )
+
         profiles[person_id] = {
             "person_id": person_id,
             # A negative id means this student was never matched by face --
             # see backend/identity.py. Carried forward explicitly so a report
             # cannot present an unverified id as a confirmed re-identification.
             "face_verified": person_id > 0,
+            "is_student": rejected is None,
+            "rejected_reason": rejected,
             "frames_seen": seen_count,
             "first_seen_ms": first_ms[person_id],
             "last_seen_ms": last_ms[person_id],
@@ -272,6 +298,9 @@ def build_profiles(
             "behaviour": behaviour_summary,
             "concentration": concentration,
         }
+
+    if not cfg.profile.report_rejected:
+        profiles = {k: v for k, v in profiles.items() if v["is_student"]}
     return profiles
 
 

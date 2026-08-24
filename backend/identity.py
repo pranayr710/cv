@@ -371,3 +371,92 @@ class TwoPassIdentityResolver:
             sum(1 for v in mapping.values() if v < 0),
         )
         return mapping
+
+
+def appearance_invariance(crops: Sequence[np.ndarray]) -> float | None:
+    """Mean pairwise similarity between one identity's own face crops.
+
+    Distinguishes a **printed face** (wall poster, portrait, textbook photo)
+    from a real student. A real face blinks, turns and changes expression
+    between frames; a printed one is pixel-identical apart from camera motion
+    and lighting.
+
+    This exists because a visual identity audit
+    (``tools/audit_identity.py``) found the pipeline profiling two wall posters
+    as students -- tracked for 27 and 20 sightings, each contributing a
+    permanently "attentive, neutral" phantom to every class-level aggregate.
+    Nothing asked whether a face ever changed, because to a face detector a
+    printed face is a perfectly good face.
+
+    A **positional** test was tried first and rejected on measurement: the
+    audited camera pans, so the posters appeared to move as much as some
+    students (1.38-1.74 face-widths of centre drift, versus a barely-moving
+    real student at 0.39). Position cannot separate them. Appearance can:
+
+    ==============  =====================
+    identity        mean self-similarity
+    ==============  =====================
+    poster              0.906, 0.909
+    student         0.311 - 0.817
+    ==============  =====================
+
+    Args:
+        crops: Face crops for one identity, any sizes. Compared as
+            lighting-normalised 48x48 grayscale, so brightness changes across
+            a video do not register as a change in the face itself.
+
+    Returns:
+        Mean pairwise similarity in roughly ``[-1, 1]`` (1.0 = identical every
+        frame), or ``None`` if fewer than three usable crops were supplied --
+        too little evidence to judge, in which case the caller must not reject.
+    """
+    import cv2
+
+    vectors: list[np.ndarray] = []
+    for crop in crops:
+        if crop is None or getattr(crop, "size", 0) == 0:
+            continue
+        grey = cv2.cvtColor(cv2.resize(crop, (48, 48)), cv2.COLOR_BGR2GRAY)
+        grey = grey.astype(np.float32)
+        # Normalising per crop removes global brightness/contrast drift, so the
+        # score reflects the face changing rather than the room lighting.
+        vectors.append(
+            ((grey - grey.mean()) / (grey.std() + 1e-6)).ravel()
+        )
+
+    if len(vectors) < 3:
+        return None
+
+    sims = [
+        float(np.dot(vectors[i], vectors[j]) / len(vectors[i]))
+        for i in range(len(vectors))
+        for j in range(i + 1, len(vectors))
+    ]
+    return float(np.mean(sims)) if sims else None
+
+
+def is_static_face(
+    crops: Sequence[np.ndarray], config: IdentityConfig | None = None
+) -> bool:
+    """Whether these crops look like a printed face rather than a student.
+
+    Args:
+        crops: Face crops for one identity across its lifetime.
+        config: Identity settings. Defaults to ``CONFIG.identity``.
+
+    Returns:
+        ``True`` only when rejection is enabled, there were at least
+        :data:`IdentityConfig.static_face_min_sightings` crops, and the
+        measured invariance exceeds
+        :data:`IdentityConfig.static_face_similarity`. Returns ``False`` on
+        insufficient evidence -- never rejects a student for lack of data.
+    """
+    cfg = config if config is not None else CONFIG.identity
+    if not cfg.reject_static_faces:
+        return False
+    if len(crops) < cfg.static_face_min_sightings:
+        return False
+    score = appearance_invariance(crops)
+    if score is None:
+        return False
+    return score > cfg.static_face_similarity

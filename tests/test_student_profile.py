@@ -192,3 +192,58 @@ def test_person_with_no_person_id_is_skipped(tmp_path) -> None:
 def test_missing_file_raises() -> None:
     with pytest.raises(FileNotFoundError):
         build_profiles("does/not/exist.jsonl")
+
+
+# --------------------------------------------------------------------------- #
+# Rejecting entries that are not students.
+#
+# A visual identity audit (tools/audit_identity.py) found the raw profile list
+# was not a student roster: of 18 entries on real footage, 5 were 1-2 frame
+# detection ghosts and 2 were wall posters tracked for 27 and 20 sightings.
+# --------------------------------------------------------------------------- #
+
+
+def test_transient_identity_is_rejected_not_reported_as_a_student(tmp_path) -> None:
+    p = tmp_path / "run.jsonl"
+    _write_jsonl(p, [_frame(0, 0, [_person(1, gaze_label="teacher")])])
+    profiles = build_profiles(p)
+    assert profiles[1]["is_student"] is False
+    assert "transient" in profiles[1]["rejected_reason"]
+
+
+def test_identity_above_the_frame_minimum_is_a_student(tmp_path) -> None:
+    p = tmp_path / "run.jsonl"
+    _write_jsonl(p, [
+        _frame(i, i * 1000, [_person(1, gaze_label="teacher")]) for i in range(4)
+    ])
+    profiles = build_profiles(p)
+    assert profiles[1]["is_student"] is True
+    assert profiles[1]["rejected_reason"] is None
+
+
+def test_poster_flag_rejects_an_identity_regardless_of_frame_count(tmp_path) -> None:
+    """A poster tracked for many frames is still not a student -- the frame
+    minimum alone would have let ids 10 and 11 (27 and 20 sightings) through."""
+    p = tmp_path / "run.jsonl"
+    records = []
+    for i in range(20):
+        person = _person(5, gaze_label="teacher")
+        person["is_poster"] = True
+        records.append(_frame(i, i * 1000, [person]))
+    _write_jsonl(p, records)
+    profiles = build_profiles(p)
+    assert profiles[5]["frames_seen"] == 20
+    assert profiles[5]["is_student"] is False
+    assert "printed face" in profiles[5]["rejected_reason"]
+
+
+def test_rejected_entries_are_kept_visible_by_default(tmp_path) -> None:
+    """Marked, not deleted -- silently dropping detections is how a pipeline
+    starts misreporting its own recall."""
+    from backend.config import CONFIG
+
+    assert CONFIG.profile.report_rejected is True
+    p = tmp_path / "run.jsonl"
+    _write_jsonl(p, [_frame(0, 0, [_person(1, gaze_label="teacher")])])
+    profiles = build_profiles(p)
+    assert 1 in profiles  # present, just flagged

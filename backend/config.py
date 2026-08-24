@@ -824,6 +824,41 @@ class IdentityConfig:
     # embedding built from many earlier sightings.
     embedding_update_rate: float = 0.3
 
+    # --- rejecting things that are not students ---------------------------- #
+    #
+    # A visual identity audit (tools/audit_identity.py) found the pipeline was
+    # profiling two WALL POSTERS as students -- printed faces, tracked for 27
+    # and 20 sightings, contributing a permanently "attentive, neutral" phantom
+    # to every class-level aggregate. Nothing in the pipeline asked whether a
+    # face ever changed: to a face detector, a printed face is a perfectly good
+    # face.
+    #
+    # A first attempt used positional variance (a poster should not move) and
+    # was REJECTED on measurement: this camera pans, so the posters appeared to
+    # move as much as some students (1.38-1.74 vs a barely-moving student at
+    # 0.39 face-widths). Position cannot separate them.
+    #
+    # What does separate them cleanly is APPEARANCE INVARIANCE. A real face
+    # blinks, turns and changes expression; a printed one does not. Mean
+    # pairwise similarity between a person's own face crops (lighting-normalised
+    # grayscale), measured on the audited video:
+    #
+    #   known posters   0.906, 0.909
+    #   known students  0.311, 0.580, 0.583, 0.728, 0.817
+    #
+    # 0.86 sits in that gap, closer to the students' worst case than to the
+    # posters, so a genuinely still student is less likely to be discarded than
+    # a poster is to be kept. Deliberately conservative in that direction:
+    # dropping a real student loses data, while keeping a poster corrupts
+    # aggregates for every student.
+    reject_static_faces: bool = True
+    static_face_similarity: float = 0.86
+
+    # Below this many sightings there is not enough evidence to judge whether an
+    # identity is static, so it is never rejected as a poster on that basis --
+    # a student who appears in 4 frames would trivially look "invariant".
+    static_face_min_sightings: int = 8
+
 
 @dataclass(frozen=True)
 class PipelineConfig:
@@ -842,6 +877,31 @@ class PipelineConfig:
 
     # Fail fast if a video can't be opened.
     strict_io: bool = True
+
+
+@dataclass(frozen=True)
+class ProfileConfig:
+    """Per-student profile reporting -- see backend/student_profile.py.
+
+    Exists because a visual identity audit (tools/audit_identity.py) showed the
+    raw profile list was not a student roster. On the audited 5.5-minute video
+    it contained 18 entries, of which only ~5-6 were real, correctly-identified
+    students; the rest were 1-3 frame detection ghosts and two wall posters.
+    Reporting that list unfiltered overstates the result and pollutes every
+    class-level aggregate.
+    """
+
+    # An identity seen in fewer frames than this is not reported as a student.
+    # Measured on the audited video: 5 of 18 profiles had 1-2 sightings with
+    # span 0.0s -- transient detection noise, not people. 3 is deliberately low
+    # (a genuinely brief appearance is still a student) but enough to remove the
+    # single-frame ghosts.
+    min_frames_for_profile: int = 3
+
+    # Keep filtered entries in the output, marked, rather than deleting them.
+    # A reviewer should be able to see what was rejected and why -- silently
+    # dropping detections is how a pipeline starts lying about its own recall.
+    report_rejected: bool = True
 
 
 @dataclass(frozen=True)
@@ -930,6 +990,7 @@ class Config:
     expression: ExpressionConfig = field(default_factory=ExpressionConfig)
     behaviour: BehaviourConfig = field(default_factory=BehaviourConfig)
     engagement: EngagementConfig = field(default_factory=EngagementConfig)
+    profile: ProfileConfig = field(default_factory=ProfileConfig)
     posture: PostureConfig = field(default_factory=PostureConfig)
     attention: AttentionConfig = field(default_factory=AttentionConfig)
     peer_interaction: PeerInteractionConfig = field(
