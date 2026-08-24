@@ -2,9 +2,10 @@
 
 Everything Part 1 claims is per-person and persistent: the same student keeps one
 id from the first frame to the last, and carries an expression, a behaviour and a
-concentration figure. None of that is checkable from a JSONL file or a summary
-table -- a reviewer has to see the id stay on the same face while the camera
-pans, and see the label sitting on the right person.
+behavioral proxy score (an observed on-task indicator -- see
+backend/engagement.py's standing caveat). None of that is checkable from a JSONL
+file or a summary table -- a reviewer has to see the id stay on the same face
+while the camera pans, and see the label sitting on the right person.
 
 So this draws the run's own output back onto its own frames:
 
@@ -17,7 +18,7 @@ So this draws the run's own output back onto its own frames:
 
 Two things are deliberately visible rather than hidden. Rejected detections are
 drawn, in red, with the reason -- a viewer should be able to see what the
-pipeline threw away and disagree with it. And a concentration figure computed
+pipeline threw away and disagree with it. And an observed on-task figure computed
 with no behaviour evidence behind it is marked with "?" rather than shown as a
 confident number, matching the caveat backend/student_profile.py already emits.
 

@@ -177,7 +177,11 @@ def test_100pct_with_behaviour_readings_present_is_not_flagged(tmp_path) -> None
     conc = profiles[1]["concentration"]
     assert conc["concentration_pct"] == pytest.approx(100.0)
     assert conc["off_task_detectable"] is True
-    assert "caveat" not in conc
+    # The standing behavioral-proxy caveat is attached unconditionally now
+    # (backend.engagement.BEHAVIORAL_PROXY_CAVEAT). "Not flagged" means the
+    # EXTRA absence-of-evidence warning is absent -- i.e. the caveat is
+    # exactly the standing one, with nothing prepended.
+    assert conc["caveat"].startswith("Behavioral proxy score")
 
 
 def test_person_with_no_person_id_is_skipped(tmp_path) -> None:
