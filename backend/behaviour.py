@@ -13,14 +13,41 @@ writing" signal was *a detected book near a bowed head*, which scored precision
 31.9% / recall 20.7% / **F1 25.1%** against human labels. COCO's ``book`` class
 was never trained on open notebooks at a classroom angle, and it does not fire
 on loose exam paper at all, so no threshold rescued it. Training the behaviour
-directly on 423 labelled frames lifted the same metric to **F1 ~62-68%** on
-held-out clips.
+directly reached **F1 77.9%** on held-out clips.
+
+Trained on two independently-collected datasets
+------------------------------------------------
+
+877 images / 6091 boxes, merged from this project's own classroom footage plus a
+second, unrelated classroom dataset (see ``tools/merge_behaviour_datasets.py``).
+Merging was previously blocked by a label-density conflict and became possible
+once ``look_forward`` was dropped -- see "what it does not report" below. The
+payoff was large, and the out-of-distribution figure is the one that matters:
+
+=================================  =========  =========
+Metric                             1 dataset  2 datasets
+=================================  =========  =========
+mAP50                                 0.437      0.653
+writing signal F1 (held out)          65.3%      77.9%
+**F1 on an unseen classroom**       **7.3%**  **68.0%**
+=================================  =========  =========
+
+Per class on held-out clips, and note how the weak one MOVED:
+
+==============  =========  =======  =====  ==========
+class           precision  recall     F1   previously
+==============  =========  =======  =====  ==========
+using_device        79.7%    65.6%  72.0%      30.6%
+write               73.8%    68.1%  70.9%      68.3%
+sleep               75.0%    58.5%  65.8%      57.5%
+read                45.9%    57.1%  50.9%      43.0%
+==============  =========  =======  =====  ==========
 
 A classifier, not a detector
 ----------------------------
 
 This model can find students on its own, and it is deliberately not used that
-way. On the same held-out data:
+way. On held-out data:
 
 ==============================  ==========  =======
 Finding students                Precision   Recall
@@ -36,24 +63,24 @@ is bound onto the existing boxes instead.
 What it deliberately does not report
 ------------------------------------
 
-* **``handrise`` and ``stand``** are dropped
-  (:data:`BehaviourConfig.untrusted_classes`). They had 22 and 59 training boxes
-  and scored F1 4.1% and 0.0% on the held-out split. A class measured at 4% F1
-  is noise wearing a label.
-* **``turn_head`` and ``look_forward``** are deferred to :mod:`backend.headpose`
-  (:data:`BehaviourConfig.deferred_classes`). Head orientation is what a
-  head-pose model exists to measure, and calibrated head pose scores F1 63.2%
-  against this model's 25.0% on the same 371 labelled boxes. Reporting both and
-  letting the weaker one win would be a regression disguised as a feature.
-* **Phone use is an open gap, not a feature.** ``using_device`` reaches only
-  ~20% recall, and a confidence sweep confirmed that is a model/data limit
-  rather than a threshold: recall moves 20.0% to 26.7% while precision falls
-  58.1% to 37.5%. It is surfaced with its weakness attached, never presented as
-  working.
+* **``look_forward`` and ``turn_head``** are not classes of this model at all.
+  Head orientation is what a head-pose model exists to measure, and calibrated
+  head pose scored F1 63.2% against this model's 25.0% on the same 371 labelled
+  boxes. They were previously suppressed at inference time; they are now
+  excluded from the training set entirely, which additionally dissolved the
+  label conflict that had blocked merging the second dataset. ``look_forward``
+  alone had been 2384 of 4603 boxes -- the model was dominated by a class the
+  pipeline discarded.
+* **``handrise`` and ``stand``** are likewise gone (22 and 59 boxes, F1 4.1%
+  and 0.0%). Too little data to report honestly.
+* **``read`` is the weak class now**, at F1 50.9% with sub-50% precision, and is
+  confused with ``write`` in both directions -- an understandable confusion
+  (both are head-down-at-a-desk) but one a consumer must not read as certain. It
+  carries ``reliability="weak"``. ``using_device``, which used to be the
+  headline weakness at ~20% recall, is now among the strongest at 72.0%.
 
-So the classes actually surfaced are ``read``, ``sleep``, ``using_device`` and
-``write`` -- and of those, only ``write`` and ``read`` are strong enough to
-build on today.
+So the four surfaced classes are ``read``, ``sleep``, ``using_device`` and
+``write``, and ``read`` is the one to treat with suspicion.
 
 Usage:
     from backend.behaviour import BehaviourClassifier

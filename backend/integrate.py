@@ -207,8 +207,10 @@ def _behaviour_to_json(behaviour) -> dict | None:
     Returns:
         A dict matching the schema's ``behaviour`` object, or ``None``.
         ``reliability`` is included deliberately: it travels with the value so a
-        weak class (``using_device``, ~20% recall) cannot be read downstream as
-        though it were as solid as ``write``.
+        weak class cannot be read downstream as though it were as solid as
+        ``write``. Which class is weak is measured, not fixed -- it moved from
+        ``using_device`` to ``read`` after the merged-dataset retrain; see
+        :data:`backend.behaviour._WEAK_CLASSES` for the current table.
     """
     if behaviour is None:
         return None

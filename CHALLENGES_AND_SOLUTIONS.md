@@ -383,7 +383,9 @@ The last row is stated as a gap rather than filled with the least-bad option. Ph
 
 ---
 
-## 16. The behaviour model: final numbers
+## 16. The behaviour model: first-generation numbers
+
+> **Superseded by section 20.** Every figure below is from the single-dataset model. It is kept because the analysis (especially 16.1's error-source split and 16.2's engagement framing) is what led to the fix — but for current numbers read section 20.
 
 Fine-tuned YOLOv11m on 423 labelled frames from 8 clips, validated on 2 held-out
 clips (58 images, 650 labelled students). Best **mAP50 0.437 at epoch 45**, early
@@ -508,6 +510,8 @@ Three identified recoveries, none yet applied:
 
 ## 18. Generalization test on an independent classroom dataset -- fails hard
 
+> **Resolved in section 20.** The 7.3% recorded here was real, and the label-density diagnosis below is exactly what made the fix possible: F1 is now 68.0% on this same dataset.
+
 A second, wholly independent labelled dataset arrived (629 images, different classroom, different country/camera style, CC BY 4.0, Roboflow: `classroom-na2vo/classroom-student-dataset`), plus an 11-minute continuous classroom video. Unlike the 13-image and 481-image sets already used, this one was collected by someone else entirely -- the right test of whether the fine-tuned behaviour model learned classroom behaviour or memorised its own 8 training clips.
 
 **It memorised the 8 clips.** Running the model (unmodified, never trained on this data) against its `test` split, with classes mapped `Using Phone -> using_device`, `Reading -> read`, `Sleeping -> sleep`, `Writing -> write`, `Hand Rising -> handrise`:
@@ -552,6 +556,83 @@ So this is a real, useful measurement of what happens under camera motion + spar
 
 ---
 
+## 20. Fixing the generalization failure: two datasets, one 4-class model
+
+Section 18 recorded the behaviour model collapsing to **F1 7.3%** on an
+independent classroom dataset, and section 19's video work then hit the same
+wall from the other side: **zero** detections across an entire 640x360 video,
+still zero at conf 0.05 and still zero with the frame upscaled 2x and 3x. So it
+was neither a threshold nor a resolution problem — the model had memorised its
+own eight training clips.
+
+### What actually unblocked it
+
+Section 18 identified a **label-density conflict** as the reason the second
+dataset could not simply be merged: it labels only notable behaviours and leaves
+attentive students unannotated, while ours labels every student including plain
+`look_forward`. Merging directly would teach the model that an attentive student
+is background.
+
+Dropping `look_forward` dissolves that conflict — and dropping it was correct
+independently, because `backend/behaviour.py` **already suppressed** it (section
+15: calibrated head pose measures orientation at F1 63.2% vs the behaviour
+model's 25.0%). The model had been carrying, and being numerically dominated by,
+a class the pipeline discarded: `look_forward` alone was **2384 of 4603 boxes**.
+
+### The merge
+
+| class | ours | second dataset | merged |
+|---|---|---|---|
+| read | 344 | 1063 | 1407 |
+| write | 320 | 975 | 1295 |
+| sleep | 232 | 1474 | 1706 |
+| using_device | 522 | 1975 | **2497** |
+| **total** | 1418 | 5487 | **6905** (4.9x) |
+
+877 training images after dropping frames with no remaining label. Split **by
+source**, never by frame. The second dataset's own `test` split was held
+entirely out of training so it stays a true out-of-distribution check. Trained
+with `scale=0.6` plus lighting augmentation — deliberately, because the previous
+model had only ever seen clean 1920x1080 input.
+
+### Results, against three gates declared before training
+
+| | before | after |
+|---|---|---|
+| mAP50 | 0.437 | **0.653** |
+| writing signal F1 (held out) | 65.3% | **77.9%** |
+| **F1 on an unseen classroom** | **7.3%** | **68.0%** (9.3x) |
+| `using_device` F1 | 30.6% | **72.0%** |
+| `write` F1 | 68.3% | 70.9% |
+| `sleep` F1 | 57.5% | 65.8% |
+| `read` F1 | 43.0% | 50.9% |
+
+### A gate I designed badly, and the correction
+
+Gate 2 asserted "non-zero detections on the 640x360 video". The new model still
+returned zero, which looked like failure. Investigated instead of reported:
+downscaling second-dataset images to that **exact** resolution still yielded 65
+detections (vs 95 at native), so the model handles 640x360 fine. Rendering the
+sampled video frames showed the real reason — they contain a teacher at a
+blackboard and students listening, i.e. **no reading, writing, sleeping or phone
+use at all**. Zero detections is the *correct* answer for footage containing none
+of the four classes. The gate conflated "detects nothing" with "is broken", and
+that is a flaw in the test, not the model.
+
+### The weak class moved, and the tags moved with it
+
+`using_device` was the headline weakness for most of this project (~20% recall,
+section 16.1) and is now among the strongest at 72.0%. `read` is now weakest at
+F1 50.9% with **sub-50% precision**, confused with `write` in both directions —
+understandable (both are head-down-at-a-desk) but not something a consumer
+should read as certain. `_WEAK_CLASSES` was re-measured and its membership
+changed accordingly, rather than being left as a stale assumption; nine tests
+that pinned the old classes were updated to match measurement, with the
+suppression *mechanism* tests rewritten against a configured class rather than
+deleted.
+
+---
+
 ## Where things stand, in numbers
 
 | Metric | Session start | Now |
@@ -561,7 +642,8 @@ So this is a real, useful measurement of what happens under camera motion + spar
 | Faces bound to a student (13 images) | 0 | **360 (90.5% of students)** |
 | Students found (13-image sample) | 139 | **398** |
 | Student detection vs human labels | Never measured | **P 82.2% / R 90.6% / F1 86.2%** |
-| Writing signal vs human labels | Never measured | **F1 65.3%** (was 25.1% via book proxy) |
+| Writing signal vs human labels | Never measured | **F1 77.9%** (25.1% via book proxy, 65.3% pre-retrain) |
+| Behaviour on an UNSEEN classroom | Never measured | **F1 68.0%** (was 7.3%) |
 | Engagement (on/off-task) agreement | Never measured | **82.3%**, off-task precision 91.1% |
 | Pipeline throughput | claimed 7.8 FPS | **0.41 FPS measured**, 83% CPU-bound |
 | Gaze `"down"` label reachable | No (bug) | Yes |
