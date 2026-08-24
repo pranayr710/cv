@@ -919,6 +919,22 @@ class IdentityConfig:
     # track_id in the JSONL stays null for these.
     surrogate_key_base: int = 1_000_000
 
+    # Path to a registered-face gallery written by tools/register_faces.py.
+    #
+    # None (the default) keeps this project's session-scoped identity property
+    # exactly as it has always been: ids are anonymous, invented per video and
+    # discarded, and no face data outlives processing.
+    #
+    # Setting it opts into the opposite: person ids come from a PERSISTENT
+    # gallery of named people, so the same human keeps the same id across every
+    # video they appear in. That is useful -- it is the only way an id means
+    # anything beyond one session -- but it is a different privacy regime, and
+    # backend/enrollment.py documents the consent and legal obligations that
+    # come with it (DPDP Act 2023 child-data provisions; the school-facial-
+    # recognition bans cited in backend/tracking.py). It is a deliberate choice,
+    # never a default.
+    gallery_path: str | None = None
+
 
 @dataclass(frozen=True)
 class PipelineConfig:

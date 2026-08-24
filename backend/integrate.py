@@ -530,7 +530,31 @@ def process_video(
         behaviour_classifier = _build_behaviour_classifier(config)
     person_tracker = person_tracker or _build_person_tracker(config)
     if identity_resolver is None:
-        if two_pass_identity:
+        if two_pass_identity and config.identity.gallery_path:
+            # Opt-in only: a gallery path was configured, so person ids come
+            # from registered people and stay constant across videos. See
+            # IdentityConfig.gallery_path for the privacy regime this enters.
+            from backend.enrollment import EnrolledGallery, EnrolledIdentityResolver
+
+            gallery = EnrolledGallery.load(config.identity.gallery_path, config.identity)
+            if len(gallery) == 0:
+                logger.warning(
+                    "gallery_path=%s holds no registered people; identity falls "
+                    "back to anonymous per-video ids. Register someone with "
+                    "tools/register_faces.py first.",
+                    config.identity.gallery_path,
+                )
+                from backend.identity import TwoPassIdentityResolver
+
+                identity_resolver = TwoPassIdentityResolver(config.identity)
+            else:
+                logger.info(
+                    "Identity resolved against %d registered people from %s.",
+                    len(gallery),
+                    config.identity.gallery_path,
+                )
+                identity_resolver = EnrolledIdentityResolver(gallery, config.identity)
+        elif two_pass_identity:
             from backend.identity import TwoPassIdentityResolver
 
             identity_resolver = TwoPassIdentityResolver(config.identity)
