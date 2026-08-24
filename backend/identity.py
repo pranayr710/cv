@@ -47,7 +47,7 @@ Usage:
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Container, Sequence
 
 import numpy as np
 
@@ -95,20 +95,32 @@ class IdentityGallery:
         self._embeddings: dict[int, np.ndarray] = {}
         self._next_id: int = 1
 
-    def match_or_register(self, embedding: np.ndarray) -> tuple[int, bool]:
+    def match_or_register(
+        self,
+        embedding: np.ndarray,
+        forbidden: Container[int] = (),
+    ) -> tuple[int, bool]:
         """Match an embedding against the gallery, or register it as new.
 
         Args:
             embedding: A 512-d L2-normalised ArcFace embedding.
+            forbidden: Person ids this embedding may **not** be assigned to,
+                however similar it looks. Used to enforce that two people seen
+                in the same frame cannot be the same person -- see
+                :class:`TwoPassIdentityResolver`. Matching against these is
+                skipped entirely rather than penalised: co-occurrence is proof,
+                not a soft preference.
 
         Returns:
-            ``(person_id, is_new)``. ``is_new`` is ``True`` when no existing
+            ``(person_id, is_new)``. ``is_new`` is ``True`` when no permitted
             entry cleared :data:`IdentityConfig.match_threshold` and a new
             person id was minted.
         """
         best_id: int | None = None
         best_sim = -1.0
         for person_id, stored in self._embeddings.items():
+            if person_id in forbidden:
+                continue
             sim = _cosine_similarity(embedding, stored)
             if sim > best_sim:
                 best_id, best_sim = person_id, sim
@@ -283,6 +295,74 @@ class TwoPassIdentityResolver:
         self._sums: dict[int, np.ndarray] = {}
         self._counts: dict[int, int] = {}
         self._seen_tracks: list[int] = []
+        #: track_id -> every other track seen alive in the same frame. Two
+        #: co-occurring tracks are provably different people, which is a hard
+        #: constraint the embeddings alone cannot supply.
+        self._conflicts: dict[int, set[int]] = {}
+        self._next_surrogate: int = self.config.surrogate_key_base
+
+    def keys_for(
+        self,
+        track_ids: Sequence[int | None],
+        embeddings: Sequence[np.ndarray | None],
+        face_scores: Sequence[float | None] | None = None,
+    ) -> list[int | None]:
+        """Per-person accumulation keys, inventing one where the tracker failed.
+
+        A detection the tracker never picked up (``track_id is None``) still has
+        a face, and a face is enough to identify someone. Rather than discarding
+        it -- measured at 20.5% of all person detections on real footage -- it
+        gets a fresh single-frame **surrogate** key so it takes part in gallery
+        matching like any other observation. See
+        :data:`IdentityConfig.identify_untracked` for why box-overlap tracking
+        fails on this footage in the first place.
+
+        A surrogate is minted only when there is a trustworthy face to match on;
+        without one there is nothing to identify the person by, and a surrogate
+        would just mint a meaningless negative id per frame.
+
+        Args:
+            track_ids: Per-person ByteTrack ids for this frame, ``None`` where
+                the tracker did not confirm a track.
+            embeddings: Per-person face embeddings, index-aligned.
+            face_scores: Optional per-person face confidence, index-aligned.
+
+        Returns:
+            A list index-aligned with the inputs: the real ``track_id`` where
+            there is one, a fresh surrogate key where there is not but a good
+            face exists, and ``None`` where the person cannot be identified at
+            all. Feed this to :meth:`observe` in place of ``track_ids``.
+
+        Raises:
+            ValueError: If the input sequences have mismatched lengths.
+        """
+        n = len(track_ids)
+        if len(embeddings) != n or (face_scores is not None and len(face_scores) != n):
+            raise ValueError(
+                "track_ids, embeddings and face_scores must be the same length."
+            )
+        scores = face_scores if face_scores is not None else [1.0] * n
+
+        keys: list[int | None] = []
+        for track_id, embedding, score in zip(track_ids, embeddings, scores):
+            if track_id is not None or not self.config.identify_untracked:
+                keys.append(track_id)
+                continue
+            usable = (
+                embedding is not None
+                and score is not None
+                and score >= self.config.min_face_score_for_identity
+            )
+            if not usable:
+                keys.append(None)
+                continue
+            keys.append(self._next_surrogate)
+            self._next_surrogate += 1
+        return keys
+
+    def is_surrogate(self, key: int) -> bool:
+        """Whether ``key`` was invented by :meth:`keys_for` rather than tracked."""
+        return key >= self.config.surrogate_key_base
 
     def observe(
         self,
@@ -309,6 +389,15 @@ class TwoPassIdentityResolver:
                 "track_ids, embeddings and face_scores must be the same length."
             )
         scores = face_scores if face_scores is not None else [1.0] * n
+
+        # Everything alive in this frame is mutually exclusive: one person
+        # cannot occupy two boxes at once. Recorded before the face-quality
+        # gate below, because the constraint holds whether or not a usable
+        # face was read this frame.
+        present = [t for t in track_ids if t is not None]
+        for track_id in present:
+            others = self._conflicts.setdefault(track_id, set())
+            others.update(t for t in present if t != track_id)
 
         for track_id, embedding, score in zip(track_ids, embeddings, scores):
             if track_id is None:
@@ -360,7 +449,18 @@ class TwoPassIdentityResolver:
             norm = np.linalg.norm(mean)
             if norm > 0:
                 mean = mean / norm
-            person_id, _is_new = gallery.match_or_register(mean)
+
+            # Any person id already given to a track that co-occurs with this
+            # one is off limits, however close the embeddings look. Without
+            # this, two different students in one frame could both be matched
+            # to the same gallery entry -- measured on real footage as 56 of
+            # 331 frames containing a duplicated person id.
+            forbidden = {
+                mapping[other]
+                for other in self._conflicts.get(track_id, ())
+                if other in mapping and mapping[other] > 0
+            }
+            person_id, _is_new = gallery.match_or_register(mean, forbidden)
             mapping[track_id] = person_id
 
         logger.info(

@@ -24,7 +24,12 @@ import numpy as np
 import pytest
 
 from backend.config import IdentityConfig
-from backend.identity import IdentityGallery, IdentityResolver, _cosine_similarity
+from backend.identity import (
+    IdentityGallery,
+    IdentityResolver,
+    TwoPassIdentityResolver,
+    _cosine_similarity,
+)
 
 
 def _embedding(seed: int, dim: int = 512) -> np.ndarray:
@@ -40,6 +45,8 @@ def _nudged(embedding: np.ndarray, noise: float = 0.02, seed: int = 0) -> np.nda
     v = embedding + noise * rng.normal(size=embedding.shape).astype(np.float32)
     return v / np.linalg.norm(v)
 
+
+CONFIG_SURROGATE_BASE = IdentityConfig().surrogate_key_base
 
 PERSON_A = _embedding(1)
 PERSON_B = _embedding(2)  # a genuinely different identity
@@ -363,3 +370,197 @@ def test_empty_crops_are_handled() -> None:
     from backend.identity import appearance_invariance
 
     assert appearance_invariance([]) is None
+
+
+# --------------------------------------------------------------------------- #
+# Mutual exclusion: one person cannot be in two places at once.
+#
+# Measured on the real 5.5-min video BEFORE this constraint existed: 56 of 331
+# frames contained a duplicated person_id (id 1 in 28 frames, id 8 in 21, id 5
+# in 7). Ground truth for that clip is 8 people, so a duplicate is never a
+# legitimate reading -- it is always an error.
+# --------------------------------------------------------------------------- #
+
+
+def test_forbidden_ids_are_never_matched_however_similar() -> None:
+    """The constraint is hard, not a penalty: co-occurrence is proof."""
+    gallery = IdentityGallery(IdentityConfig(match_threshold=0.35))
+    vec = PERSON_A
+    first, is_new = gallery.match_or_register(vec)
+    assert is_new
+
+    # The identical embedding, but that id is forbidden -> must mint a new one.
+    second, is_new = gallery.match_or_register(vec, forbidden={first})
+    assert is_new is True
+    assert second != first
+
+
+def test_no_forbidden_ids_behaves_exactly_as_before() -> None:
+    """Default argument must not change existing matching behaviour."""
+    gallery = IdentityGallery(IdentityConfig(match_threshold=0.35))
+    vec = PERSON_A
+    first, _ = gallery.match_or_register(vec)
+    again, is_new = gallery.match_or_register(vec)
+    assert again == first
+    assert is_new is False
+
+
+def test_two_lookalikes_in_one_frame_get_different_ids() -> None:
+    """The exact real bug: two different students, similar low-res embeddings,
+    both alive in the same frame. Before the constraint both were matched to
+    one gallery entry and reported as the same student."""
+    base = PERSON_A
+    a, b = _nudged(base, 0.05, 1), _nudged(base, 0.05, 2)
+
+    resolver = TwoPassIdentityResolver(IdentityConfig(match_threshold=0.35))
+    for _ in range(10):
+        resolver.observe([1, 2], [a, b], [0.9, 0.9])
+    mapping = resolver.finalise()
+
+    assert mapping[1] != mapping[2], (
+        "two tracks alive in the same frame were given the same person id"
+    )
+
+
+def test_tracks_that_never_co_occur_may_still_merge() -> None:
+    """The constraint must not block legitimate re-identification -- a student
+    who leaves frame and returns as a new track is exactly the case the whole
+    identity module exists to handle."""
+    base = PERSON_A
+    same_person = _nudged(base, 0.02, 3)
+
+    resolver = TwoPassIdentityResolver(IdentityConfig(match_threshold=0.35))
+    for _ in range(5):                      # track 1 present, alone
+        resolver.observe([1], [same_person], [0.9])
+    for _ in range(5):                      # track 1 gone, track 2 appears
+        resolver.observe([2], [same_person], [0.9])
+    mapping = resolver.finalise()
+
+    assert mapping[1] == mapping[2]
+
+
+def test_no_duplicate_person_id_among_co_occurring_tracks() -> None:
+    """Whole-frame invariant, on more tracks than the gallery would naturally
+    separate: every track alive together must end up distinct."""
+    base = PERSON_A
+    tracks = list(range(1, 7))
+    embs = [_nudged(base, 0.03, s) for s in tracks]
+
+    resolver = TwoPassIdentityResolver(IdentityConfig(match_threshold=0.35))
+    for _ in range(8):
+        resolver.observe(tracks, embs, [0.9] * len(tracks))
+    mapping = resolver.finalise()
+
+    assigned = [mapping[t] for t in tracks]
+    assert len(set(assigned)) == len(tracks), f"duplicates in {assigned}"
+
+
+def test_conflicts_recorded_even_when_face_is_unusable() -> None:
+    """A track with no readable face still occupies space -- it must still
+    constrain, otherwise a student facing away stops being mutually exclusive."""
+    base = PERSON_A
+    good = _nudged(base, 0.02, 4)
+
+    resolver = TwoPassIdentityResolver(IdentityConfig(match_threshold=0.35))
+    resolver.observe([1, 2], [good, None], [0.9, None])       # 2 has no face
+    for _ in range(4):
+        resolver.observe([1], [good], [0.9])
+    for _ in range(4):
+        resolver.observe([2], [good], [0.9])                  # now it does
+    mapping = resolver.finalise()
+
+    assert mapping[1] != mapping[2], (
+        "tracks that co-occurred while one had no usable face were still merged"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Identifying people the tracker never picked up.
+#
+# Measured on the real video: 164 of 801 person detections (20.5%) had no
+# track_id, and identity was keyed on track_id alone -- so those people were
+# detected and then silently dropped from the roster. Cause was not detection
+# confidence (mean 0.527 vs a 0.25 threshold) but that ByteTrack needs two
+# consecutive IoU matches, while this pipeline samples 1 fps from a panning
+# camera: 12.6% of boxes fall below its association floor of IoU 0.20.
+# --------------------------------------------------------------------------- #
+
+
+def test_untracked_person_with_a_good_face_gets_a_key() -> None:
+    resolver = TwoPassIdentityResolver()
+    keys = resolver.keys_for([None], [PERSON_A], [0.9])
+    assert keys[0] is not None
+    assert resolver.is_surrogate(keys[0])
+
+
+def test_tracked_person_keeps_their_real_track_id() -> None:
+    resolver = TwoPassIdentityResolver()
+    keys = resolver.keys_for([7], [PERSON_A], [0.9])
+    assert keys == [7]
+    assert not resolver.is_surrogate(7)
+
+
+def test_untracked_person_with_no_face_gets_no_key() -> None:
+    """Without a face there is nothing to identify them by, so a surrogate
+    would only mint a meaningless id per frame."""
+    resolver = TwoPassIdentityResolver()
+    assert resolver.keys_for([None], [None], [None]) == [None]
+
+
+def test_untracked_person_with_a_weak_face_gets_no_key() -> None:
+    cfg = IdentityConfig(min_face_score_for_identity=0.50)
+    resolver = TwoPassIdentityResolver(cfg)
+    assert resolver.keys_for([None], [PERSON_A], [0.20]) == [None]
+
+
+def test_surrogate_keys_are_unique_per_detection() -> None:
+    resolver = TwoPassIdentityResolver()
+    first = resolver.keys_for([None, None], [PERSON_A, PERSON_B], [0.9, 0.9])
+    second = resolver.keys_for([None], [PERSON_A], [0.9])
+    assert len(set(first + second)) == 3
+
+
+def test_surrogate_keys_cannot_collide_with_tracker_ids() -> None:
+    """ByteTrack ids are small positive ints; surrogates must stay clear of
+    them or an invented key would silently merge into a real track."""
+    resolver = TwoPassIdentityResolver()
+    keys = resolver.keys_for([None], [PERSON_A], [0.9])
+    assert keys[0] >= CONFIG_SURROGATE_BASE
+
+
+def test_untracked_sightings_of_one_person_resolve_to_one_id() -> None:
+    """The point of the whole change: someone the tracker never held onto is
+    recovered by appearance across their separate sightings."""
+    resolver = TwoPassIdentityResolver(IdentityConfig(match_threshold=0.35))
+    for seed in range(6):
+        emb = _nudged(PERSON_A, 0.02, seed)
+        keys = resolver.keys_for([None], [emb], [0.9])
+        resolver.observe(keys, [emb], [0.9])
+    mapping = resolver.finalise()
+    assert len(set(mapping.values())) == 1
+    assert all(v > 0 for v in mapping.values()), "should be face-verified, not negative"
+
+
+def test_untracked_people_in_one_frame_stay_separate() -> None:
+    """Surrogates must not defeat mutual exclusion: two untracked people
+    visible together are still two people."""
+    resolver = TwoPassIdentityResolver(IdentityConfig(match_threshold=0.35))
+    a, b = _nudged(PERSON_A, 0.03, 11), _nudged(PERSON_A, 0.03, 12)
+    for _ in range(4):
+        keys = resolver.keys_for([None, None], [a, b], [0.9, 0.9])
+        resolver.observe(keys, [a, b], [0.9, 0.9])
+    mapping = resolver.finalise()
+    # Every frame contributed one pair that co-occurred, so no pair may share.
+    assert len(set(mapping.values())) > 1
+
+
+def test_the_feature_can_be_disabled() -> None:
+    cfg = IdentityConfig(identify_untracked=False)
+    resolver = TwoPassIdentityResolver(cfg)
+    assert resolver.keys_for([None], [PERSON_A], [0.9]) == [None]
+
+
+def test_keys_for_rejects_mismatched_lengths() -> None:
+    resolver = TwoPassIdentityResolver()
+    with pytest.raises(ValueError):
+        resolver.keys_for([None, None], [PERSON_A], [0.9])

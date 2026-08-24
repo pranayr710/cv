@@ -669,16 +669,27 @@ def process_video(
                 # privacy boundary: the gallery lives only for this call.
                 embeddings = [f.embedding for f in faces]
                 face_scores = [f.score for f in faces]
+                # A detection the tracker never confirmed still has a face, and
+                # a face is enough to identify someone. Keying identity on
+                # track_id alone silently dropped 20.5% of person detections on
+                # real footage; these surrogate keys let those people be
+                # identified on appearance instead. track_id in the output stays
+                # untouched -- it still reports what the tracker actually did.
+                identity_keys = (
+                    identity_resolver.keys_for(track_ids, embeddings, face_scores)
+                    if hasattr(identity_resolver, "keys_for")
+                    else list(track_ids)
+                )
                 if two_pass_identity:
                     # Pass 1: accumulate only. Real ids are assigned after the
                     # whole video is seen, which measurably beats deciding on
                     # first sighting (18 -> 10 person ids on the same real
                     # video). Placeholders here are overwritten below.
-                    identity_resolver.observe(track_ids, embeddings, face_scores)
-                    person_ids = list(track_ids)
+                    identity_resolver.observe(identity_keys, embeddings, face_scores)
+                    person_ids = list(identity_keys)
                 else:
                     person_ids = identity_resolver.resolve(
-                        track_ids, embeddings, face_scores
+                        identity_keys, embeddings, face_scores
                     )
 
                 record = _assemble_frame(
@@ -719,9 +730,14 @@ def process_video(
                 mapping = identity_resolver.finalise()
                 for record in buffered:
                     for person in record["persons"]:
-                        track_id = person["track_id"]
+                        # Pass 1 left the accumulation key in person_id as a
+                        # placeholder. Remap from that, not from track_id: a
+                        # surrogate-keyed person has no track_id by definition,
+                        # and keying off it would drop exactly the people this
+                        # was added to recover.
+                        key = person["person_id"]
                         person["person_id"] = (
-                            mapping.get(track_id) if track_id is not None else None
+                            mapping.get(key) if key is not None else None
                         )
                     fh.write(json.dumps(record) + "\n")
     finally:

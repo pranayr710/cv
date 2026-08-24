@@ -859,6 +859,42 @@ class IdentityConfig:
     # a student who appears in 4 frames would trivially look "invariant".
     static_face_min_sightings: int = 8
 
+    # --- identifying people the tracker never picked up -------------------- #
+    #
+    # Measured on the real video: 164 of 801 person detections (20.5%) carried
+    # NO track_id, and identity was keyed on track_id alone, so every one of
+    # them was silently dropped from the student roster. Those people were
+    # detected -- they just never got identified, and then vanished from the
+    # count. This is the "not all students detected" complaint in its real form.
+    #
+    # The cause is not detection confidence (mean 0.527 for the unidentified,
+    # well above the 0.25 tracker threshold). It is that ByteTrack associates by
+    # box overlap and needs two CONSECUTIVE matches before issuing an id, while
+    # this pipeline samples 1 frame per second from a PANNING camera. Measured
+    # best IoU from each box to the next processed frame:
+    #
+    #   p10 0.113   p25 0.419   p50 0.721   p75 0.874
+    #
+    # 12.6% of boxes fall below IoU 0.20, ByteTrack's association floor, so they
+    # cannot be matched at all. ByteTrack assumes adjacent 30fps frames where
+    # boxes barely move; a one-second gap with camera motion destroys exactly
+    # the signal it depends on.
+    #
+    # So do not rely on it for these. A detection with a trustworthy face can be
+    # matched into the gallery on APPEARANCE, which across a one-second gap on a
+    # moving camera is far more reliable than box overlap -- and the embedding is
+    # already computed, so this costs nothing extra. Each such detection enters
+    # as its own single-frame surrogate key; the co-occurrence constraint in
+    # TwoPassIdentityResolver still applies, so it cannot be folded into someone
+    # who is visible alongside it.
+    identify_untracked: bool = True
+
+    # Surrogate keys start here to stay clear of real ByteTrack ids, which are
+    # small positive ints. Kept out of the output: a surrogate is an identity
+    # bookkeeping key, not a claim that the tracker tracked anything, so
+    # track_id in the JSONL stays null for these.
+    surrogate_key_base: int = 1_000_000
+
 
 @dataclass(frozen=True)
 class PipelineConfig:
@@ -902,6 +938,35 @@ class ProfileConfig:
     # A reviewer should be able to see what was rejected and why -- silently
     # dropping detections is how a pipeline starts lying about its own recall.
     report_rejected: bool = True
+
+    # --- who is the instructor -------------------------------------------- #
+    #
+    # The audit found the TEACHER being reported as a student, with the highest
+    # sighting count of any identity (125). The tracking was right; the ROLE was
+    # wrong. She receives a concentration score and skews every class aggregate.
+    #
+    # Four ways to tell teacher from student were measured on the audited video,
+    # all from signals the pipeline already computes, against the known teacher
+    # (id 8) and known students (ids 1-5). ALL FOUR FAILED -- the teacher sits
+    # inside the student range on every one:
+    #
+    #   signal            teacher    students      separates?
+    #   median height       219       137-230          no
+    #   aspect ratio       1.88      1.48-2.48         no
+    #   centroid travel    3.03      1.87-4.50         no
+    #   hips visible %       75%       18-93%          no
+    #
+    # A standing-vs-seated or walks-around heuristic therefore cannot be
+    # justified on this footage: at 640x360, with a panning camera and a teacher
+    # who is often at the front rather than pacing, the geometry simply does not
+    # distinguish the roles. Rather than ship a guess that is wrong in an
+    # invisible way, the role is stated explicitly by whoever ran the video --
+    # one id, named once per recording. Listed ids are reported with
+    # role="instructor" and excluded from student aggregates, never deleted.
+    #
+    # If a labelled multi-classroom set ever exists, revisit: this is a
+    # measurement gap, not a claim that the problem is unsolvable.
+    instructor_ids: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)

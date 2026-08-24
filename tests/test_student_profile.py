@@ -247,3 +247,63 @@ def test_rejected_entries_are_kept_visible_by_default(tmp_path) -> None:
     _write_jsonl(p, [_frame(0, 0, [_person(1, gaze_label="teacher")])])
     profiles = build_profiles(p)
     assert 1 in profiles  # present, just flagged
+
+
+# --------------------------------------------------------------------------- #
+# The instructor.
+#
+# The audit found the teacher reported as a student, with the highest sighting
+# count of any identity (125). Four geometric signals were measured against the
+# known teacher and known students -- height, aspect, travel, hips-visible --
+# and ALL FOUR put the teacher inside the student range. So the role is
+# declared, not inferred; see ProfileConfig.instructor_ids for the numbers.
+# --------------------------------------------------------------------------- #
+
+
+def test_declared_instructor_is_not_counted_as_a_student(tmp_path) -> None:
+    from dataclasses import replace
+
+    from backend.config import CONFIG
+
+    p = tmp_path / "run.jsonl"
+    _write_jsonl(p, [
+        _frame(i, i * 1000, [_person(8, gaze_label="teacher")]) for i in range(20)
+    ])
+    cfg = replace(CONFIG, profile=replace(CONFIG.profile, instructor_ids=(8,)))
+    profiles = build_profiles(p, config=cfg)
+    assert profiles[8]["role"] == "instructor"
+    assert profiles[8]["is_student"] is False
+    assert "instructor" in profiles[8]["rejected_reason"]
+
+
+def test_instructor_wins_over_the_frame_minimum(tmp_path) -> None:
+    """A declared instructor is an instructor whatever their sighting count --
+    the reason reported must not say 'transient' for a named person."""
+    from dataclasses import replace
+
+    from backend.config import CONFIG
+
+    p = tmp_path / "run.jsonl"
+    _write_jsonl(p, [_frame(0, 0, [_person(8, gaze_label="teacher")])])
+    cfg = replace(CONFIG, profile=replace(CONFIG.profile, instructor_ids=(8,)))
+    profiles = build_profiles(p, config=cfg)
+    assert profiles[8]["role"] == "instructor"
+    assert "transient" not in profiles[8]["rejected_reason"]
+
+
+def test_everyone_else_is_a_student_by_default(tmp_path) -> None:
+    p = tmp_path / "run.jsonl"
+    _write_jsonl(p, [
+        _frame(i, i * 1000, [_person(1, gaze_label="teacher")]) for i in range(4)
+    ])
+    profiles = build_profiles(p)
+    assert profiles[1]["role"] == "student"
+    assert profiles[1]["is_student"] is True
+
+
+def test_no_instructor_is_declared_by_default() -> None:
+    """Must never guess: an undeclared video reports everyone as a student
+    rather than silently demoting whoever looks most teacher-like."""
+    from backend.config import CONFIG
+
+    assert CONFIG.profile.instructor_ids == ()

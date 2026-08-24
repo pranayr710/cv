@@ -269,7 +269,20 @@ def build_profiles(
         # dropped and why -- silently discarding detections is how a pipeline
         # starts misreporting its own recall.
         rejected: str | None = None
-        if is_poster[person_id]:
+        role = "student"
+        if person_id in cfg.profile.instructor_ids:
+            # Stated by whoever ran the video, not inferred: four geometric
+            # signals were measured and none separated the teacher from the
+            # students (see ProfileConfig.instructor_ids). Reported, not
+            # deleted, but kept out of the student roster -- the audited video
+            # had the teacher as its highest-sighting "student".
+            role = "instructor"
+            rejected = (
+                "instructor: named as the person teaching this recording, so "
+                "not counted as a student (role is declared, not inferred -- "
+                "no measured signal separates the two on this footage)"
+            )
+        elif is_poster[person_id]:
             rejected = (
                 "printed face: appearance did not change across its sightings, "
                 "measured as a wall poster/portrait rather than a student "
@@ -288,6 +301,7 @@ def build_profiles(
             # see backend/identity.py. Carried forward explicitly so a report
             # cannot present an unverified id as a confirmed re-identification.
             "face_verified": person_id > 0,
+            "role": role,
             "is_student": rejected is None,
             "rejected_reason": rejected,
             "frames_seen": seen_count,
