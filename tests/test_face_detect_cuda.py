@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import sys
 
-import backend.face_detect as face_detect
+from backend import face_detect
 
 
 def _reset() -> None:
