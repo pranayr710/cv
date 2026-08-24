@@ -57,6 +57,84 @@ from backend.engagement import classify_engagement, summarise_engagement
 logger = logging.getLogger(__name__)
 
 
+def _people_in(record: dict) -> tuple[list[dict], bool]:
+    """The per-person entries of one record, from either input format.
+
+    This module was written against Stage 1+2 JSONL (``persons``). Stage 3
+    turns each of those into a graph ``node`` and Stage 4 adds temporal
+    features to it, so reading only Stage 1 meant everything the graph computed
+    -- the engagement verdict, the rolling attention percentage, sustained
+    distraction -- was recomputed here at best and lost at worst. Accepting
+    both shapes lets the profile be built from the richest record available
+    without duplicating Stage 3's logic.
+
+    Args:
+        record: One decoded JSONL line, in either format.
+
+    Returns:
+        ``(people, from_graph)``, where each person is normalised to the
+        Stage-1 field names this module already uses, and ``from_graph`` says
+        whether the graph's own richer fields are present.
+
+    Raises:
+        KeyError: If the record has neither ``persons`` nor ``nodes``.
+    """
+    if "persons" in record:
+        return record["persons"], False
+    if "nodes" not in record:
+        raise KeyError(
+            "record has neither 'persons' (Stage 1+2) nor 'nodes' (Stage 3+4); "
+            "is this a pipeline output file?"
+        )
+
+    people = []
+    for node in record["nodes"]:
+        features = node.get("features") or {}
+        expression = features.get("expression")
+        behaviour = features.get("behaviour")
+        gaze = features.get("gaze_label")
+        people.append({
+            "person_id": node.get("person_id"),
+            "role": node.get("role"),
+            "bbox": features.get("bbox"),
+            "expression": {"label": expression} if expression else None,
+            "behaviour": {"label": behaviour} if behaviour else None,
+            "head_pose": {"gaze_label": gaze} if gaze else None,
+            "posture": features.get("posture"),
+            # Already decided by Stage 3/4 -- carried, not recomputed.
+            "engagement": features.get("engagement"),
+            "eyes_closed": features.get("eyes_closed"),
+            "rolling_engagement_pct": features.get("rolling_engagement_pct"),
+            "is_sustained_distracted": features.get("is_sustained_distracted"),
+            "is_eyes_closed_sustained": features.get("is_eyes_closed_sustained"),
+            "is_poster": features.get("is_poster"),
+        })
+    return people, True
+
+
+def _summarise_posture(samples: list[dict]) -> dict[str, object]:
+    """Aggregate one student's posture geometry over the video.
+
+    Args:
+        samples: Per-frame posture dicts (or ``None`` entries) for one student.
+
+    Returns:
+        Frames with and without body keypoints, and the mean forward lean over
+        the frames that had it. Raw geometry only -- this deliberately does not
+        classify posture into "slouching"/"upright", because nothing in this
+        project has validated such a mapping (see :mod:`backend.posture`).
+    """
+    present = [s for s in samples if s]
+    leans = [
+        s["vertical_lean"] for s in present if s.get("vertical_lean") is not None
+    ]
+    return {
+        "frames_with_keypoints": len(present),
+        "frames_without_keypoints": len(samples) - len(present),
+        "mean_vertical_lean": (sum(leans) / len(leans)) if leans else None,
+    }
+
+
 def _tally(labels: list[str | None]) -> dict[str, object]:
     """Count non-``None`` labels, matching the shape of the project's other
     ``summarise_*`` helpers (``backend.expression``, ``backend.behaviour``).
@@ -161,6 +239,14 @@ def build_profiles(
     # Set by tools/reject_static_faces.py when an identity was measured to
     # be a printed face (wall poster) rather than a student.
     is_poster: dict[int, bool] = defaultdict(bool)
+    # Signals the graph already carries. Previously unreachable here, because
+    # this module only ever read Stage 1.
+    gaze_labels: dict[int, list[str | None]] = defaultdict(list)
+    posture_samples: dict[int, list[dict | None]] = defaultdict(list)
+    rolling_pct: dict[int, list[float]] = defaultdict(list)
+    sustained_distracted: dict[int, int] = defaultdict(int)
+    eyes_closed_sustained: dict[int, int] = defaultdict(int)
+    graph_roles: dict[int, str] = {}
 
     with src.open(encoding="utf-8") as fh:
         for line in fh:
@@ -169,13 +255,26 @@ def build_profiles(
                 continue
             record = json.loads(line)
             ts_ms = record["timestamp_ms"]
-            for person in record["persons"]:
+            people, from_graph = _people_in(record)
+            for person in people:
                 person_id = person.get("person_id")
                 if person_id is None:
                     continue
 
                 if person.get("is_poster"):
                     is_poster[person_id] = True
+
+                posture_samples[person_id].append(person.get("posture"))
+                if from_graph:
+                    if person.get("role"):
+                        graph_roles[person_id] = person["role"]
+                    pct = person.get("rolling_engagement_pct")
+                    if pct is not None:
+                        rolling_pct[person_id].append(float(pct))
+                    if person.get("is_sustained_distracted"):
+                        sustained_distracted[person_id] += 1
+                    if person.get("is_eyes_closed_sustained"):
+                        eyes_closed_sustained[person_id] += 1
 
                 frames_seen[person_id] += 1
                 first_ms[person_id] = min(first_ms.get(person_id, ts_ms), ts_ms)
@@ -199,27 +298,34 @@ def build_profiles(
                     else None
                 )
                 behaviour_label = behaviour["label"] if behaviour else None
+                gaze_labels[person_id].append(gaze_label)
 
                 # Fallback signals, used when the behaviour model produced
                 # nothing -- both already computed by the pipeline and
                 # previously discarded. See EngagementConfig for why.
                 face = person.get("face")
-                eyes_closed = None
-                if face and face.get("ear") is not None:
+                eyes_closed = person.get("eyes_closed")
+                if eyes_closed is None and face and face.get("ear") is not None:
                     eyes_closed = face["ear"] < cfg.face.ear_closed_threshold
                 phone_nearby = _phone_overlaps(
-                    person["bbox"], record.get("objects", []), cfg
+                    person.get("bbox") or [0, 0, 0, 0], record.get("objects", []), cfg
                 )
 
-                engagement_verdicts[person_id].append(
-                    classify_engagement(
-                        gaze_label,
-                        behaviour_label,
-                        cfg.engagement,
-                        phone_nearby=phone_nearby,
-                        eyes_closed=eyes_closed,
+                if from_graph and person.get("engagement") is not None:
+                    # Stage 3 already applied exactly this rule and Stage 4
+                    # refined it over time. Re-deriving it here would be a
+                    # second, silently diverging copy of the precedence logic.
+                    engagement_verdicts[person_id].append(person["engagement"])
+                else:
+                    engagement_verdicts[person_id].append(
+                        classify_engagement(
+                            gaze_label,
+                            behaviour_label,
+                            cfg.engagement,
+                            phone_nearby=phone_nearby,
+                            eyes_closed=eyes_closed,
+                        )
                     )
-                )
                 # Track whether ANY off-task-capable evidence was ever
                 # available for this student, across all three routes. Used
                 # below to decide whether a 100% score is a real finding or
@@ -274,7 +380,8 @@ def build_profiles(
         # dropped and why -- silently discarding detections is how a pipeline
         # starts misreporting its own recall.
         rejected: str | None = None
-        role = "student"
+        # The graph already assigned a role; honour it rather than re-deriving.
+        role = graph_roles.get(person_id, "student")
         if person_id in cfg.profile.instructor_ids:
             # Stated by whoever ran the video, not inferred: four geometric
             # signals were measured and none separated the teacher from the
@@ -292,6 +399,13 @@ def build_profiles(
                 "printed face: appearance did not change across its sightings, "
                 "measured as a wall poster/portrait rather than a student "
                 "(see backend/identity.py appearance_invariance)"
+            )
+        elif cfg.profile.require_face_verified and person_id < 0:
+            rejected = (
+                "unidentified: no face good enough to establish who this is, so "
+                "this detection cannot be attributed to a student (reported as "
+                "unidentified rather than counted as one -- see "
+                "ProfileConfig.require_face_verified)"
             )
         elif seen_count < cfg.profile.min_frames_for_profile:
             rejected = (
@@ -316,6 +430,28 @@ def build_profiles(
             "expression": _tally(expression_labels[person_id]),
             "behaviour": behaviour_summary,
             "concentration": concentration,
+            # Where the student was looking, frame by frame, tallied. Head-pose
+            # gaze is the one attention signal available on every face, and it
+            # was previously consumed to compute concentration and then thrown
+            # away, so a reader could not see what the verdict rested on.
+            "attention": _tally(gaze_labels[person_id]),
+            "posture": _summarise_posture(posture_samples[person_id]),
+            # Only populated from a Stage 4 input; a Stage 1 file has no
+            # temporal analysis to carry, and reporting zeros there would read
+            # as "measured, none found" instead of "not measured".
+            "temporal": (
+                {
+                    "mean_rolling_engagement_pct": (
+                        sum(rolling_pct[person_id]) / len(rolling_pct[person_id])
+                        if rolling_pct[person_id]
+                        else None
+                    ),
+                    "frames_sustained_distracted": sustained_distracted[person_id],
+                    "frames_eyes_closed_sustained": eyes_closed_sustained[person_id],
+                }
+                if person_id in graph_roles
+                else None
+            ),
         }
 
     if not cfg.profile.report_rejected:
