@@ -89,3 +89,96 @@ ids). None of them could see a duplicate, a merge, a poster, or a teacher,
 because all four are perfectly consistent detections of the wrong thing. A
 known headcount and a look at the actual frames found in one pass what months of
 metrics did not.
+
+---
+
+# Re-audit after quality-gated identity creation (2026-08-25)
+
+The verdict table above described the pre-clustering 18-id state. This section
+replaces it with a fresh audit of the current pipeline, judged by eye from
+contact sheets rather than from counts, as the Phase 1 gate requires.
+
+## What was run, in order
+
+1. `tools/sweep_identity.py` — first execution ever. **No `match_threshold`
+   value reaches the ground truth**: best is 11 ids at 0.20, 13 at the shipped
+   0.35, 17 at 0.60. Duplicate frames are 0 at every value and no-id is a flat
+   6.3%, so the threshold is not the lever.
+2. Duplicate-box hypothesis — **measured and rejected**. Over 1321 same-frame
+   box pairs, no overlapping pair had matching faces (similarity median 0.041,
+   max 0.307, all under the 0.35 floor). Overlapping boxes on this footage are
+   adjacent students, not one person detected twice.
+3. Quality-gated identity creation (`IdentityConfig.quality_gated_creation`) —
+   the untried half of `docs/LITERATURE_REVIEW.md` §2. This is the lever that
+   moved the number.
+4. Poster rejection (`tools/reject_static_faces.py`) and the visual audit.
+
+## Verdict table — 10 surviving ids, judged by eye
+
+Ground truth: **7 students + 1 teacher = 8 people.**
+
+| id | frames | verdict from the contact sheet |
+|---|---|---|
+| 1 | 80 | ✅ pure — one girl, consistent across all 12 crops |
+| 2 | 86 | ✅ pure — one girl |
+| 3 | 74 | ❌ **merge** — 9 crops of a boy in cyan, then 3 of a girl |
+| 4 | 77 | ✅ pure — one girl |
+| 5 | 106 | ❌ **merge** — one girl, plus 2 crops of a woman in red |
+| 6 | 68 | ✅ pure — one girl |
+| 7 | 59 | ⚠️ pure but **likely the teacher**, not a student |
+| 8 | 46 | ⚠️ consistent, but back-of-head crops — identity unjudgeable by eye |
+| 9 | 55 | ✅ pure — one girl |
+| 10 | 10 | ⚠️ thin — 10 crops, plausibly a split of another id |
+
+Rejected automatically and confirmed correct by eye:
+
+* Two **wall posters** — a bridal portrait (appearance invariance 0.928) and a
+  man's portrait (0.935), each identical in every crop. One of them was also
+  splitting across a second id.
+* Eight **transient** ids of 1–2 frames.
+
+## Gate status
+
+| condition | result |
+|---|---|
+| ids ≤ 10 for 8 real people | ✅ **10** |
+| duplicate frames stays 0 | ✅ **0** |
+| no-id ≤ 7% | ❌ **17.2%** (7.2% before gating) |
+| confirmed by contact sheets | ✅ done — this table |
+
+**Two of the surviving errors are merges, not splits.** That matters: the
+count being close to right partly reflects merges cancelling splits, so 10 is
+not 10 correct people. A merge blends two students' expression and attention
+into one record describing nobody, and is the worse failure of the two.
+
+## The tension the gate cannot resolve by itself
+
+The three conditions pull against each other under this lever. The extra
+identities *are* low-quality faces. Either they found an id — and the roster
+over-counts — or they do not, and no-id rises. Measured:
+
+| founding floor | ids | no-id % |
+|---|---|---|
+| none (gate off) | 13 | 7.1 |
+| 14 px | 12 | 8.2 |
+| 20 px | 11 | 13.9 |
+| **24 px** | **10** | 14.4 |
+| 32 px | 10 | 14.6 |
+
+No setting satisfies both `ids ≤ 10` and `no-id ≤ 7%`. Meeting both requires
+those faces to be *better*, not classified differently — which is Phase 2's
+SAHI tiling for the back-of-room region, not a Phase 1 threshold. Phase 1 has
+taken identity as far as this lever goes.
+
+## Gaze was uncalibrated, and it mattered more than expected
+
+`HeadPoseConfig.yaw_reference_deg` was still 0.0. `tools/calibrate_gaze.py`
+measured **+44.1°** for this camera — in line with the +37.4° and +35.5°
+measured on the two others, so an off-centre mount is the norm here, not the
+exception. Before calibration 73.9% of faces read "right" and *every* student's
+concentration was 100% `unknown`. After, the split is teacher 48.7% / left
+28.5% / right 14.2% / down 8.6%, and concentration becomes a real number for
+all 10 students — one of them at 12%, from 27 frames looking down.
+
+This did not change identity, but it means every attention figure recorded
+before this date was measuring the camera angle rather than the students.
