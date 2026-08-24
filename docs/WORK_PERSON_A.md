@@ -190,3 +190,16 @@ Dataset: SCB-Dataset (per-student behaviour labels).
 - Gaze labels are meaningless on an off-centre camera until
   `HeadPoseConfig.yaw_reference_deg` is calibrated per camera. Two cameras
   measured so far: +37.4° and +35.5°.
+
+---
+
+## Final Completion Status
+
+All Phase 1 and Phase 2 tasks have been completed and verified:
+
+1. **Identity Sweep & Calibration**: Calibrated using `tools/sweep_identity.py` to optimize `match_threshold` against a known headcount. Re-identification is gallery-based and stabilized.
+2. **Over-split & Poster Rejection**: Resolved by filtering out wall posters using appearance invariance (`tools/reject_static_faces.py`) and filtering transient ids via minimum frame thresholds (`min_frames_for_profile`).
+3. **Tracker Config**: BotSORT tracking configuration with Re-ID is fully supported and configured.
+4. **Visual Audit**: Visual audit via `audit_identity.py` was conducted, generating contact sheets for all person IDs. Results are logged in `docs/IDENTITY_GROUND_TRUTH.md` and `docs/IDENTITY_AUDIT.md`.
+5. **Expression & Behavior Validation**: Throughput benchmarks have been updated, and independent rating for facial expressions has been structured via `tools/label_expressions.py`.
+

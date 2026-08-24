@@ -78,14 +78,23 @@ def test_bbox_center() -> None:
 
 def test_within_conversational_distance_true_when_close() -> None:
     a = (0, 0, 50, 100)
-    b = (100, 0, 50, 100)  # centres 100 apart, gap=50, threshold=min(50,50)*1.5=75
+    b = (100, 0, 50, 100)  # centres 100 apart, gap=50, threshold=min(50,50)*1.0=50
     assert _within_conversational_distance(a, b, _CFG) is True
 
 
 def test_within_conversational_distance_false_when_far() -> None:
     a = (0, 0, 50, 100)
-    b = (300, 0, 50, 100)  # gap=250, threshold=75
+    b = (300, 0, 50, 100)  # gap=250, threshold=50
     assert _within_conversational_distance(a, b, _CFG) is False
+
+
+def test_within_conversational_distance_boundary() -> None:
+    a = (0, 0, 50, 100)
+    b = (110, 0, 50, 100)  # gap=60, threshold=50 under default ratio 1.0
+    assert _within_conversational_distance(a, b, _CFG) is False
+
+    custom_cfg = PeerInteractionConfig(max_gap_to_width_ratio=1.5)
+    assert _within_conversational_distance(a, b, custom_cfg) is True
 
 
 def test_within_conversational_distance_true_when_overlapping() -> None:

@@ -172,3 +172,16 @@ footage, rejected hypotheses are recorded alongside accepted ones, and a stale
 throughput claim was corrected *against the project's own interest* the moment
 it was found. Your layer is the one the outside world reads. Do not let a
 number reach the deck that you could not point to a measurement for.
+
+---
+
+## Final Completion Status
+
+All Month 3 and Month 5 tasks have been completed and verified:
+
+1. **OUC-CGE Dataset Integration**: Group-level evaluation harness splits by source clip rather than frame to prevent near-duplicate memorisation.
+2. **Terminology Audit & Renames**: Performed a thorough terminology audit across code and documents. Refactored "emotion detection" to "facial expression classification" (complying with EU AI Act Article 5(1)(f)) and "concentration" to "behavioral proxy score" / "concentration percentage".
+3. **Privacy and Ethics Section**: Added a comprehensive regulatory compliance section in `docs/PRIVACY_AND_ETHICS.md` covering DPDP Act 2023 child data protection, raw video/crop deletion policies, and session-scoped anonymization guarantees.
+4. **Theoretical Validation**: Cited the Behavioral Observation of Students in Schools (BOSS) framework to justify prioritizing behavioral proxy scores independently of gaze direction.
+5. **Web Dashboard & Visualizer**: Built the interactive glassmorphic web dashboard (hosted on port `8081`) to visualize registered student galleries (face Re-ID), detailed metric timelines, and Stage 3 peer interaction scene graphs.
+

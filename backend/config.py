@@ -689,7 +689,7 @@ class PeerInteractionConfig:
     # their two bbox widths, scaled by this factor, exceeds the gap between
     # their bboxes. Scale-relative (not a fixed pixel count) so it holds
     # across near/far students in the same frame.
-    max_gap_to_width_ratio: float = 1.5
+    max_gap_to_width_ratio: float = 1.0
 
     # How close each person's shoulder-line orientation must be to
     # "perpendicular to the line connecting them" to count as oriented
@@ -714,6 +714,30 @@ class PeerInteractionConfig:
     # this is reporting a detected joint orientation, not a sustained
     # concern, so it can surface sooner.
     sustained_seconds: float = 20.0
+
+
+@dataclass(frozen=True)
+class SceneGraphConfig:
+    """Stage 3 -- scene graph generation parameters."""
+
+    # Two nodes are spatially adjacent if their scale-relative gap is within
+    # this ratio times the narrower of their widths.
+    adjacency_gap_ratio: float = 2.0
+
+    # Max distance perpendicular to the connecting line segment between two
+    # students for a shared object to be considered "between" them, in pixels.
+    max_shared_object_distance_px: float = 150.0
+
+
+@dataclass(frozen=True)
+class TemporalConfig:
+    """Stage 4 -- temporal windowing analysis parameters."""
+
+    # Rolling window sizes and thresholds (consolidated from defaults).
+    window_seconds: float = 15.0
+    sustained_attention_seconds: float = 90.0
+    sustained_interaction_seconds: float = 20.0
+
 
 
 @dataclass(frozen=True)
@@ -1061,6 +1085,8 @@ class Config:
     peer_interaction: PeerInteractionConfig = field(
         default_factory=PeerInteractionConfig
     )
+    scene_graph: SceneGraphConfig = field(default_factory=SceneGraphConfig)
+    temporal: TemporalConfig = field(default_factory=TemporalConfig)
     fairness_audit: FairnessAuditConfig = field(default_factory=FairnessAuditConfig)
     tracking: TrackingConfig = field(default_factory=TrackingConfig)
     pipeline: PipelineConfig = field(default_factory=PipelineConfig)
