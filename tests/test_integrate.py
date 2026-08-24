@@ -140,6 +140,43 @@ def _make_fixture_video(path: Path, n_frames: int) -> int:
     return n_frames
 
 
+class _FakeExpression:
+    """Returns a fake ExpressionResult for each face bbox."""
+
+    def classify(self, frame: np.ndarray, face_bboxes) -> list:
+        from backend.expression import ExpressionResult
+        out = []
+        for bbox in face_bboxes:
+            if bbox is None:
+                out.append(None)
+            else:
+                out.append(
+                    ExpressionResult(
+                        label="neutral",
+                        confidence=0.8,
+                        distribution={"Happiness": 0.1, "Sadness": 0.1, "Neutral": 0.8},
+                    )
+                )
+        return out
+
+
+class _FakeBehaviourClassifier:
+    """Returns a fake BehaviourResult for each student bbox."""
+
+    def classify(self, frame: np.ndarray, student_bboxes) -> list:
+        from backend.behaviour import BehaviourResult
+        out = []
+        for bbox in student_bboxes:
+            out.append(
+                BehaviourResult(
+                    label="write",
+                    confidence=0.85,
+                    reliability="measured",
+                )
+            )
+        return out
+
+
 def _fakes(bbox: tuple[int, int, int, int] = (20, 15, 60, 80)) -> dict:
     """Injected-estimator kwargs for process_video.
 
@@ -157,6 +194,8 @@ def _fakes(bbox: tuple[int, int, int, int] = (20, 15, 60, 80)) -> dict:
         "face_analyzer": _FakeFaceAnalyzer(),
         "headpose_estimator": _FakeHeadPose(),
         "posture_analyzer": _FakePostureAnalyzer(),
+        "expression_recognizer": _FakeExpression(),
+        "behaviour_classifier": _FakeBehaviourClassifier(),
     }
 
 

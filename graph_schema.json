@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://classgraph.local/schema/stage3_frame.json",
+  "title": "ClassGraph Scene Graph Frame",
+  "description": "One scene graph per processed video frame. Emitted as JSONL.",
+  "type": "object",
+  "required": [
+    "frame_id",
+    "timestamp_ms",
+    "nodes",
+    "edges"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frame_id": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-indexed frame index in the source video."
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Frame presentation time in milliseconds from video start."
+    },
+    "nodes": {
+      "type": "array",
+      "description": "Nodes representing students and instructors.",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Edges representing relations between nodes.",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": [
+        "id",
+        "person_id",
+        "role",
+        "features"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Unique node identifier, matches track_id if available, otherwise surrogate."
+        },
+        "person_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Stable identity key from Stage 2."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "student",
+            "instructor"
+          ]
+        },
+        "features": {
+          "type": "object",
+          "required": [
+            "bbox",
+            "gaze_label",
+            "posture",
+            "expression",
+            "behaviour",
+            "engagement",
+            "eyes_closed",
+            "rolling_engagement_pct",
+            "is_sustained_distracted",
+            "is_eyes_closed_sustained"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bbox": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "prefixItems": [
+                { "type": "number", "minimum": 0 },
+                { "type": "number", "minimum": 0 },
+                { "type": "number", "minimum": 0 },
+                { "type": "number", "minimum": 0 }
+              ],
+              "minItems": 4,
+              "maxItems": 4
+            },
+            "gaze_label": {
+              "type": [ "string", "null" ]
+            },
+            "posture": {
+              "type": [ "object", "null" ]
+            },
+            "expression": {
+              "type": [ "string", "null" ]
+            },
+            "behaviour": {
+              "type": [ "string", "null" ]
+            },
+            "engagement": {
+              "type": [ "string", "null" ],
+              "enum": [ "on", "off", null ]
+            },
+            "eyes_closed": {
+              "type": [ "boolean", "null" ]
+            },
+            "rolling_engagement_pct": {
+              "type": [ "number", "null" ],
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            "is_sustained_distracted": {
+              "type": [ "boolean", "null" ]
+            },
+            "is_eyes_closed_sustained": {
+              "type": [ "boolean", "null" ]
+            }
+          }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": [
+        "type",
+        "source",
+        "target",
+        "features"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "spatial_adjacency",
+            "mutual_orientation",
+            "shared_object"
+          ]
+        },
+        "source": {
+          "type": "integer",
+          "description": "Source node id."
+        },
+        "target": {
+          "type": "integer",
+          "description": "Target node id."
+        },
+        "features": {
+          "type": "object",
+          "required": [
+            "distance_px",
+            "oriented_fraction",
+            "shared_object_class",
+            "is_sustained_interaction",
+            "rolling_interaction_fraction"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "distance_px": {
+              "type": [ "number", "null" ],
+              "minimum": 0.0
+            },
+            "oriented_fraction": {
+              "type": [ "number", "null" ],
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            "shared_object_class": {
+              "type": [ "string", "null" ]
+            },
+            "is_sustained_interaction": {
+              "type": [ "boolean", "null" ]
+            },
+            "rolling_interaction_fraction": {
+              "type": [ "number", "null" ],
+              "minimum": 0.0,
+              "maximum": 1.0
+            }
+          }
+        }
+      }
+    }
+  }
+}
