@@ -419,58 +419,124 @@ class TwoPassIdentityResolver:
             self._counts[track_id] += 1
 
     def finalise(self) -> dict[int, int]:
-        """Assign a person id to every observed track, best evidence first.
+        """Assign a person id to every observed track via constrained clustering.
 
-        Tracks are resolved in descending order of how many good face
-        observations they contributed, so the best-evidenced tracks establish
-        the gallery entries and weaker ones match against them -- rather than a
-        single noisy early track defining an identity that better observations
-        then have to match.
+        Replaces an earlier sequential-greedy version (each track matched
+        once, in isolation, against a growing gallery) after a visual audit
+        found it merging three different people into one identity. Root
+        cause, per docs/LITERATURE_REVIEW.md section 2: sequential matching
+        against an EMA-updated gallery entry is a pairwise VERIFICATION rule
+        applied to what is actually a CLUSTERING problem, and it fails by
+        TRANSITIVITY -- if track A matches track B's (already-drifted)
+        stored embedding, and B's embedding had earlier drifted toward C, A
+        can end up sharing an id with C despite A and C never being compared
+        to each other directly.
+
+        Constrained AGGLOMERATIVE clustering (Wu et al., CVPR 2013,
+        "Constrained Clustering and Its Application to Face Clustering in
+        Videos") avoids this structurally: at every step, the two most
+        similar clusters merge only if BOTH hold -- their similarity clears
+        :data:`IdentityConfig.match_threshold`, AND no member of one cluster
+        ever co-occurred with a member of the other (the same hard
+        cannot-link constraint the previous version enforced, but checked
+        globally between whole clusters at every merge, not through one
+        growing centroid a later track happens to land near).
+
+        Cost is O(k^3) in the number of evidenced tracks k, fine for a single
+        video's handful-to-low-hundreds of tracks; this would not scale to a
+        gallery shared across many videos, which is out of scope (see the
+        module's session-reset privacy boundary).
 
         Returns:
             A ``{track_id: person_id}`` mapping covering every observed track.
             Tracks that never produced a trustworthy face get a negative id,
             with the same meaning as in :class:`IdentityResolver`.
         """
-        gallery = IdentityGallery(self.config)
         mapping: dict[int, int] = {}
         faceless_next = -1
-
-        ordered = sorted(
-            self._seen_tracks, key=lambda t: -self._counts.get(t, 0)
-        )
-        for track_id in ordered:
-            count = self._counts.get(track_id, 0)
-            if count == 0 or track_id not in self._sums:
+        for track_id in self._seen_tracks:
+            if self._counts.get(track_id, 0) == 0 or track_id not in self._sums:
                 mapping[track_id] = faceless_next
                 faceless_next -= 1
-                continue
-            mean = self._sums[track_id] / count
-            norm = np.linalg.norm(mean)
-            if norm > 0:
-                mean = mean / norm
 
-            # Any person id already given to a track that co-occurs with this
-            # one is off limits, however close the embeddings look. Without
-            # this, two different students in one frame could both be matched
-            # to the same gallery entry -- measured on real footage as 56 of
-            # 331 frames containing a duplicated person id.
-            forbidden = {
-                mapping[other]
-                for other in self._conflicts.get(track_id, ())
-                if other in mapping and mapping[other] > 0
-            }
-            person_id, _is_new = gallery.match_or_register(mean, forbidden)
-            mapping[track_id] = person_id
+        evidenced = [t for t in self._seen_tracks if t not in mapping]
+        if evidenced:
+            for person_id, members in enumerate(
+                self._cluster(evidenced), start=1
+            ):
+                for track_id in members:
+                    mapping[track_id] = person_id
 
         logger.info(
-            "Two-pass identity: %d tracks -> %d distinct person ids "
-            "(%d never face-matched).",
+            "Two-pass identity (constrained clustering): %d tracks -> %d "
+            "distinct person ids (%d never face-matched).",
             len(mapping),
             len(set(mapping.values())),
             sum(1 for v in mapping.values() if v < 0),
         )
         return mapping
+
+    def _cluster(self, evidenced: list[int]) -> list[set[int]]:
+        """Constrained average-linkage clustering over evidenced tracks.
+
+        Args:
+            evidenced: Track ids that produced at least one trustworthy face
+                observation (have an entry in ``self._sums``/``self._counts``).
+
+        Returns:
+            A list of disjoint track-id sets, one per resulting person,
+            ordered by descending total evidence (most-observed person first)
+            to match the previous version's "best evidence establishes the
+            identity" convention.
+        """
+        embedding: dict[int, np.ndarray] = {}
+        weight: dict[int, int] = {}
+        members: dict[int, set[int]] = {}
+        conflicts: dict[int, set[int]] = {}
+        for t in evidenced:
+            mean = self._sums[t] / self._counts[t]
+            norm = np.linalg.norm(mean)
+            embedding[t] = mean / norm if norm > 0 else mean
+            weight[t] = self._counts[t]
+            members[t] = {t}
+            conflicts[t] = set(self._conflicts.get(t, ()))
+
+        clusters = list(evidenced)
+        threshold = self.config.match_threshold
+
+        while len(clusters) > 1:
+            best_pair: tuple[int, int] | None = None
+            best_sim = threshold  # a merge below the floor is never allowed
+            for i in range(len(clusters)):
+                a = clusters[i]
+                for j in range(i + 1, len(clusters)):
+                    b = clusters[j]
+                    # Cannot-link: provably different people if any member of
+                    # one cluster was ever alive in the same frame as any
+                    # member of the other. Checked before spending a
+                    # similarity computation on a pair that can never merge.
+                    if (members[b] & conflicts[a]) or (members[a] & conflicts[b]):
+                        continue
+                    sim = _cosine_similarity(embedding[a], embedding[b])
+                    if sim > best_sim:
+                        best_sim = sim
+                        best_pair = (a, b)
+            if best_pair is None:
+                break
+
+            a, b = best_pair
+            total = weight[a] + weight[b]
+            merged = (weight[a] * embedding[a] + weight[b] * embedding[b]) / total
+            norm = np.linalg.norm(merged)
+            embedding[a] = merged / norm if norm > 0 else merged
+            weight[a] = total
+            members[a] |= members[b]
+            conflicts[a] |= conflicts[b]
+            clusters.remove(b)
+            del embedding[b], weight[b], members[b], conflicts[b]
+
+        clusters.sort(key=lambda c: -weight[c])
+        return [members[c] for c in clusters]
 
 
 def appearance_invariance(crops: Sequence[np.ndarray]) -> float | None:

@@ -564,3 +564,74 @@ def test_keys_for_rejects_mismatched_lengths() -> None:
     resolver = TwoPassIdentityResolver()
     with pytest.raises(ValueError):
         resolver.keys_for([None, None], [PERSON_A], [0.9])
+
+
+# --------------------------------------------------------------------------- #
+# Constrained clustering replaces sequential greedy matching.
+#
+# The visual audit (docs/IDENTITY_AUDIT.md) found id 2 merging three different
+# people. Root cause: sequential matching against an EMA-updated gallery entry
+# is vulnerable to TRANSITIVITY -- A matches B's drifted embedding, B had
+# earlier drifted toward C, so A ends up sharing an id with C despite A and C
+# never being compared directly. Constrained clustering (Wu et al., CVPR 2013)
+# fixes this structurally by comparing whole clusters at every merge, not one
+# growing centroid. See docs/LITERATURE_REVIEW.md section 2.
+# --------------------------------------------------------------------------- #
+
+
+def test_transitivity_does_not_chain_three_different_people() -> None:
+    """The exact real failure mode: A~B is close, B~C is close, but A~C is
+    NOT close enough on its own. Sequential greedy matching against a single
+    drifting gallery entry could still chain all three into one id; clustering
+    must not, because a direct A-vs-C comparison is what governs the final
+    grouping, not a chain of intermediate steps."""
+    # A 2-D-like construction embedded in 512 dims: three points spaced so
+    # consecutive pairs are similar but the endpoints are not, all normalised.
+    base = np.zeros(512, dtype=np.float32)
+    a = base.copy(); a[0] = 1.0
+    b = base.copy(); b[0] = 0.6; b[1] = 0.8
+    c = base.copy(); c[1] = 1.0
+    a, b, c = (v / np.linalg.norm(v) for v in (a, b, c))
+
+    assert _cosine_similarity(a, b) > 0.5
+    assert _cosine_similarity(b, c) > 0.5
+    assert _cosine_similarity(a, c) < 0.35  # below match_threshold: NOT the same person
+
+    resolver = TwoPassIdentityResolver(IdentityConfig(match_threshold=0.35))
+    for _ in range(5):
+        resolver.observe([1], [a], [0.9])
+    for _ in range(5):
+        resolver.observe([2], [b], [0.9])
+    for _ in range(5):
+        resolver.observe([3], [c], [0.9])
+    mapping = resolver.finalise()
+
+    assert mapping[1] != mapping[3], (
+        "A and C were merged via a B-shaped transitivity chain despite "
+        "never being similar enough to match directly"
+    )
+
+
+def test_clustering_still_merges_a_genuine_reappearance() -> None:
+    """Sanity check that fixing transitivity did not also break the module's
+    core purpose: a real re-identification across a track gap must still
+    merge, with no intermediate lookalike involved."""
+    resolver = TwoPassIdentityResolver(IdentityConfig(match_threshold=0.35))
+    for _ in range(5):
+        resolver.observe([10], [PERSON_A], [0.9])
+    for _ in range(5):
+        resolver.observe([11], [_nudged(PERSON_A, 0.02, 7)], [0.9])
+    mapping = resolver.finalise()
+    assert mapping[10] == mapping[11]
+
+
+def test_best_evidenced_cluster_gets_person_id_one() -> None:
+    """Preserves the previous convention: the most-observed identity should
+    be the one a reviewer sees numbered first."""
+    resolver = TwoPassIdentityResolver(IdentityConfig(match_threshold=0.35))
+    for _ in range(20):
+        resolver.observe([1], [PERSON_A], [0.9])
+    for _ in range(3):
+        resolver.observe([2], [PERSON_B], [0.9])
+    mapping = resolver.finalise()
+    assert mapping[1] == 1
