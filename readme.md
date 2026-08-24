@@ -19,6 +19,10 @@ activity) is built but deliberately paused until Part 1 is solid.
   narrative log: every bug found, how it was verified (not assumed), and the
   measurement behind every number in this project.
 - **[schema.json](schema.json)** — the frozen per-frame output contract.
+- **Work split across the five stages, one file per person** —
+  [Person A](docs/WORK_PERSON_A.md) (Perception & Identity, stages 1–2),
+  [Person B](docs/WORK_PERSON_B.md) (Relations & Time, stages 3–4),
+  [Person C](docs/WORK_PERSON_C.md) (Group Activity & Reporting, stage 5).
 - **[HANDOFF.md](HANDOFF.md)** — a dated (2026-08-07) point-in-time snapshot
   for bringing a new session up to speed on Week 1 state. Historical; see
   PART1_PLAN.md for current state instead.

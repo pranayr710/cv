@@ -27,3 +27,8 @@ ppt_preview/
 
 # Ultralytics training runs (weights + plots; regenerate with tools/train_behaviour.py)
 runs/
+
+# Presentation binaries and their source images (regenerate with build_ppt.py)
+*.pptx
+ppt_assets/
+*.zip
