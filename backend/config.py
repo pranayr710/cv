@@ -370,12 +370,37 @@ class BehaviourConfig:
     # Produced by tools/train_behaviour.py. Under runs/ which is gitignored, so
     # a fresh clone must retrain (or be pointed at a copied checkpoint) rather
     # than silently running an untrained model.
+    # Trained by tools/train_behaviour.py on the merged 4-class dataset
+    # (877 train / 58 val images, 6091 boxes). Early-stopped at epoch 27 of a
+    # 60-epoch run, 23 minutes on an RTX 4050.
+    #
+    # Validation, 58 images / 271 instances:
+    #
+    #                    P      R   mAP50  mAP50-95
+    #   all           0.650  0.586  0.607     0.269
+    #   write         0.724  0.681  0.769     0.332
+    #   using_device  0.751  0.700  0.720     0.336
+    #   sleep         0.669  0.494  0.520     0.262
+    #   read          0.455  0.469  0.420     0.143
+    #
+    # This settles the read/write merge experiment the plan called for. The
+    # question was whether to collapse the two into one `studying` class,
+    # keeping them separate only if `write` is healthy standalone. It is --
+    # mAP50 0.769, the strongest class in the set. `read` is the weak one at
+    # 0.420, which matches the literature rather than contradicting it
+    # (SCB-ST-Dataset4 reaches 57.8% on writing with a strong temporal model).
+    # So the classes stay separate, and `read` carries its weakness in the
+    # reliability field rather than being hidden by a merge.
     weights: str = "runs/behaviour/merged4_aug/weights/best.pt"
     device: Literal["cuda", "cpu", "auto"] = "auto"
 
     # Trained at 960 for VRAM reasons (batch 4 on a 6.4 GB card); inference uses
     # the same size, since matching train/test resolution is the safer default.
-    imgsz: int = 960
+    # Must match the size the weights were trained at. Training ran at 640
+    # because 960 with batch 8 wanted 9.05 GB on a 6.4 GB card and spilled
+    # into system memory over PCIe -- 10 s/iteration, an 18-hour run. At 640
+    # it fits in VRAM and the same 42 epochs took 23 minutes.
+    imgsz: int = 640
 
     # Detection confidence. Swept on held-out clips, and lowering it does NOT
     # help -- for the weakest class, `using_device`, recall moves 20.0% -> 24.4%

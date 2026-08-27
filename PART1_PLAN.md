@@ -55,6 +55,14 @@ independently hand-labelled classroom images, not self-reported.
 
 - **BoT-SORT was evaluated and not adopted.** ByteTrack associates almost entirely by IoU, and 12.6% of boxes fall below its floor between consecutive processed frames on panning footage, so the swap to BoT-SORT (global motion compensation plus appearance ReID) was expected to help. Replaying one fixed set of 735 detections through both: ByteTrack 42 track ids / 20.3% untracked / 0.7 ms per frame; BoT-SORT 44 ids / 14.7% untracked / 10.8 ms. It leaves fewer detections untracked, which is real, but produces slightly more ids at 15x the cost — and ids are what the identity gate is scored on. ReID made no difference whatever, which fits the rest of this footage's story: at 27-37px faces, different students reach 0.6-0.8 cosine similarity, so an appearance embedding has nothing to separate. Available behind `TrackingConfig.tracker="botsort"`; worth revisiting on higher-resolution footage.
 
+- **The behaviour model is trained, and it does not transfer to this footage.** Retrained on the merged 4-class set (877 train / 58 val images, 6091 boxes), early-stopped at epoch 27 of 60 in 23 minutes on an RTX 4050. Validation mAP50 0.607: `write` 0.769, `using_device` 0.720, `sleep` 0.520, `read` 0.420.
+
+  That settles the read/write merge experiment. The rule was to collapse them into one `studying` class unless `write` was healthy standalone — it is the strongest class in the set, so they stay separate, and `read` carries its weakness in the `reliability` field rather than being hidden inside a merge. `read` being the weak one matches the literature rather than contradicting it.
+
+  But on the audited clip the model fires on **3 of 801 person detections**, and `write` never fires at all — even at conf 0.04, which is far below anything usable. This is not a broken model: on 20 images from its own validation distribution it produces 117 detections at conf 0.30 (write 50, using_device 38, read 28). The training images are near-full-frame classrooms at 1920x1080; the audited clip is 640x360 with roughly eight students, so each student occupies a ninth of the pixels the model was trained to see. Section 20 of `CHALLENGES_AND_SOLUTIONS.md` argued that near-zero behaviour is partly the correct answer for this footage; this measurement separates that from the resolution limit, and the resolution limit dominates.
+
+  Consequence for the product: `concentration` can now reach "off task" in principle, but not on 640x360 input. The rule-based action layer (`backend/actions.py`) covers the gap on this footage — 15 distinct actions against the behaviour model's 3 — because objects and pose survive downscaling in a way a whole-behaviour classifier does not.
+
 ## Stage 2+ (identity persistence, scene graph, group activity)
 
 Built in an earlier phase of this project, deliberately paused per direct
