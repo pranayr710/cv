@@ -13,6 +13,7 @@ Covers, in order:
 """
 
 import csv
+
 import pytest
 
 from tools.eval_group_activity import load_manifest as eval_load_manifest

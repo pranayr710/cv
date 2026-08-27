@@ -22,6 +22,17 @@ GAZE_CSS = {
     "teacher": "#3f9e5f", "left": "#d98324", "right": "#a855b8",
     "down": "#2f7fd1", "back": "#8a8f98",
 }
+ACTION_CSS = {
+    "attentive": "#3f9e5f", "studying": "#4a86c9", "on_laptop": "#3d7ea6",
+    "head_down": "#7d848f", "looking_away": "#d98324", "on_phone": "#c0522f",
+    "eyes_closed": "#8b3a52", "unknown": "#3a3f46",
+}
+ACTION_LABEL = {
+    "on_phone": "on phone", "studying": "reading / writing",
+    "on_laptop": "on laptop", "eyes_closed": "eyes closed",
+    "looking_away": "looking away", "head_down": "head down",
+    "attentive": "attentive", "unknown": "no face read",
+}
 EXPR_CSS = {
     "neutral": "#8a8f98", "happy": "#3f9e5f", "sad": "#2f7fd1",
     "angry": "#c0522f", "surprise": "#d98324", "fear": "#a855b8",
@@ -59,7 +70,7 @@ def read_session(graph_path: Path):
             if pid is None or pid <= 0:
                 continue
             feat = node.get("features") or {}
-            timeline[pid].append((ts, feat.get("gaze_label")))
+            timeline[pid].append((ts, feat.get("gaze_label"), feat.get("action")))
             bbox = feat.get("bbox")
             if bbox:
                 entry = sums[pid]
@@ -75,7 +86,7 @@ def read_session(graph_path: Path):
     return timeline, positions, dict(pairs), frames
 
 
-def _timeline_svg(series, duration_ms: int, width=680, height=64) -> str:
+def _timeline_svg(series, duration_ms: int, width=680, height=64, key="action") -> str:
     """Draw one student's attention over the session as a banded strip.
 
     Args:
@@ -92,11 +103,13 @@ def _timeline_svg(series, duration_ms: int, width=680, height=64) -> str:
     if not series or duration_ms <= 0:
         return '<p class="muted">No timeline — nothing was graded.</p>'
 
+    palette = ACTION_CSS if key == "action" else GAZE_CSS
     band = max(1.6, width / max(len(series), 1))
     bars = []
-    for ts, label in series:
+    for ts, gaze, action in series:
+        label = action if key == "action" else gaze
         x = (ts / duration_ms) * width
-        colour = GAZE_CSS.get(label, "#3a3f46") if label else "#2b2f35"
+        colour = palette.get(label, "#3a3f46") if label else "#2b2f35"
         bars.append(f'<rect x="{x:.2f}" y="0" width="{band:.2f}" height="{height}" '
                     f'fill="{colour}"/>')
 
@@ -158,6 +171,16 @@ def _graph_svg(positions, pairs, names, scores) -> str:
     return "".join(out)
 
 
+def _action_key(counts: dict) -> str:
+    """Legend for the action timeline, only for actions actually observed."""
+    if not counts:
+        return '<span class="muted">no actions graded</span>'
+    return "".join(
+        f'<span class="key"><i style="background:{ACTION_CSS.get(k, "#6b7280")}"></i>'
+        f'{ACTION_LABEL.get(k, k)} <b>{v}</b></span>'
+        for k, v in sorted(counts.items(), key=lambda kv: -kv[1]))
+
+
 def _stack(counts: dict, palette: dict) -> str:
     """A stacked proportion bar with a legend, widest segment first."""
     total = sum(counts.values())
@@ -214,6 +237,7 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
     for p in students:
         pid = p["person_id"]
         pct = scores[pid]
+        on_task = p.get("on_task_pct")
         lean = p["posture"]["mean_vertical_lean"]
         away = sum(v for k, v in p["attention"]["counts"].items() if k != "teacher")
         cards.append(f"""
@@ -221,11 +245,18 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
       <header>
         <div><h3>{names.get(pid, f"Student #{pid}")}</h3>
              <span class="id">id {pid} · seen in {p["frames_seen"]} frames</span></div>
-        <div class="big" style="color:{"#3f9e5f" if (pct or 0) >= .7 else "#d98324"}">
-          {"—" if pct is None else f"{pct * 100:.0f}%"}<small>looking forward</small></div>
+        <div class="scores">
+          <div class="big" style="color:{"#3f9e5f" if (on_task or 0) >= 70 else "#d98324"}">
+            {"—" if on_task is None else f"{on_task:.0f}%"}<small>on task</small></div>
+          <div class="big small2" style="color:{"#3f9e5f" if (pct or 0) >= .7 else "#d98324"}">
+            {"—" if pct is None else f"{pct * 100:.0f}%"}<small>looking forward</small></div>
+        </div>
       </header>
-      {_timeline_svg(timeline.get(pid, []), duration)}
+      <div class="tl-head">What they were doing</div>
+      {_timeline_svg(timeline.get(pid, []), duration, key="action")}
+      <div class="legend">{_action_key(p.get("actions", {}).get("counts", {}))}</div>
       <dl>
+        <dt>Actions</dt><dd>{_stack(p.get("actions", {}).get("counts", {}), ACTION_CSS)}</dd>
         <dt>Where they looked</dt><dd>{_stack(p["attention"]["counts"], GAZE_CSS)}</dd>
         <dt>Expression</dt><dd>{_stack(p["expression"]["counts"], EXPR_CSS)}</dd>
         <dt>Posture</dt><dd>{"no body keypoints" if lean is None else

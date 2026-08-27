@@ -398,7 +398,7 @@ class TorchGCN:
 
     def __init__(self, feat_dim: int, hidden: int = 64, rel_names: Sequence[str] = ("appearance", "position")):
         try:
-            import torch  # noqa: PLC0415 -- optional dep, guarded
+            import torch
         except ImportError as exc:  # pragma: no cover
             raise RuntimeError(
                 "TorchGCN needs torch; install requirements.txt extras or "

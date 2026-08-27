@@ -108,6 +108,10 @@ def _people_in(record: dict) -> tuple[list[dict], bool]:
             "is_sustained_distracted": features.get("is_sustained_distracted"),
             "is_eyes_closed_sustained": features.get("is_eyes_closed_sustained"),
             "is_poster": features.get("is_poster"),
+            # What the student was doing, from backend/actions.py. Only Stage 3
+            # graphs carry it; a Stage 1 record has no such field and the
+            # profile simply reports no actions rather than inventing them.
+            "action": features.get("action"),
         })
     return people, True
 
@@ -133,6 +137,30 @@ def _summarise_posture(samples: list[dict]) -> dict[str, object]:
         "frames_without_keypoints": len(samples) - len(present),
         "mean_vertical_lean": (sum(leans) / len(leans)) if leans else None,
     }
+
+
+def _on_task_pct(actions: list[str | None]) -> float | None:
+    """Share of graded frames the student was NOT visibly off task.
+
+    Args:
+        actions: Per-frame action names, ``None`` where nothing was graded.
+
+    Returns:
+        A percentage, or ``None`` when nothing was graded at all.
+
+    Unlike ``concentration``, this can actually reach a low number, because
+    :mod:`backend.actions` produces positive evidence of being off task -- a
+    detected phone, closed eyes, a head turned away -- rather than inferring
+    it from the absence of a behaviour label. A profile that reports 100% here
+    means no off-task evidence was seen, not that none could be.
+    """
+    from backend.actions import OFF_TASK
+
+    graded = [a for a in actions if a and a != "unknown"]
+    if not graded:
+        return None
+    off = sum(1 for a in graded if a in OFF_TASK)
+    return round(100.0 * (len(graded) - off) / len(graded), 1)
 
 
 def _tally(labels: list[str | None]) -> dict[str, object]:
@@ -242,6 +270,7 @@ def build_profiles(
     # Signals the graph already carries. Previously unreachable here, because
     # this module only ever read Stage 1.
     gaze_labels: dict[int, list[str | None]] = defaultdict(list)
+    action_labels: dict[int, list[str | None]] = defaultdict(list)
     posture_samples: dict[int, list[dict | None]] = defaultdict(list)
     rolling_pct: dict[int, list[float]] = defaultdict(list)
     sustained_distracted: dict[int, int] = defaultdict(int)
@@ -299,6 +328,7 @@ def build_profiles(
                 )
                 behaviour_label = behaviour["label"] if behaviour else None
                 gaze_labels[person_id].append(gaze_label)
+                action_labels[person_id].append(person.get("action"))
 
                 # Fallback signals, used when the behaviour model produced
                 # nothing -- both already computed by the pipeline and
@@ -435,6 +465,9 @@ def build_profiles(
             # was previously consumed to compute concentration and then thrown
             # away, so a reader could not see what the verdict rested on.
             "attention": _tally(gaze_labels[person_id]),
+            # What they were doing, as opposed to where they were looking.
+            "actions": _tally(action_labels[person_id]),
+            "on_task_pct": _on_task_pct(action_labels[person_id]),
             "posture": _summarise_posture(posture_samples[person_id]),
             # Only populated from a Stage 4 input; a Stage 1 file has no
             # temporal analysis to carry, and reporting zeros there would read

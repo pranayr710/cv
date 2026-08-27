@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 from jsonschema.validators import Draft202012Validator
 
-from backend.config import CONFIG, TemporalConfig
 from backend.temporal import TemporalTracker, process_jsonl
 
 

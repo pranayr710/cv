@@ -33,7 +33,9 @@ def _fmt_duration(seconds: float) -> str:
 
 def render_student_page(profiles, student_id) -> str:
     """Small explicit drill-down page; kept separate so its use is greppable."""
-    from backend.reporting import student_trajectory  # local import keeps the default path free of it
+    from backend.reporting import (
+        student_trajectory,  # local import keeps the default path free of it
+    )
 
     traj = student_trajectory(profiles, student_id)
     if not traj:

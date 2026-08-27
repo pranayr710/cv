@@ -15,7 +15,10 @@ from pathlib import Path
 
 from backend.config import CONFIG, Config
 from backend.engagement import classify_engagement
-from backend.peer_interaction import _bbox_center, _within_conversational_distance, classify_pair_frame
+from backend.peer_interaction import (
+    _bbox_center,
+    classify_pair_frame,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +72,7 @@ def generate_scene_graph(record: dict, config: Config | None = None) -> dict:
             node_id = -100 - idx
 
         # Determine node role
-        if person_id is not None and person_id in cfg.profile.instructor_ids:
-            role = "instructor"
-        elif track_id is not None and track_id in cfg.profile.instructor_ids:
+        if person_id is not None and person_id in cfg.profile.instructor_ids or track_id is not None and track_id in cfg.profile.instructor_ids:
             role = "instructor"
         else:
             role = "student"

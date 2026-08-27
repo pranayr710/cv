@@ -1,9 +1,8 @@
-import os
-import sys
-import json
 import http.server
+import json
 import socketserver
 import subprocess
+import sys
 from urllib.parse import urlparse
 
 # --- Pytest Collector Subprocess Entrypoint ---
@@ -875,11 +874,11 @@ def main():
 
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", args.port), TestUIRequestHandler) as httpd:
-        print(f"=========================================================")
-        print(f" ClassGraph Test Suite Verification Dashboard ")
+        print("=========================================================")
+        print(" ClassGraph Test Suite Verification Dashboard ")
         print(f" Serving at: http://localhost:{args.port}/")
-        print(f" Press Ctrl+C to stop ")
-        print(f"=========================================================")
+        print(" Press Ctrl+C to stop ")
+        print("=========================================================")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

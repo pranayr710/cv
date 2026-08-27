@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from jsonschema.validators import Draft202012Validator
 
-from backend.config import CONFIG, SceneGraphConfig
+from backend.config import CONFIG
 from backend.scene_graph import generate_scene_graph, process_jsonl
 
 

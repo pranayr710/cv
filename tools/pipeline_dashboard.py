@@ -1,23 +1,20 @@
-import os
-import sys
-import json
-import math
 import http.server
+import json
 import socketserver
-import subprocess
+import sys
+from dataclasses import replace
 from pathlib import Path
 from urllib.parse import urlparse
-from dataclasses import replace
 
 # Ensure the root of the project is in sys.path so we can import backend packages
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from backend.config import CONFIG, Config
+from backend.config import CONFIG
 from backend.scene_graph import generate_scene_graph
-from backend.temporal import TemporalTracker
 from backend.student_profile import build_profiles
+from backend.temporal import TemporalTracker
 
 # Names mapping for person IDs to make the dashboard friendly
 STUDENT_NAMES = {
@@ -1567,11 +1564,11 @@ def main():
 
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", args.port), PipelineDashboardRequestHandler) as httpd:
-        print(f"=========================================================")
-        print(f" ClassGraph Classroom Pipeline Dashboard ")
+        print("=========================================================")
+        print(" ClassGraph Classroom Pipeline Dashboard ")
         print(f" Serving at: http://localhost:{args.port}/")
-        print(f" Press Ctrl+C to stop ")
-        print(f"=========================================================")
+        print(" Press Ctrl+C to stop ")
+        print("=========================================================")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

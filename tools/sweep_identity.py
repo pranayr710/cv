@@ -43,7 +43,6 @@ def collect(video: Path, sample_rate: int, limit: int | None) -> list[dict]:
     """One expensive pass: per frame, the track ids and face embeddings only."""
     import cv2
 
-    from backend.config import CONFIG
     from backend.detection import Detector
     from backend.face import FaceAnalyzer
     from backend.tracking import PersonTracker

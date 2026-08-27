@@ -12,7 +12,6 @@ import pytest
 
 from tools.boss_agreement import Row, cohen_kappa, compare, load_rows
 
-
 # --- 1. hand-computed example ---------------------------------------------------
 # a = on,on,off,unknown,on ; b = on,off,off,unknown,on
 # observed = 4/5 = .8 ; expected = (3*2+1*2+1*1)/25 = 9/25 = .36
