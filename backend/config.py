@@ -92,7 +92,17 @@ class DetectionConfig:
     # which is the opposite signal from a phone. Dropping it would leave the
     # pipeline unable to tell studying from distraction -- see
     # backend/attention.py's writing_object_classes.
-    object_whitelist: tuple[str, ...] = ("cell phone", "laptop", "book")
+    #
+    # COCO classes worth naming in a classroom. YOLO detects all 80 either way;
+    # the whitelist only decides which reach the output. Widened from three
+    # because "what is this student doing" is largely answered by what they are
+    # holding -- a bottle means drinking, a keyboard means typing, food means
+    # eating, and none of those were expressible before.
+    object_whitelist: tuple[str, ...] = (
+        "cell phone", "laptop", "book", "bottle", "cup", "keyboard", "mouse",
+        "backpack", "handbag", "sandwich", "apple", "banana", "donut", "pizza",
+        "scissors", "remote", "tv",
+    )
 
     # Inference resolution. YOLO resizes the frame to this before inference, so
     # it directly controls whether distant students survive. Raised from 960:
@@ -574,6 +584,14 @@ class PostureConfig:
     nose_idx: int = 0
     left_shoulder_idx: int = 11
     right_shoulder_idx: int = 12
+    # MediaPipe Pose indices. Wrists and elbows come free with the same
+    # inference and were previously ignored; they are what make a raised hand,
+    # writing, and a head resting on a hand distinguishable from each other.
+    left_wrist_idx: int = 15
+    right_wrist_idx: int = 16
+    left_elbow_idx: int = 13
+    right_elbow_idx: int = 14
+
     left_hip_idx: int = 23
     right_hip_idx: int = 24
 

@@ -98,6 +98,10 @@ class PostureResult:
             either shoulder's visibility is too low.
         hip_mid: Midpoint of the two hip keypoints, or ``None`` if either
             hip's visibility is too low.
+        left_wrist: The subject's own left wrist (landmark 15), or ``None``.
+        right_wrist: The subject's own right wrist (landmark 16), or ``None``.
+        left_elbow: The subject's own left elbow (landmark 13), or ``None``.
+        right_elbow: The subject's own right elbow (landmark 14), or ``None``.
         vertical_lean: ``nose.y - shoulder_mid.y``, normalised to the person
             crop's height (so roughly scale-invariant), or ``None`` if either
             input point is unavailable. **This is a raw, unvalidated feature,
@@ -138,6 +142,14 @@ class PostureResult:
     hip_mid: Point | None
     vertical_lean: float | None
     facing_direction: Point | None
+    # MediaPipe returns 33 landmarks; these were being computed on every frame
+    # and discarded. Hands are what separate a raised hand from a resting one,
+    # and writing from reading, so they are the difference between naming three
+    # actions and naming a dozen.
+    left_wrist: Point | None = None
+    right_wrist: Point | None = None
+    left_elbow: Point | None = None
+    right_elbow: Point | None = None
 
 
 def _facing_direction(
@@ -372,6 +384,10 @@ class PostureAnalyzer:
             r_sh, _ = self._landmark_point(landmarks, cfg.right_shoulder_idx, region)
             l_hip, _ = self._landmark_point(landmarks, cfg.left_hip_idx, region)
             r_hip, _ = self._landmark_point(landmarks, cfg.right_hip_idx, region)
+            l_wr, _ = self._landmark_point(landmarks, cfg.left_wrist_idx, region)
+            r_wr, _ = self._landmark_point(landmarks, cfg.right_wrist_idx, region)
+            l_el, _ = self._landmark_point(landmarks, cfg.left_elbow_idx, region)
+            r_el, _ = self._landmark_point(landmarks, cfg.right_elbow_idx, region)
 
             shoulder_mid = (
                 ((l_sh[0] + r_sh[0]) / 2, (l_sh[1] + r_sh[1]) / 2)
@@ -400,6 +416,10 @@ class PostureAnalyzer:
                     hip_mid=hip_mid,
                     vertical_lean=vertical_lean,
                     facing_direction=facing_direction,
+                    left_wrist=l_wr,
+                    right_wrist=r_wr,
+                    left_elbow=l_el,
+                    right_elbow=r_el,
                 )
             )
 

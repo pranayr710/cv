@@ -23,15 +23,23 @@ GAZE_CSS = {
     "down": "#2f7fd1", "back": "#8a8f98",
 }
 ACTION_CSS = {
-    "attentive": "#3f9e5f", "studying": "#4a86c9", "on_laptop": "#3d7ea6",
-    "head_down": "#7d848f", "looking_away": "#d98324", "on_phone": "#c0522f",
+    "raising_hand": "#2e8b57", "attentive": "#3f9e5f", "leaning_forward": "#57a86b",
+    "writing": "#3f72af", "reading": "#4a86c9", "studying": "#5d95d1",
+    "typing": "#3d7ea6", "on_laptop": "#3d7ea6",
+    "drinking": "#8a7f5c", "eating": "#9c8552",
+    "head_down": "#7d848f", "head_on_hand": "#8d7f8f", "slouching": "#6f7480",
+    "looking_away": "#d98324", "yawning": "#b05c3a", "on_phone": "#c0522f",
     "eyes_closed": "#8b3a52", "unknown": "#3a3f46",
 }
 ACTION_LABEL = {
-    "on_phone": "on phone", "studying": "reading / writing",
-    "on_laptop": "on laptop", "eyes_closed": "eyes closed",
-    "looking_away": "looking away", "head_down": "head down",
-    "attentive": "attentive", "unknown": "no face read",
+    "raising_hand": "raising hand", "on_phone": "on phone", "drinking": "drinking",
+    "eating": "eating", "typing": "typing", "writing": "writing",
+    "reading": "reading", "studying": "reading or writing",
+    "on_laptop": "on laptop", "yawning": "yawning", "eyes_closed": "eyes closed",
+    "head_on_hand": "head resting on hand", "looking_away": "looking away",
+    "head_down": "head down", "slouching": "slouching",
+    "leaning_forward": "leaning forward", "attentive": "attentive",
+    "unknown": "no face read",
 }
 EXPR_CSS = {
     "neutral": "#8a8f98", "happy": "#3f9e5f", "sad": "#2f7fd1",

@@ -12,6 +12,8 @@ import pytest
 from backend.actions import OFF_TASK, Action, annotate_graph, classify
 
 PERSON = (100, 100, 80, 160)
+#: A plain upright posture, so each test varies only the part it is about.
+UPRIGHT = {"shoulder_mid": (140, 160), "nose": (140, 130)}
 
 
 def _obj(cls, bbox):
@@ -34,14 +36,27 @@ class TestRules:
         assert a.name == "studying"
         assert a.off_task is False
 
-    def test_reading_and_writing_are_not_separated(self):
-        """Both are a book plus a bowed head. The literature puts writing at
-        57.8% with a strong temporal model, so guessing here would be inventing
-        precision the evidence cannot support."""
-        from backend.actions import LABELS
+    def test_reading_and_writing_split_only_on_hand_evidence(self):
+        """They differ only by what the hands are doing. With wrists visible
+        the geometry is worth reporting -- marked inferred, because the closest
+        published work reaches 57.8% on writing even with a strong temporal
+        model. With no hands visible the honest answer is that it is one or the
+        other."""
+        book = [_obj("book", (110, 250, 50, 30))]
 
-        assert "write" not in LABELS
-        assert LABELS["studying"] == "reading / writing"
+        writing = classify(PERSON, book, "down", 25.0, 0.3,
+                           posture={**UPRIGHT, "left_wrist": (130, 220),
+                                    "right_wrist": (150, 225)})
+        assert writing.name == "writing"
+        assert writing.confidence == "inferred"
+
+        reading = classify(PERSON, book, "down", 25.0, 0.3, posture=UPRIGHT)
+        assert reading.name == "reading"
+        assert reading.confidence == "inferred"
+
+        blind = classify(PERSON, book, "down", 25.0, 0.3, posture=None)
+        assert blind.name == "studying"
+        assert blind.confidence == "direct"
 
     def test_laptop(self):
         assert classify(PERSON, [_obj("laptop", (110, 200, 60, 40))], "teacher",
@@ -85,6 +100,100 @@ class TestRules:
 
     def test_label_is_human_readable(self):
         assert Action("on_phone", "x", True).label == "on phone"
+
+
+class TestHands:
+    """The three hand states are the ones most easily confused with each
+    other, and the most opposite in meaning."""
+
+
+    def test_raised_hand(self):
+        a = classify(PERSON, [], "teacher", 0.0, 0.3,
+                     posture={**UPRIGHT, "left_wrist": (150, 80)})
+        assert a.name == "raising_hand"
+        assert a.off_task is False
+
+    def test_head_propped_on_hand_is_not_a_raised_hand(self):
+        """A propped head also puts the wrist above the shoulders, so a
+        shoulder-height test collapsed a bored student and a participating one
+        into the same label."""
+        a = classify(PERSON, [], "teacher", 0.0, 0.3,
+                     posture={**UPRIGHT, "left_wrist": (145, 135)})
+        assert a.name == "head_on_hand"
+
+    def test_hand_on_the_desk_is_neither(self):
+        a = classify(PERSON, [], "teacher", 0.0, 0.3,
+                     posture={**UPRIGHT, "left_wrist": (130, 220)})
+        assert a.name == "attentive"
+
+
+class TestObjectActions:
+
+    def test_bottle_at_head_height_is_drinking(self):
+        a = classify(PERSON, [_obj("bottle", (130, 105, 18, 40))], "teacher",
+                     0.0, 0.3, posture=UPRIGHT)
+        assert a.name == "drinking"
+        assert a.obj == "bottle"
+
+    def test_bottle_on_the_desk_is_not_drinking(self):
+        """Region matters: the same object low down means nothing."""
+        a = classify(PERSON, [_obj("bottle", (130, 270, 18, 40))], "teacher",
+                     0.0, 0.3, posture=UPRIGHT)
+        assert a.name != "drinking"
+
+    def test_food_at_head_height_is_eating(self):
+        a = classify(PERSON, [_obj("apple", (130, 105, 18, 20))], "teacher",
+                     0.0, 0.3, posture=UPRIGHT)
+        assert a.name == "eating"
+
+    def test_keyboard_is_typing(self):
+        a = classify(PERSON, [_obj("keyboard", (110, 250, 60, 20))], "down",
+                     25.0, 0.3, posture=UPRIGHT)
+        assert a.name == "typing"
+
+
+class TestPostureActions:
+
+    def test_slouching(self):
+        a = classify(PERSON, [], "teacher", 0.0, 0.3,
+                     posture={**UPRIGHT, "vertical_lean": -0.02})
+        assert a.name == "slouching"
+        assert a.confidence == "inferred"
+
+    def test_leaning_forward(self):
+        a = classify(PERSON, [], "teacher", 0.0, 0.3,
+                     posture={**UPRIGHT, "vertical_lean": -0.40})
+        assert a.name == "leaning_forward"
+
+
+class TestYawn:
+    def test_wide_mouth_reads_as_a_yawn(self):
+        from backend.actions import YAWN_RATIO
+
+        marks = [(0.0, 0.0)] * 400
+        marks[13] = (100.0, 100.0)
+        marks[14] = (100.0, 100.0 + 40 * (YAWN_RATIO + 0.2))
+        marks[78] = (80.0, 110.0)
+        marks[308] = (120.0, 110.0)
+        a = classify(PERSON, [], "teacher", 0.0, 0.3, landmarks=marks)
+        assert a.name == "yawning"
+
+    def test_speaking_is_not_a_yawn(self):
+        """The threshold sits clear of speech on purpose -- reading talking as
+        yawning would turn classroom discussion into disengagement."""
+        marks = [(0.0, 0.0)] * 400
+        marks[13] = (100.0, 100.0)
+        marks[14] = (100.0, 112.0)
+        marks[78] = (80.0, 110.0)
+        marks[308] = (120.0, 110.0)
+        a = classify(PERSON, [], "teacher", 0.0, 0.3, landmarks=marks)
+        assert a.name != "yawning"
+
+    def test_missing_landmarks_are_safe(self):
+        from backend.actions import mouth_open_ratio
+
+        assert mouth_open_ratio(None) is None
+        assert mouth_open_ratio([(0.0, 0.0)] * 10) is None
 
 
 class TestGraphAnnotation:

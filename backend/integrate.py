@@ -282,6 +282,14 @@ def _posture_to_json(posture: PostureResult | None) -> dict | None:
             None if posture.vertical_lean is None else float(posture.vertical_lean)
         ),
         "facing_direction": _point_to_json(posture.facing_direction),
+        # Hands. Without these the action layer cannot tell a raised hand from
+        # a head propped on one, or writing from reading -- MediaPipe computes
+        # them on every frame regardless, so omitting them cost inference time
+        # for nothing.
+        "left_wrist": _point_to_json(getattr(posture, "left_wrist", None)),
+        "right_wrist": _point_to_json(getattr(posture, "right_wrist", None)),
+        "left_elbow": _point_to_json(getattr(posture, "left_elbow", None)),
+        "right_elbow": _point_to_json(getattr(posture, "right_elbow", None)),
     }
 
 

@@ -1,65 +1,119 @@
-"""Derive what a student is *doing* from signals the pipeline already produces.
+"""Name what a student is doing, from signals the pipeline already produces.
 
-The project has a behaviour classifier for exactly this -- reading, writing,
-using a device, sleeping -- but it needs fine-tuned weights that are not in the
+The project has a behaviour classifier for this -- reading, writing, using a
+device, sleeping -- but it needs fine-tuned weights that are not in the
 repository, so ``behaviour`` comes back ``null`` on every frame and the scene
-graph carries no actions at all.
+graph carried no actions at all.
 
-This fills that gap without training anything. Three signals the pipeline
-already computes are enough for the actions that matter in a classroom:
+This fills the gap without training anything, using three sources that were all
+being computed and then discarded:
 
-* **objects** -- the detector is already configured to find ``cell phone``,
-  ``laptop`` and ``book`` (:data:`DetectionConfig.object_whitelist`), and does:
-  on the audited clip it found 37 books, 4 laptops and 1 phone. An object
-  overlapping a student's box is direct evidence of what they are handling.
-* **head pose** -- pitch-down separates "reading the desk" from "watching the
-  front", and yaw separates "looking at a neighbour" from either.
-* **eye aspect ratio** -- eyes closed for a sustained period.
+* **Objects.** YOLO detects all 80 COCO classes regardless; the whitelist only
+  decides which reach the output. A bottle at the mouth is drinking, a keyboard
+  under the hands is typing, a phone is a phone. Widening that list from three
+  classes to seventeen turned "what is this student holding" from unanswerable
+  into direct evidence.
+* **Hands.** MediaPipe Pose returns 33 landmarks and the pipeline extracted 5.
+  Wrists and elbows came free with the same inference. They are what separate a
+  raised hand from a resting one, writing from reading, and a head propped on a
+  palm from a head merely bowed.
+* **Face and head pose.** Eye aspect ratio for closed eyes, mouth opening for a
+  yawn, pitch for a bowed head, yaw for a turned one.
 
-What this is not
-----------------
+Confidence is part of the answer
+--------------------------------
 
-It is a rule over observable evidence, not a trained action recogniser. It
-cannot tell reading from writing -- both are a book plus a bowed head -- which
-is precisely the distinction the literature says is hardest (SCB-ST-Dataset4
-reaches only 57.8% on writing with a strong temporal model). So those two are
-deliberately reported as one ``studying`` action rather than guessed apart.
+Actions are not equally well evidenced, and pretending otherwise is how a demo
+becomes a lie. Each :class:`Action` carries a ``confidence``:
 
-Every action carries the evidence that produced it, so a reviewer can see
-whether "on phone" came from a detected phone or from a bowed head.
+* ``"direct"`` -- a detected object overlapping the student, or landmark
+  geometry that is unambiguous (a wrist held clear above the head is a raised
+  hand).
+* ``"inferred"`` -- a plausible reading of weaker geometry. ``writing`` is the
+  clearest case: reading and writing differ only by what the hands are doing,
+  and the closest published work reaches 57.8% on writing even with a strong
+  temporal model. So writing is reported as inferred, and when the hands are
+  not visible at all the answer falls back to ``studying`` rather than guessing.
+
+Every action also carries the evidence that produced it, so "on phone" can be
+traced to a detected phone rather than an assumption.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-#: Ordered by how strongly each overrides the others. The first action whose
-#: rule fires wins, so a visible phone beats a head-down posture that would
-#: otherwise read as studying.
+#: Evaluated in order; the first rule that fires wins. The ordering encodes
+#: which evidence overrides which -- a visible phone beats a bowed head,
+#: because the bowed head is *why* they are looking at the phone.
 PRIORITY = (
+    "raising_hand",
     "on_phone",
+    "drinking",
+    "eating",
+    "typing",
+    "writing",
+    "reading",
     "studying",
     "on_laptop",
+    "yawning",
     "eyes_closed",
+    "head_on_hand",
     "looking_away",
     "head_down",
+    "slouching",
+    "leaning_forward",
     "attentive",
     "unknown",
 )
 
-#: Actions that mean the student is not engaged with the lesson.
-OFF_TASK = frozenset({"on_phone", "eyes_closed", "looking_away"})
+#: Actions that count against engagement. Deliberately narrow: a bowed head or
+#: a slouch is posture, not misbehaviour, and counting those as off task would
+#: penalise students for reading.
+OFF_TASK = frozenset({"on_phone", "eyes_closed", "looking_away", "yawning"})
+
+#: Actions that are positive evidence of participation.
+ON_TASK = frozenset({"raising_hand", "writing", "reading", "studying", "typing",
+                     "on_laptop", "attentive", "leaning_forward"})
 
 LABELS = {
+    "raising_hand": "raising hand",
     "on_phone": "on phone",
-    "studying": "reading / writing",
+    "drinking": "drinking",
+    "eating": "eating",
+    "typing": "typing",
+    "writing": "writing",
+    "reading": "reading",
+    "studying": "reading or writing",
     "on_laptop": "on laptop",
+    "yawning": "yawning",
     "eyes_closed": "eyes closed",
+    "head_on_hand": "head resting on hand",
     "looking_away": "looking away",
     "head_down": "head down",
+    "slouching": "slouching",
+    "leaning_forward": "leaning forward",
     "attentive": "attentive",
     "unknown": "no face read",
 }
+
+#: Object classes that mean drinking when held up near the head.
+DRINK_CLASSES = frozenset({"bottle", "cup"})
+#: Object classes that mean eating when held up near the head.
+FOOD_CLASSES = frozenset({"sandwich", "apple", "banana", "donut", "pizza"})
+#: Object classes that mean typing when under the hands.
+TYPING_CLASSES = frozenset({"keyboard", "mouse"})
+
+#: MediaPipe Face Mesh indices for the inner lip, used for mouth opening. Inner
+#: rather than outer, so lip colour or a beard cannot inflate the measurement.
+_UPPER_LIP, _LOWER_LIP = 13, 14
+_LEFT_CORNER, _RIGHT_CORNER = 78, 308
+
+#: Mouth opening (vertical over horizontal) above which a face reads as a yawn.
+#: A relaxed closed mouth sits near 0.02 and speech peaks around 0.35, so this
+#: is set clear of speech: mistaking talking for yawning would turn classroom
+#: discussion into disengagement.
+YAWN_RATIO = 0.55
 
 
 @dataclass(frozen=True)
@@ -69,43 +123,142 @@ class Action:
     Attributes:
         name: A key from :data:`PRIORITY`.
         evidence: Short human-readable reason, e.g. ``"cell phone overlap"``.
-        off_task: Whether this action counts against engagement.
-        obj: The object class this action was read from, if any. Carried so
-            the scene graph can hold a person-object edge -- which is a real
-            relation even when only one person is present.
+        off_task: Whether this counts against engagement.
+        obj: The object class the action was read from, if any. Carried so the
+            scene graph can hold a person-object edge.
+        confidence: ``"direct"`` for detected objects and unambiguous landmark
+            geometry, ``"inferred"`` for a plausible reading of weaker
+            evidence. Surfaced in the interface so an inferred label is never
+            mistaken for a measured one.
     """
 
     name: str
     evidence: str
     off_task: bool
     obj: str | None = None
+    confidence: str = "direct"
 
     @property
     def label(self) -> str:
-        """Display form, e.g. ``"on phone"``."""
+        """Display form, e.g. ``"raising hand"``."""
         return LABELS.get(self.name, self.name)
 
 
-def _overlaps(person_bbox, obj_bbox, min_fraction: float = 0.0) -> bool:
-    """Whether an object box overlaps a person box.
+def _overlaps(person_bbox, obj_bbox, region: str = "any") -> bool:
+    """Whether an object box overlaps a person box, optionally only part of it.
 
     Args:
         person_bbox: ``(x, y, w, h)``.
         obj_bbox: ``(x, y, w, h)``.
-        min_fraction: Minimum share of the OBJECT that must fall inside the
-            person box. Judged against the object, not the union, because a
-            phone is tiny next to a person and IoU would never fire.
+        region: ``"any"``, ``"head"`` (top third) or ``"lap"`` (bottom half).
+            A bottle at the mouth is drinking; the same bottle on the desk is
+            not, and only the region separates them.
 
     Returns:
-        ``True`` when they overlap by at least ``min_fraction``.
+        ``True`` when any part of the object falls inside the chosen region.
+        Judged against the object's own area rather than IoU, because a phone
+        is tiny beside a person and IoU would never fire.
     """
     px, py, pw, ph = person_bbox
+    if region == "head":
+        ph = ph / 3.0
+    elif region == "lap":
+        py, ph = py + ph / 2.0, ph / 2.0
     ox, oy, ow, oh = obj_bbox
     ix = max(0.0, min(px + pw, ox + ow) - max(px, ox))
     iy = max(0.0, min(py + ph, oy + oh) - max(py, oy))
-    inter = ix * iy
-    area = max(ow * oh, 1e-6)
-    return inter / area > min_fraction
+    return (ix * iy) / max(ow * oh, 1e-6) > 0.0
+
+
+def mouth_open_ratio(landmarks) -> float | None:
+    """Vertical mouth opening over mouth width, from Face Mesh landmarks.
+
+    Args:
+        landmarks: The 468-point landmark list, or ``None``.
+
+    Returns:
+        The ratio, or ``None`` if landmarks are absent or degenerate. Scale
+        free, so it does not change with how close the student is sitting.
+    """
+    if not landmarks or len(landmarks) <= _RIGHT_CORNER:
+        return None
+    try:
+        upper, lower = landmarks[_UPPER_LIP], landmarks[_LOWER_LIP]
+        left, right = landmarks[_LEFT_CORNER], landmarks[_RIGHT_CORNER]
+        vertical = abs(float(lower[1]) - float(upper[1]))
+        horizontal = abs(float(right[0]) - float(left[0]))
+    except (IndexError, TypeError, ValueError):
+        return None
+    return vertical / horizontal if horizontal > 1e-6 else None
+
+
+def _hand_up(posture, person_bbox) -> tuple[bool, str]:
+    """Whether either wrist is genuinely raised, not resting against the face.
+
+    Args:
+        posture: The person's posture dict, or ``None``.
+        person_bbox: ``(x, y, w, h)``, for scale.
+
+    Returns:
+        ``(raised, evidence)``.
+
+    Measured against the NOSE, not the shoulders. A hand propping up a bored
+    head also sits above the shoulders, so a shoulder test called that a raised
+    hand -- the two most opposite states in a classroom collapsing into one
+    label. A raised hand clears the head and is held out from it; a propped one
+    is at face height and touching. Both conditions are required.
+    """
+    if not posture:
+        return False, ""
+    nose = posture.get("nose")
+    if not nose:
+        return False, ""
+    margin = person_bbox[3] * 0.04
+    near = person_bbox[3] * 0.18
+    for side in ("left_wrist", "right_wrist"):
+        wrist = posture.get(side)
+        if not wrist:
+            continue
+        if float(wrist[1]) >= float(nose[1]) - margin:
+            continue
+        dx = float(wrist[0]) - float(nose[0])
+        dy = float(wrist[1]) - float(nose[1])
+        if (dx * dx + dy * dy) ** 0.5 < near:
+            continue  # touching the head: propped, not raised
+        return True, f"{side.split('_')[0]} wrist raised above the head"
+    return False, ""
+
+
+def _hand_near_face(posture, person_bbox) -> bool:
+    """Whether a wrist sits close to the nose, i.e. a head propped on a hand."""
+    if not posture:
+        return False
+    nose = posture.get("nose")
+    if not nose:
+        return False
+    near = person_bbox[3] * 0.18
+    for side in ("left_wrist", "right_wrist"):
+        wrist = posture.get(side)
+        if not wrist:
+            continue
+        dx = float(wrist[0]) - float(nose[0])
+        dy = float(wrist[1]) - float(nose[1])
+        if (dx * dx + dy * dy) ** 0.5 < near:
+            return True
+    return False
+
+
+def _hands_low(posture, person_bbox) -> bool:
+    """Whether every visible wrist sits well below the shoulders, near a desk."""
+    if not posture:
+        return False
+    shoulder = posture.get("shoulder_mid")
+    if not shoulder:
+        return False
+    drop = person_bbox[3] * 0.15
+    seen = [posture.get("left_wrist"), posture.get("right_wrist")]
+    seen = [w for w in seen if w]
+    return bool(seen) and all(float(w[1]) > float(shoulder[1]) + drop for w in seen)
 
 
 def classify(
@@ -115,21 +268,25 @@ def classify(
     pitch: float | None,
     ear: float | None,
     config=None,
+    posture: dict | None = None,
+    landmarks=None,
 ) -> Action:
     """Decide what one student is doing this frame.
 
     Args:
         person_bbox: The student's box, ``(x, y, w, h)``.
-        objects: This frame's detected objects, dicts with ``cls`` and
-            ``bbox``.
+        objects: This frame's detected objects, dicts with ``cls`` and ``bbox``.
         gaze_label: Head-pose gaze class, or ``None`` if no face was read.
         pitch: Head pitch in degrees, positive downward, or ``None``.
         ear: Eye aspect ratio, or ``None``.
         config: Full pipeline config, for thresholds. Defaults to ``CONFIG``.
+        posture: The student's posture dict (wrists, shoulders, lean), or
+            ``None``.
+        landmarks: Face Mesh landmarks, for the mouth-opening ratio.
 
     Returns:
-        The highest-priority :class:`Action` whose rule fires. With no face
-        read at all the answer is ``unknown``, not ``attentive`` -- there is no
+        The highest-priority :class:`Action` whose rule fires. With no face and
+        no posture the answer is ``unknown``, never ``attentive`` -- there is no
         evidence of anything, and reading attentiveness out of silence is the
         confident wrong answer this project exists to avoid.
     """
@@ -137,51 +294,107 @@ def classify(
 
     cfg = config if config is not None else CONFIG
 
-    near = {}
+    near_any, near_head = set(), set()
     for obj in objects or ():
-        cls = obj.get("cls")
-        bbox = obj.get("bbox")
-        if cls and bbox and _overlaps(person_bbox, bbox):
-            near[cls] = True
+        cls, bbox = obj.get("cls"), obj.get("bbox")
+        if not cls or not bbox:
+            continue
+        if _overlaps(person_bbox, bbox):
+            near_any.add(cls)
+        if _overlaps(person_bbox, bbox, "head"):
+            near_head.add(cls)
 
     down = pitch is not None and pitch >= cfg.headpose.pitch_down_threshold
 
-    if near.get("cell phone"):
+    raised, why = _hand_up(posture, person_bbox)
+    if raised:
+        return Action("raising_hand", why, False)
+
+    if "cell phone" in near_any:
         return Action("on_phone", "cell phone overlap", True, "cell phone")
-    if near.get("book"):
-        return Action("studying", "book overlap" + (" + head down" if down else ""),
-                      False, "book")
-    if near.get("laptop"):
+
+    drink = near_head & DRINK_CLASSES
+    if drink:
+        obj = min(drink)
+        return Action("drinking", f"{obj} at head height", False, obj)
+
+    food = near_head & FOOD_CLASSES
+    if food:
+        obj = min(food)
+        return Action("eating", f"{obj} at head height", False, obj)
+
+    typing = near_any & TYPING_CLASSES
+    if typing:
+        obj = min(typing)
+        return Action("typing", f"{obj} overlap", False, obj)
+
+    if "book" in near_any:
+        # Reading and writing differ only by what the hands are doing. When the
+        # hands are visible the geometry is worth reporting, marked inferred;
+        # when they are not, the honest answer is that it is one or the other.
+        if _hands_low(posture, person_bbox):
+            return Action("writing", "book with hands low at the desk", False,
+                          "book", "inferred")
+        if posture and posture.get("shoulder_mid"):
+            return Action("reading", "book with hands not at the desk", False,
+                          "book", "inferred")
+        return Action("studying", "book overlap, hands not visible", False, "book")
+
+    if "laptop" in near_any:
         return Action("on_laptop", "laptop overlap", False, "laptop")
+
+    ratio = mouth_open_ratio(landmarks)
+    if ratio is not None and ratio > YAWN_RATIO:
+        return Action("yawning", f"mouth opening ratio {ratio:.2f}", True,
+                      confidence="inferred")
+
     if ear is not None and ear < cfg.face.ear_closed_threshold:
         return Action("eyes_closed", f"eye aspect ratio {ear:.2f}", True)
+
+    if _hand_near_face(posture, person_bbox):
+        return Action("head_on_hand", "wrist close to the face", False,
+                      confidence="inferred")
+
     if gaze_label in ("left", "right", "back"):
         return Action("looking_away", f"gaze {gaze_label}", True)
+
     if down:
         return Action("head_down", f"pitch {pitch:.0f} deg", False)
+
+    lean = (posture or {}).get("vertical_lean")
+    if lean is not None:
+        # vertical_lean is nose.y - shoulder_mid.y over person height. More
+        # negative means the head sits higher above the shoulders (upright);
+        # closer to zero means it has sunk towards them.
+        if lean > -0.05:
+            return Action("slouching", f"lean {lean:+.2f}", False,
+                          confidence="inferred")
+        if lean < -0.30:
+            return Action("leaning_forward", f"lean {lean:+.2f}", False,
+                          confidence="inferred")
+
     if gaze_label is None:
         return Action("unknown", "no face read", False)
     return Action("attentive", f"gaze {gaze_label}", False)
 
 
 def annotate_graph(graph: dict, record: dict, config=None) -> dict:
-    """Add an ``action`` to every node of a scene graph, in place.
+    """Add an action to every node of a scene graph, in place.
 
     Args:
-        graph: A scene graph from :func:`backend.scene_graph.generate_scene_graph`.
-        record: The Stage 1 record the graph was built from, for objects and
-            the per-person eye aspect ratio.
+        graph: A scene graph from
+            :func:`backend.scene_graph.generate_scene_graph`.
+        record: The Stage 1 record the graph was built from, for objects,
+            posture, landmarks and eye aspect ratio.
         config: Full pipeline config.
 
     Returns:
-        The same graph, with ``features.action`` and ``features.action_evidence``
-        filled in, and ``shared_action`` edges added between students doing the
-        same thing.
+        The same graph, with ``features.action``, ``features.action_evidence``,
+        ``features.action_confidence`` and ``features.object`` filled in, plus
+        ``shared_action`` edges between students doing the same thing.
     """
     objects = record.get("objects") or []
-    by_person = {}
-    for person in record.get("persons", []):
-        by_person[person.get("person_id")] = person
+    by_person = {p.get("person_id"): p for p in record.get("persons", [])}
 
     actions: dict[int, str] = {}
     for node in graph.get("nodes", []):
@@ -198,16 +411,21 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
             head.get("pitch"),
             face.get("ear"),
             config,
+            posture=person.get("posture") or feat.get("posture"),
+            landmarks=face.get("landmarks"),
         )
         feat["action"] = action.name
         feat["action_evidence"] = action.evidence
+        feat["action_confidence"] = action.confidence
         feat["object"] = action.obj
         if node.get("role") == "student":
             actions[node["id"]] = action.name
 
     # Two students doing the same thing at the same time is the relation worth
-    # drawing: it is what turns the picture from a seating chart into something
-    # about behaviour.
+    # drawing: it turns the picture from a seating chart into something about
+    # behaviour. "attentive" is excluded because it is the default state --
+    # linking everyone watching the front would bury the edges that mean
+    # something.
     ids = sorted(actions)
     for i, a in enumerate(ids):
         for b in ids[i + 1:]:

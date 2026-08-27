@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://classgraph.local/schema/stage1_frame.json",
   "title": "ClassGraph Stage 1 Frame",
-  "description": "One record per processed video frame. Emitted as JSONL — one JSON object per line.",
+  "description": "One record per processed video frame. Emitted as JSONL \u2014 one JSON object per line.",
   "type": "object",
   "required": [
     "frame_id",
@@ -277,6 +277,50 @@
                 }
               ],
               "description": "Unit vector perpendicular to the shoulder line. Sign is an UNCONFIRMED guess -- real-image validation was inconclusive given this project's camera angle. Do not rely on its sign."
+            },
+            "left_wrist": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Left wrist (MediaPipe landmark 15), or null."
+            },
+            "right_wrist": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Right wrist (landmark 16), or null."
+            },
+            "left_elbow": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Left elbow (landmark 13), or null."
+            },
+            "right_elbow": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/landmark"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Right elbow (landmark 14), or null."
             }
           }
         },
