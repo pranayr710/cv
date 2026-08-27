@@ -88,43 +88,100 @@
                 "null"
               ],
               "prefixItems": [
-                { "type": "number", "minimum": 0 },
-                { "type": "number", "minimum": 0 },
-                { "type": "number", "minimum": 0 },
-                { "type": "number", "minimum": 0 }
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "number",
+                  "minimum": 0
+                }
               ],
               "minItems": 4,
               "maxItems": 4
             },
             "gaze_label": {
-              "type": [ "string", "null" ]
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "posture": {
-              "type": [ "object", "null" ]
+              "type": [
+                "object",
+                "null"
+              ]
             },
             "expression": {
-              "type": [ "string", "null" ]
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "behaviour": {
-              "type": [ "string", "null" ]
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "engagement": {
-              "type": [ "string", "null" ],
-              "enum": [ "on", "off", null ]
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "on",
+                "off",
+                null
+              ]
             },
             "eyes_closed": {
-              "type": [ "boolean", "null" ]
+              "type": [
+                "boolean",
+                "null"
+              ]
             },
             "rolling_engagement_pct": {
-              "type": [ "number", "null" ],
+              "type": [
+                "number",
+                "null"
+              ],
               "minimum": 0.0,
               "maximum": 1.0
             },
             "is_sustained_distracted": {
-              "type": [ "boolean", "null" ]
+              "type": [
+                "boolean",
+                "null"
+              ]
             },
             "is_eyes_closed_sustained": {
-              "type": [ "boolean", "null" ]
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "action": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "What the student is doing this frame (backend/actions.py)."
+            },
+            "action_evidence": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Why that action was chosen, so it can be audited."
             }
           }
         }
@@ -145,7 +202,8 @@
           "enum": [
             "spatial_adjacency",
             "mutual_orientation",
-            "shared_object"
+            "shared_object",
+            "shared_action"
           ]
         },
         "source": {
@@ -168,22 +226,37 @@
           "additionalProperties": false,
           "properties": {
             "distance_px": {
-              "type": [ "number", "null" ],
+              "type": [
+                "number",
+                "null"
+              ],
               "minimum": 0.0
             },
             "oriented_fraction": {
-              "type": [ "number", "null" ],
+              "type": [
+                "number",
+                "null"
+              ],
               "minimum": 0.0,
               "maximum": 1.0
             },
             "shared_object_class": {
-              "type": [ "string", "null" ]
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "is_sustained_interaction": {
-              "type": [ "boolean", "null" ]
+              "type": [
+                "boolean",
+                "null"
+              ]
             },
             "rolling_interaction_fraction": {
-              "type": [ "number", "null" ],
+              "type": [
+                "number",
+                "null"
+              ],
               "minimum": 0.0,
               "maximum": 1.0
             }
