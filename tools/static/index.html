@@ -87,6 +87,8 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
 .msg{font-size:.84rem;margin-top:10px;min-height:20px}
 .msg.err{color:var(--bad)} .msg.ok{color:var(--accent)}
 .empty{color:var(--muted);font-size:.86rem}
+.hint{background:#3a2a18;border:1px solid #6b4a22;color:#f0c98a;border-radius:10px;
+  padding:10px 14px;margin-bottom:12px;font-size:.87rem}
 </style>
 </head>
 <body>
@@ -120,6 +122,7 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
       <div class="tile"><div class="k">Frames</div><div class="v" id="tFrames">—</div></div>
       <div class="tile"><div class="k">FPS</div><div class="v" id="tFps">—</div></div>
     </div>
+    <div id="hint" class="hint" hidden></div>
     <div id="stage">
       <div class="placeholder" id="ph">
         Press <b>Start session</b> to open the camera.<br>

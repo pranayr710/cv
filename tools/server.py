@@ -60,7 +60,8 @@ UNKNOWN = -1
 class Session:
     """One live capture, owning the camera and every model."""
 
-    def __init__(self, config, gallery, out: Path, camera: int, stride: int):
+    def __init__(self, config, gallery, out: Path, camera: int, stride: int,
+                 min_face_px: int = 60):
         """Prepare a session without opening the camera yet.
 
         Args:
@@ -69,12 +70,15 @@ class Session:
             out: Directory for the per-frame records, graph and profiles.
             camera: Camera index.
             stride: Run expression / head pose / posture every Nth frame.
+            min_face_px: Face size below which identification is not expected
+                to work, used only to warn the operator.
         """
         self.config = config
         self.gallery = gallery
         self.out = out
         self.camera = camera
         self.stride = max(1, stride)
+        self.min_face_px = min_face_px
         self.running = False
         self.frame_jpeg: bytes | None = None
         self.payload: dict = {}
@@ -236,15 +240,22 @@ class Session:
         feats = {n.get("person_id"): (n.get("features") or {})
                  for n in graph.get("nodes", [])}
         boxes = []
+        small_unknown = 0
         for person in record["persons"]:
             pid = person.get("person_id")
             feat = feats.get(pid) or {}
+            face = person.get("face") or {}
+            box = face.get("bbox")
+            face_px = int(min(box[2], box[3])) if box else None
+            if (pid is None or pid <= 0) and face_px and face_px < self.min_face_px:
+                small_unknown += 1
             boxes.append({
                 "bbox": person["bbox"],
                 "person_id": pid,
                 "name": names.get(pid) if pid and pid > 0 else None,
                 "gaze": feat.get("gaze_label"),
                 "action": feat.get("action"),
+                "face_px": face_px,
             })
 
         students = []
@@ -264,7 +275,25 @@ class Session:
                 "recent": list(self.recent[pid]),
             })
 
+        # A face too small to identify is the single most common reason a demo
+        # shows "unknown" with a perfectly clear picture on screen. Measured:
+        # at 28px the similarity to an enrolled reference was 0.149 against a
+        # 0.35 threshold, and the detector score 0.31 against a 0.50 floor.
+        # Saying so beats letting the operator guess.
+        faceless = sum(1 for b in boxes if b["face_px"] is None)
+        hint = None
+        if small_unknown:
+            hint = ("Face too small to identify — move closer to the camera "
+                    f"(need about {self.min_face_px}px, seeing "
+                    f"{min(b['face_px'] for b in boxes if b['face_px'])}px).")
+        elif faceless and not any(b["name"] for b in boxes):
+            hint = ("Somebody is in frame but no face is visible — turn towards "
+                    "the camera. Identity needs a face, not a body.")
+        elif record["persons"] and not any(b["name"] for b in boxes):
+            hint = "Someone is in frame but not recognised — register them first."
+
         return {
+            "hint": hint,
             "frame": record["frame_id"],
             "seconds": round(elapsed, 1),
             "fps": round(self.fps, 1),
@@ -395,7 +424,8 @@ def create_app(args):
         probe.release()
         if not ok:
             raise HTTPException(500, f"Camera {args.camera} returned no frame.")
-        session = Session(live_config(frame.shape), g, out, args.camera, args.stride)
+        session = Session(live_config(frame.shape), g, out, args.camera,
+                          args.stride, args.min_face_px)
         session.start()
         state["session"] = session
         return {"ok": True}

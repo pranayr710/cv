@@ -112,7 +112,9 @@ function paintOverlay(boxes) {
     const colour = b.name ? (ACTION_COLOUR[b.action] || "#4ea36b") : "#c9553d";
     ctx.strokeStyle = colour;
     ctx.strokeRect(ox + x * scale, oy + y * scale, bw * scale, bh * scale);
-    const label = b.name ? `${b.name} · ${ACTION_LABEL[b.action] || ""}` : "unknown";
+    const label = b.name
+      ? `${b.name} · ${ACTION_LABEL[b.action] || ""}`
+      : (b.face_px ? `unknown · face ${b.face_px}px` : "unknown");
     const tw = ctx.measureText(label).width + 14;
     const ty = Math.max(0, oy + y * scale - 22);
     ctx.fillStyle = colour;
@@ -139,6 +141,9 @@ function connect() {
     $("tFrames").textContent = d.frame;
     $("tFps").textContent = d.fps;
     $("hdr").textContent = `${d.seconds}s · ${d.fps} fps`;
+    const hint = $("hint");
+    if (d.hint) { hint.textContent = d.hint; hint.hidden = false; }
+    else hint.hidden = true;
     $("objects").innerHTML = d.objects.length
       ? d.objects.map((o) => `<span class="chip">${escape(o)}</span>`).join("")
       : '<span class="empty">none</span>';
