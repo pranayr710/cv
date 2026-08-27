@@ -55,6 +55,9 @@ def read_session(graph_path: Path):
     timeline: dict[int, list] = defaultdict(list)
     sums: dict[int, list[float]] = defaultdict(lambda: [0.0, 0.0, 0])
     pairs: Counter = Counter()
+    objects: Counter = Counter()
+    transitions: Counter = Counter()
+    previous: dict[int, str] = {}
     frames = 0
 
     for line in graph_path.read_text(encoding="utf-8").splitlines():
@@ -70,7 +73,18 @@ def read_session(graph_path: Path):
             if pid is None or pid <= 0:
                 continue
             feat = node.get("features") or {}
-            timeline[pid].append((ts, feat.get("gaze_label"), feat.get("action")))
+            action = feat.get("action")
+            timeline[pid].append((ts, feat.get("gaze_label"), action))
+            if feat.get("object"):
+                objects[(pid, feat["object"])] += 1
+            # A change of state is an edge: this is the graph a single student
+            # still has, because behaviour moves between states over time even
+            # when there is nobody to interact with.
+            if action and action != "unknown":
+                last = previous.get(pid)
+                if last and last != action:
+                    transitions[(pid, last, action)] += 1
+                previous[pid] = action
             bbox = feat.get("bbox")
             if bbox:
                 entry = sums[pid]
@@ -83,7 +97,8 @@ def read_session(graph_path: Path):
                 pairs[tuple(sorted((a, b)))] += 1
 
     positions = {p: (x / n, y / n) for p, (x, y, n) in sums.items() if n}
-    return timeline, positions, dict(pairs), frames
+    return (timeline, positions, dict(pairs), frames,
+            dict(objects), dict(transitions))
 
 
 def _timeline_svg(series, duration_ms: int, width=680, height=64, key="action") -> str:
@@ -181,6 +196,143 @@ def _action_key(counts: dict) -> str:
         for k, v in sorted(counts.items(), key=lambda kv: -kv[1]))
 
 
+OBJECT_CSS = {"book": "#4a86c9", "laptop": "#3d7ea6", "cell phone": "#c0522f"}
+
+
+def _scene_graph_svg(names, scores, pairs, objects, present) -> str:
+    """Draw students, the objects they handled, and links between them.
+
+    Args:
+        names: ``{person_id: name}``.
+        scores: ``{person_id: attention fraction or None}``.
+        pairs: ``{(a, b): frames}`` shared-action links between students.
+        objects: ``{(person_id, object class): frames}``.
+        present: Person ids that appear in this session.
+
+    Returns:
+        An SVG fragment. A student sitting alone still produces a graph here,
+        because a person handling a book is a relation -- the seating-only
+        version had nothing to draw with one node, which made an empty picture
+        look like a broken feature rather than an absent relationship.
+    """
+    if not present:
+        return '<p class="muted">Nobody was recognised, so there is nothing to link.</p>'
+
+    people = sorted(present)
+    used = sorted({o for _, o in objects})
+    W, H = 680, max(240, 120 + 80 * max(len(people), len(used)))
+    px = 190
+    ox = 500
+
+    place_p = {p: (px, 80 + i * (H - 140) / max(len(people) - 1, 1) if len(people) > 1
+                   else H / 2) for i, p in enumerate(people)}
+    place_o = {o: (ox, 80 + i * (H - 140) / max(len(used) - 1, 1) if len(used) > 1
+                   else H / 2) for i, o in enumerate(used)}
+
+    top_obj = max(objects.values(), default=1)
+    top_pair = max(pairs.values(), default=1)
+    opening = (f'<svg viewBox="0 0 {W} {H}" class="graph" role="img" '
+               f'aria-label="Students, objects and the links between them">')
+    out = [opening]
+
+    for (pid, obj), n in sorted(objects.items(), key=lambda kv: kv[1]):
+        if pid not in place_p:
+            continue
+        ax, ay = place_p[pid]
+        bx, by = place_o[obj]
+        out.append(f'<line x1="{ax:.0f}" y1="{ay:.0f}" x2="{bx:.0f}" y2="{by:.0f}" '
+                   f'stroke="{OBJECT_CSS.get(obj, "#6b7280")}" stroke-opacity=".55" '
+                   f'stroke-width="{1 + 6 * n / top_obj:.1f}" stroke-linecap="round">'
+                   f'<title>{n} frames</title></line>'
+                   f'<text x="{(ax + bx) / 2:.0f}" y="{(ay + by) / 2 - 6:.0f}" '
+                   f'class="edgelab">{n}</text>')
+
+    for (a, b), n in sorted(pairs.items(), key=lambda kv: kv[1]):
+        if a not in place_p or b not in place_p:
+            continue
+        ax, ay = place_p[a]
+        bx, by = place_p[b]
+        mid = ax - 70
+        out.append(f'<path d="M{ax:.0f},{ay:.0f} Q{mid:.0f},{(ay + by) / 2:.0f} '
+                   f'{bx:.0f},{by:.0f}" fill="none" stroke="var(--edge)" '
+                   f'stroke-width="{1 + 6 * n / top_pair:.1f}"><title>'
+                   f'{n} frames doing the same thing</title></path>')
+
+    for pid, (x, y) in place_p.items():
+        pct = scores.get(pid)
+        fill = ("#5a6068" if pct is None else "#3f9e5f" if pct >= .7
+                else "#d98324" if pct >= .4 else "#c0522f")
+        out.append(
+            f'<circle cx="{x:.0f}" cy="{y:.0f}" r="30" fill="{fill}"/>'
+            f'<text x="{x:.0f}" y="{y + 5:.0f}" class="nodeval">'
+            f'{"—" if pct is None else f"{pct * 100:.0f}%"}</text>'
+            f'<text x="{x:.0f}" y="{y + 50:.0f}" class="nodename">'
+            f'{names.get(pid, f"#{pid}")}</text>')
+
+    for obj, (x, y) in place_o.items():
+        colour = OBJECT_CSS.get(obj, "#6b7280")
+        out.append(
+            f'<rect x="{x - 34:.0f}" y="{y - 22:.0f}" width="68" height="44" rx="9" '
+            f'fill="{colour}" fill-opacity=".22" stroke="{colour}" stroke-width="2"/>'
+            f'<text x="{x:.0f}" y="{y + 5:.0f}" class="objname">{obj}</text>')
+
+    out.append("</svg>")
+    return "".join(out)
+
+
+def _transition_svg(pid, transitions) -> str:
+    """Draw one student's action-transition graph.
+
+    Args:
+        pid: The student.
+        transitions: ``{(person_id, from, to): count}``.
+
+    Returns:
+        An SVG fragment, or a note when the student never changed state. Nodes
+        are actions and edges are moves between them, so this is a genuine
+        graph for a single person -- what they did, and what it led to.
+    """
+    mine = {(a, b): n for (p, a, b), n in transitions.items() if p == pid}
+    if not mine:
+        return ('<p class="muted">No state changes — this student stayed in one '
+                'action for the whole session.</p>')
+
+    states = sorted({a for a, _ in mine} | {b for _, b in mine})
+    W, H, R = 660, 200, 26
+    step = W / (len(states) + 1)
+    at = {s: ((i + 1) * step, H / 2) for i, s in enumerate(states)}
+    top = max(mine.values())
+
+    opening = (f'<svg viewBox="0 0 {W} {H}" class="graph" role="img" '
+               f'aria-label="How this student moved between actions">')
+    marker = ('<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" '
+              'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+              '<path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/></marker></defs>')
+    out = [opening, marker]
+
+    for (a, b), n in sorted(mine.items(), key=lambda kv: kv[1]):
+        ax, ay = at[a]
+        bx, by = at[b]
+        lift = 58 if ax < bx else -58
+        out.append(
+            f'<path d="M{ax:.0f},{ay - (R if lift > 0 else -R):.0f} '
+            f'Q{(ax + bx) / 2:.0f},{ay - lift * 1.5:.0f} '
+            f'{bx:.0f},{by - (R if lift > 0 else -R):.0f}" fill="none" '
+            f'stroke="var(--edge)" stroke-width="{1 + 5 * n / top:.1f}" '
+            f'marker-end="url(#ah)"><title>{a} to {b}: {n} times</title></path>'
+            f'<text x="{(ax + bx) / 2:.0f}" y="{ay - lift * 1.1:.0f}" '
+            f'class="edgelab">{n}</text>')
+
+    for state, (x, y) in at.items():
+        out.append(
+            f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{R}" '
+            f'fill="{ACTION_CSS.get(state, "#6b7280")}"/>'
+            f'<text x="{x:.0f}" y="{y + 44:.0f}" class="nodename">'
+            f'{ACTION_LABEL.get(state, state)}</text>')
+    out.append("</svg>")
+    return "".join(out)
+
+
 def _stack(counts: dict, palette: dict) -> str:
     """A stacked proportion bar with a legend, widest segment first."""
     total = sum(counts.values())
@@ -220,7 +372,7 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
     profiles = json.loads(profiles_path.read_text(encoding="utf-8"))
     students = sorted((p for p in profiles if p.get("is_student")),
                       key=lambda p: p["person_id"])
-    timeline, positions, pairs, frames = read_session(graph_path)
+    timeline, positions, pairs, frames, objects, transitions = read_session(graph_path)
     duration = max((s[-1][0] for s in timeline.values() if s), default=0)
 
     scores = {}
@@ -263,6 +415,8 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
           f"mean lean {lean:+.3f} · keypoints in {p['posture']['frames_with_keypoints']} frames"}</dd>
         <dt>Looked away</dt><dd>{away} frame(s)</dd>
       </dl>
+      <div class="tl-head" style="margin-top:20px">How they moved between actions</div>
+      {_transition_svg(pid, transitions)}
     </article>""")
 
     caveat = (students[0]["concentration"]["caveat"] if students else "")
@@ -324,7 +478,17 @@ font-size:.86rem;margin-top:34px}}
   <h2>Per student</h2>
   {"".join(cards) or '<p class="muted">Nobody was recognised.</p>'}
 
-  <h2>Who sat near whom</h2>
+  <h2>Scene graph</h2>
+  <div class="panel">
+    {_scene_graph_svg(names, scores, pairs, objects, set(scores))}
+    <p class="muted" style="margin:14px 0 0;font-size:.85rem">
+      Circles are students, coloured by attention. Rectangles are objects they
+      were seen handling; a line's thickness is how many frames that lasted.
+      Curved links between students mean they were doing the same thing at the
+      same time.</p>
+  </div>
+
+  <h2>Where they sat</h2>
   <div class="panel">{_graph_svg(positions, pairs, names, scores)}</div>
 
   <p class="note">{caveat}</p>

@@ -70,11 +70,15 @@ class Action:
         name: A key from :data:`PRIORITY`.
         evidence: Short human-readable reason, e.g. ``"cell phone overlap"``.
         off_task: Whether this action counts against engagement.
+        obj: The object class this action was read from, if any. Carried so
+            the scene graph can hold a person-object edge -- which is a real
+            relation even when only one person is present.
     """
 
     name: str
     evidence: str
     off_task: bool
+    obj: str | None = None
 
     @property
     def label(self) -> str:
@@ -143,11 +147,12 @@ def classify(
     down = pitch is not None and pitch >= cfg.headpose.pitch_down_threshold
 
     if near.get("cell phone"):
-        return Action("on_phone", "cell phone overlap", True)
+        return Action("on_phone", "cell phone overlap", True, "cell phone")
     if near.get("book"):
-        return Action("studying", "book overlap" + (" + head down" if down else ""), False)
+        return Action("studying", "book overlap" + (" + head down" if down else ""),
+                      False, "book")
     if near.get("laptop"):
-        return Action("on_laptop", "laptop overlap", False)
+        return Action("on_laptop", "laptop overlap", False, "laptop")
     if ear is not None and ear < cfg.face.ear_closed_threshold:
         return Action("eyes_closed", f"eye aspect ratio {ear:.2f}", True)
     if gaze_label in ("left", "right", "back"):
@@ -196,6 +201,7 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
         )
         feat["action"] = action.name
         feat["action_evidence"] = action.evidence
+        feat["object"] = action.obj
         if node.get("role") == "student":
             actions[node["id"]] = action.name
 

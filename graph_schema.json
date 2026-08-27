@@ -182,6 +182,13 @@
                 "null"
               ],
               "description": "Why that action was chosen, so it can be audited."
+            },
+            "object": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Object class this student was interacting with, if any."
             }
           }
         }
