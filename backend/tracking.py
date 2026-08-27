@@ -132,18 +132,21 @@ class PersonTracker:
         """
         self.config: TrackingConfig = config if config is not None else CONFIG.tracking
         try:
-            from ultralytics.trackers import BYTETracker
+            from ultralytics.trackers import BOTSORT, BYTETracker
         except ImportError as exc:  # pragma: no cover - environment dependent
             raise ImportError(
                 "ultralytics is required for tracking. "
                 "Install it via requirements.txt (`pip install ultralytics`)."
             ) from exc
 
-        self._tracker_cls = BYTETracker
+        self._tracker_cls = (
+            BOTSORT if self.config.tracker == "botsort" else BYTETracker
+        )
         self._tracker = self._new_tracker()
         logger.info(
-            "PersonTracker ready: high=%.2f low=%.2f new=%.2f buffer=%d "
+            "PersonTracker ready (%s): high=%.2f low=%.2f new=%.2f buffer=%d "
             "match=%.2f fuse_score=%s",
+            self.config.tracker,
             self.config.track_high_thresh,
             self.config.track_low_thresh,
             self.config.new_track_thresh,
@@ -162,6 +165,14 @@ class PersonTracker:
             match_thresh=self.config.match_thresh,
             fuse_score=self.config.fuse_score,
         )
+        if self.config.tracker == "botsort":
+            # BoT-SORT reads these off the same args object; ByteTrack ignores
+            # them entirely, so they are only attached when they are wanted.
+            args.with_reid = self.config.with_reid
+            args.gmc_method = self.config.gmc_method
+            args.proximity_thresh = self.config.proximity_thresh
+            args.appearance_thresh = self.config.appearance_thresh
+            args.model = self.config.reid_model
         return self._tracker_cls(args)
 
     def reset(self) -> None:
@@ -172,7 +183,9 @@ class PersonTracker:
         """
         self._tracker = self._new_tracker()
 
-    def update(self, persons: Sequence[Person]) -> list[int | None]:
+    def update(
+        self, persons: Sequence[Person], frame: object | None = None
+    ) -> list[int | None]:
         """Assign a ``track_id`` to each person, aligned index-wise with ``persons``.
 
         Must be called once per **consecutive** processed frame of the same
@@ -180,6 +193,11 @@ class PersonTracker:
 
         Args:
             persons: This frame's detected persons, in detection order.
+            frame: The BGR image this frame, optional. BoT-SORT's appearance
+                re-identification needs the pixels to embed each box; without
+                them ``with_reid`` loads an encoder and then silently does
+                nothing, which is indistinguishable from ReID not helping.
+                ByteTrack ignores it.
 
         Returns:
             A list the same length as ``persons``. A person ByteTrack has not
@@ -191,7 +209,7 @@ class PersonTracker:
         """
         n = len(persons)
         if n == 0:
-            self._tracker.update(_TrackerInput.empty())
+            self._tracker.update(_TrackerInput.empty(), frame)
             return []
 
         boxes = np.empty((n, 4), dtype=np.float32)
@@ -202,7 +220,7 @@ class PersonTracker:
             conf[i] = person.confidence
         cls = np.zeros((n,), dtype=np.float32)
 
-        tracked = self._tracker.update(_TrackerInput(boxes, conf, cls))
+        tracked = self._tracker.update(_TrackerInput(boxes, conf, cls), frame)
 
         track_ids: list[int | None] = [None] * n
         for row in tracked:

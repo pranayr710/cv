@@ -824,6 +824,55 @@ class TrackingConfig:
     # Blend detection confidence into the assignment cost, not just IoU.
     fuse_score: bool = True
 
+    # --- tracker choice ---------------------------------------------------- #
+    #
+    # ByteTrack associates almost entirely by IoU between consecutive processed
+    # frames. On this footage the camera pans, and 12.6% of boxes fall below
+    # ByteTrack's association floor between one processed frame and the next --
+    # so a student who is perfectly visible throughout still gets a new
+    # track_id, which is the fragmentation backend/identity.py then has to
+    # repair.
+    #
+    # BoT-SORT adds two things ByteTrack lacks: global motion compensation,
+    # which models the camera's own movement instead of attributing it to the
+    # students, and an appearance embedding so association survives a gap that
+    # IoU cannot bridge. Both address the measured failure directly.
+    #
+    # MEASURED on the audited clip, 331 frames / 735 detections replayed into
+    # both trackers so the only variable is the tracker:
+    #
+    #                        track ids   untracked   ms/frame
+    #   ByteTrack                   42       20.3%        0.7
+    #   BoT-SORT + GMC              44       14.7%       10.8
+    #   BoT-SORT + GMC + ReID       44       14.7%       10.8
+    #
+    # Not the clear win the swap was expected to be. BoT-SORT does what it
+    # promises on the failure that motivated it -- 5.6 points fewer detections
+    # left untracked, i.e. fewer orphans for identity to pick up as surrogate
+    # keys -- but it produces slightly MORE distinct ids, and costs 15x more
+    # per frame because global motion compensation runs sparse optical flow.
+    #
+    # ReID changes nothing at all. That is consistent with everything else
+    # measured on this footage: faces are 27-37px and different students reach
+    # 0.6-0.8 cosine similarity, so an appearance embedding has nothing to
+    # separate. It is not that ReID is unimplemented -- the encoder loads and
+    # the frame is passed -- it is that appearance is uninformative at this
+    # resolution.
+    #
+    # So "bytetrack" stays the default: the id count is what the identity gate
+    # is scored on, and BoT-SORT does not improve it. Revisit on
+    # higher-resolution footage, where appearance would actually carry signal.
+    tracker: Literal["bytetrack", "botsort"] = "bytetrack"
+
+    # BoT-SORT only. with_reid pulls an appearance model into the loop, which
+    # costs time per frame; gmc_method "sparseOptFlow" is the camera-motion
+    # estimator, and the one that matters on panning footage.
+    with_reid: bool = False
+    gmc_method: str = "sparseOptFlow"
+    proximity_thresh: float = 0.5
+    appearance_thresh: float = 0.25
+    reid_model: str = "auto"
+
 
 @dataclass(frozen=True)
 class IdentityConfig:

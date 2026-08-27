@@ -27,7 +27,7 @@ independently hand-labelled classroom images, not self-reported.
 | Engagement (on-task vs off-task) agreement | **82.3%** |
 | Off-task detection precision | **91.1%** (recall 36.9% — deliberately the safer failure direction) |
 | Expression coverage / accuracy | **~66%** coverage at a measured **68%** accuracy for 28px faces — **not a classroom-validated claim**, see below |
-| Pipeline throughput | **0.41 FPS**, 83% CPU-bound (corrects an earlier stale 7.8 FPS claim) |
+| Pipeline throughput | **2.5 FPS** over sampled frames, **1.3 FPS** on frames actually containing students; **43% CPU-bound** (`tools/bench_pipeline.py`, RTX 4050, 640x360 clip, imgsz 1920). Supersedes a stale 0.41 FPS / 83% figure measured before SCRFD and ArcFace moved to the GPU. |
 
 ## Decisions this project made, and why (final)
 
@@ -45,7 +45,15 @@ independently hand-labelled classroom images, not self-reported.
 - **Classroom-specific expression accuracy is unvalidated.** The 68% figure is measured, but on public faces downscaled to simulate classroom size — not on this project's actual students. Real validation needs labelled crops from this footage, which is the one outstanding item only the project owner can supply.
 - **Tracking under camera motion is fragile, though much improved.** Raw motion tracking fragmented badly (45 tracks for ~10 people); two-pass face re-identification cuts that to 10 stable IDs. But whether 10 is exactly right is **not yet verified against ground truth**, and on panning footage no single track survived 60 continuous seconds, which is what per-student calibration needs.
 - **Generalization is now measured, not assumed** — F1 68.0% on a classroom the model never trained on, up from 7.3%. Fixed by merging a second independent dataset once dropping `look_forward` dissolved the label-density conflict. Still an out-of-distribution figure below the 77.9% in-distribution one, so "works in general" remains a qualified claim, not an unqualified one.
-- **Throughput is 0.41 FPS**, not real-time at the frame level. The design tolerates this (attention judges 15-second windows, not single frames), but "real-time" should not be claimed without `onnxruntime-gpu` and the other identified speed-ups.
+- **Throughput is 2.5 FPS over sampled frames and 1.3 FPS on frames that actually contain students**, re-measured with `tools/bench_pipeline.py` after commit `787fe92` moved SCRFD and ArcFace onto the GPU. The previously published 0.41 FPS / 83% CPU-bound predated that change and is withdrawn.
+
+  Both numbers are quoted because only one of them is about the pipeline. 22 of 41 sampled frames in the audited clip contain nobody — the camera pans off the class — and every per-person stage returns immediately on an empty frame, so an all-frames average partly measures the footage. The per-person marginal cost is **120 ms**.
+
+  The bottleneck moved. It is no longer face work: **MediaPipe posture is now the single largest stage at 43% of frame time**, because MediaPipe has no GPU build on Windows and runs on CPU whatever the hardware. Per stage, per frame containing people: posture 371 ms, detect 92 ms, face 142 ms, head pose 84 ms, expression 74 ms, tracking 2 ms.
+
+  Still not real-time at the frame level, and the design continues to tolerate that (attention judges 15-second windows, not single frames). The live dashboard reaches **12-19 FPS** on a webcam by running MediaPipe in tracking rather than static mode, dropping the detector to the frame's own resolution, and running expression, head pose and posture every third frame — see `tools/server.py`.
+
+- **BoT-SORT was evaluated and not adopted.** ByteTrack associates almost entirely by IoU, and 12.6% of boxes fall below its floor between consecutive processed frames on panning footage, so the swap to BoT-SORT (global motion compensation plus appearance ReID) was expected to help. Replaying one fixed set of 735 detections through both: ByteTrack 42 track ids / 20.3% untracked / 0.7 ms per frame; BoT-SORT 44 ids / 14.7% untracked / 10.8 ms. It leaves fewer detections untracked, which is real, but produces slightly more ids at 15x the cost — and ids are what the identity gate is scored on. ReID made no difference whatever, which fits the rest of this footage's story: at 27-37px faces, different students reach 0.6-0.8 cosine similarity, so an appearance embedding has nothing to separate. Available behind `TrackingConfig.tracker="botsort"`; worth revisiting on higher-resolution footage.
 
 ## Stage 2+ (identity persistence, scene graph, group activity)
 
