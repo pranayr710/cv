@@ -79,6 +79,8 @@ def read_session(graph_path: Path):
     pairs: Counter = Counter()
     objects: Counter = Counter()
     layouts: Counter = Counter()
+    transitions: Counter = Counter()
+    previous: dict[int, str] = {}
     frames = 0
 
     for line in graph_path.read_text(encoding="utf-8").splitlines():
@@ -96,6 +98,14 @@ def read_session(graph_path: Path):
             feat = node.get("features") or {}
             action = feat.get("action")
             timeline[pid].append((ts, BUCKET_OF.get(action, "unknown")))
+            # A change of state is an edge. This is the graph a student still
+            # has when they are the only person in the room: behaviour moves
+            # between states over time even with nobody to interact with.
+            if action and action != "unknown":
+                last = previous.get(pid)
+                if last and last != action:
+                    transitions[(pid, last, action)] += 1
+                previous[pid] = action
             if feat.get("layout"):
                 layouts[feat["layout"]] += 1
             if feat.get("object"):
@@ -114,7 +124,8 @@ def read_session(graph_path: Path):
                 pairs[tuple(sorted((a, b)))] += 1
 
     positions = {p: (x / n, y / n) for p, (x, y, n) in sums.items() if n}
-    return timeline, positions, dict(pairs), frames, dict(objects), layouts
+    return (timeline, positions, dict(pairs), frames, dict(objects), layouts,
+            dict(transitions))
 
 
 def _runs(series):
@@ -348,6 +359,66 @@ def _scene_graph(names, on_task, objects, pairs, present):
     return "".join(out)
 
 
+def _transitions_svg(pid, transitions, top=6):
+    """How one student moved between actions.
+
+    Args:
+        pid: The student.
+        transitions: ``{(person_id, from, to): count}``.
+        top: Draw only this many strongest edges.
+
+    Returns:
+        An SVG fragment, or a note when the student never changed state.
+
+    Nodes are actions and edges are moves between them, so this is a real graph
+    for a single person -- what they did, and what it led to. Capped at the
+    strongest few edges: the first version drew every transition for every
+    student and produced 1,131 crossing arrows, which is a picture of nothing.
+    """
+    mine = Counter({(a, b): n for (p, a, b), n in transitions.items() if p == pid})
+    if not mine:
+        return ('<p class="muted" style="font-size:.85rem">Stayed in one action '
+                'for the whole session, so there are no transitions to draw.</p>')
+    strongest = mine.most_common(top)
+    states = []
+    for (a, b), _ in strongest:
+        for x in (a, b):
+            if x not in states:
+                states.append(x)
+
+    W, H, R = 300, 132, 15
+    step = W / (len(states) + 1)
+    at = {s: ((i + 1) * step, H / 2) for i, s in enumerate(states)}
+    heaviest = strongest[0][1]
+
+    opening = (f'<svg viewBox="0 0 {W} {H}" class="tg" role="img" '
+               f'aria-label="How this student moved between actions">')
+    marker = (f'<defs><marker id="a{pid}" viewBox="0 0 10 10" refX="9" refY="5" '
+              f'markerWidth="5" markerHeight="5" orient="auto-start-reverse">'
+              f'<path d="M0,0 L10,5 L0,10 z" fill="var(--muted-mark)"/></marker>'
+              f'</defs>')
+    out = [opening, marker]
+    for (a, b), n in sorted(strongest, key=lambda kv: kv[1]):
+        ax, ay = at[a]
+        bx, by = at[b]
+        up = ax < bx
+        lift = 34 if up else -34
+        out.append(
+            f'<path d="M{ax:.0f},{ay - (R if up else -R):.0f} '
+            f'Q{(ax + bx) / 2:.0f},{ay - lift * 1.6:.0f} '
+            f'{bx:.0f},{by - (R if up else -R):.0f}" fill="none" '
+            f'stroke="var(--muted-mark)" stroke-width="{1 + 3 * n / heaviest:.1f}" '
+            f'marker-end="url(#a{pid})"><title>{ACTION_LABEL.get(a, a)} to '
+            f'{ACTION_LABEL.get(b, b)}: {n} times</title></path>')
+    for state, (x, y) in at.items():
+        out.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{R}" '
+                   f'fill="var(--{BUCKET_OF.get(state, "unknown")})"/>'
+                   f'<text x="{x:.0f}" y="{y + R + 14:.0f}" class="tglab">'
+                   f'{ACTION_LABEL.get(state, state)}</text>')
+    out.append("</svg>")
+    return "".join(out)
+
+
 def _legend():
     """The one legend for the whole page."""
     return "".join(
@@ -377,7 +448,8 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
     names = {p.person_id: p.name for p in gallery.people}
     profiles = json.loads(profiles_path.read_text(encoding="utf-8"))
     students = [p for p in profiles if p.get("is_student")]
-    timeline, _positions, pairs, frames, objects, layouts = read_session(graph_path)
+    (timeline, _positions, pairs, frames, objects, layouts,
+     transitions) = read_session(graph_path)
     duration = max((s[-1][0] for s in timeline.values() if s), default=0)
 
     label = {p["person_id"]: names.get(p["person_id"], f"Student {p['person_id']}")
@@ -409,6 +481,8 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
         <dt>Most of the time</dt><dd>{top or "—"}</dd>
         <dt>Posture</dt><dd>{"not read" if lean is None else f"mean lean {lean:+.2f}"}</dd>
       </dl>
+      <div class="tghead">How they moved between actions</div>
+      {_transitions_svg(pid, transitions)}
     </article>""")
 
     kind = layouts.most_common(1)[0][0] if layouts else "unknown"
@@ -427,19 +501,19 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
   --surface:#fcfcfb; --panel:#ffffff; --ink:#0b0b0b; --muted:#52514e;
   --line:#e4e3df; --track:#eeedea;
   --participating:#2a78d6; --working:#1baf7a; --passive:#4a3aa7;
-  --off_task:#eb6834; --unknown:#b9b8b3;
+  --off_task:#eb6834; --unknown:#b9b8b3; --muted-mark:#9a9992;
 }}
 @media (prefers-color-scheme:dark){{:root:not([data-theme="light"]){{
   --surface:#1a1a19; --panel:#232321; --ink:#ffffff; --muted:#c3c2b7;
   --line:#33332f; --track:#2c2c29;
   --participating:#3987e5; --working:#199e70; --passive:#9085e9;
-  --off_task:#d95926; --unknown:#6b6a65;
+  --off_task:#d95926; --unknown:#6b6a65; --muted-mark:#7d7c76;
 }}}}
 :root[data-theme="dark"]{{
   --surface:#1a1a19; --panel:#232321; --ink:#ffffff; --muted:#c3c2b7;
   --line:#33332f; --track:#2c2c29;
   --participating:#3987e5; --working:#199e70; --passive:#9085e9;
-  --off_task:#d95926; --unknown:#6b6a65;
+  --off_task:#d95926; --unknown:#6b6a65; --muted-mark:#7d7c76;
 }}
 *{{box-sizing:border-box}}
 body{{margin:0;background:var(--surface);color:var(--ink);padding:40px 20px 72px;
@@ -457,6 +531,10 @@ padding:20px;overflow-x:auto}}
 .wide{{width:100%;height:auto;min-width:680px;display:block}}
 .rowlab{{font-size:12px;fill:var(--ink);text-anchor:end}}
 .objlab{{font-size:12px;fill:var(--ink)}}
+.tg{{width:100%;height:auto;display:block;margin-top:4px}}
+.tglab{{font-size:9px;fill:var(--muted);text-anchor:middle}}
+.tghead{{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;
+color:var(--muted);margin-top:16px}}
 .val{{font-size:12px;fill:var(--ink)}}
 .tick{{font-size:10px;fill:var(--muted);text-anchor:middle}}
 .grid{{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}}
