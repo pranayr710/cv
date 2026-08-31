@@ -44,6 +44,18 @@ logger = logging.getLogger(__name__)
 #: consecutive boundaries sat at 4.5-5.9, two clips 150 apart at 73.9.
 CONTINUITY_LIMIT = 20.0
 
+#: Colour-histogram correlation below which consecutive SAMPLED frames are
+#: treated as a new scene.
+#:
+#: Chosen from the data the detector actually sees. Over 20 clips of sampled
+#: frames, ordinary movement -- people leaning, standing, walking past -- kept
+#: histogram correlation at a median of 1.000 with a 10th percentile of 0.999,
+#: while real changes fell to 0.75-0.90. Mean absolute pixel difference was
+#: tried first and discarded: ordinary motion reached 21 there while a genuine
+#: change reached 80, so the two overlapped and no threshold separated them.
+#: A histogram moves when the ROOM changes, not when people do.
+SCENE_HIST_CORRELATION = 0.90
+
 
 def ordered_clips(directory: Path, pattern: str) -> list[Path]:
     """Return the clips in numeric order.
@@ -104,6 +116,15 @@ def check_continuity(clips: list[Path]) -> list[tuple[str, str, float]]:
     return breaks
 
 
+def _histogram(frame):
+    """Small normalised colour histogram, for comparing one frame to the next."""
+    import cv2
+
+    small = cv2.resize(frame, (160, 90))
+    hist = cv2.calcHist([small], [0, 1, 2], None, [8, 8, 8], [0, 256] * 3)
+    return cv2.normalize(hist, hist).flatten()
+
+
 def run(args) -> int:
     """Process every clip as one session and write the report.
 
@@ -130,6 +151,8 @@ def run(args) -> int:
         _build_posture_analyzer,
     )
     from backend.scene_graph import generate_scene_graph
+    from backend.scene_layout import detect as detect_layout
+    from backend.scene_layout import summarise as summarise_layout
     from backend.student_profile import build_profiles
     from backend.temporal import TemporalTracker
     from tools.report import build as build_report
@@ -186,7 +209,16 @@ def run(args) -> int:
     expression = _build_expression_recognizer(config)
     behaviour = _build_behaviour_classifier(config)
     tracker = _build_person_tracker(config)
-    resolver = TwoPassIdentityResolver(config.identity)
+
+    # One identity resolver PER SCENE, not one for the recording. Carrying
+    # identity across a room change is what produced 22 people for a class of
+    # about six: after a cut the camera sees different faces from a different
+    # angle, so every student is minted again and the roster is the sum of all
+    # scenes rather than the size of the class.
+    resolvers: dict[int, TwoPassIdentityResolver] = {}
+    layouts_by_scene: dict[int, list] = {}
+    scene = 0
+    previous_hist = None
 
     started = time.time()
     frame_id = 0
@@ -202,6 +234,17 @@ def run(args) -> int:
                 if not ok:
                     break
                 if index % args.sample_rate == 0:
+                    hist = _histogram(frame)
+                    if previous_hist is not None:
+                        similarity = float(cv2.compareHist(
+                            previous_hist, hist, cv2.HISTCMP_CORREL))
+                        if similarity < SCENE_HIST_CORRELATION:
+                            scene += 1
+                            tracker.reset()
+                    previous_hist = hist
+                    resolver = resolvers.setdefault(
+                        scene, TwoPassIdentityResolver(config.identity))
+
                     persons, objects = detector.detect(frame)
                     boxes = [p.bbox for p in persons]
                     results = faces.analyze(frame, boxes)
@@ -229,6 +272,9 @@ def run(args) -> int:
                         list(keys),
                         objects,
                     )
+                    record["scene"] = scene
+                    layouts_by_scene.setdefault(scene, []).append(
+                        detect_layout(record["persons"]))
                     sink.write(json.dumps(record) + "\n")
                     frame_id += 1
                     kept += 1
@@ -236,12 +282,31 @@ def run(args) -> int:
             capture.release()
             if number % 10 == 0 or number == len(clips):
                 print(f"  {number}/{len(clips)} clips, {kept} frames, "
-                      f"{time.time() - started:.0f}s")
+                      f"{scene + 1} scene(s), {time.time() - started:.0f}s")
 
-    mapping = resolver.finalise()
-    positives = sorted({v for v in mapping.values() if v > 0})
-    print(f"\nidentity: {len(positives)} distinct people across the whole "
-          f"session -> {positives[:20]}")
+    # Namespace each scene's ids so scene 2's "person 1" is never confused with
+    # scene 1's, while both stay readable.
+    mappings: dict[int, dict[int, int]] = {}
+    offset = 0
+    for index in sorted(resolvers):
+        raw = resolvers[index].finalise()
+        highest = max((v for v in raw.values() if v > 0), default=0)
+        mappings[index] = {
+            key: (value + offset if value > 0 else value)
+            for key, value in raw.items()
+        }
+        offset += highest
+
+    scenes = {i: summarise_layout(v) for i, v in layouts_by_scene.items()}
+    print(f"\n{len(resolvers)} scene(s) detected")
+    print(f"{'scene':>6} {'frames':>7} {'people':>7} {'layout':>8} {'ratio':>7}  focus")
+    for index in sorted(resolvers):
+        people = len({v for v in mappings[index].values() if v > 0})
+        layout = scenes[index]
+        spot = f"({layout.focus[0]:.0f},{layout.focus[1]:.0f})" if layout.focus else "-"
+        print(f"{index:>6} {len(layouts_by_scene[index]):>7} {people:>7} "
+              f"{layout.kind:>8} {layout.ratio:>7.2f}  {spot}")
+    print(f"total distinct people: {offset}")
 
     # ---- pass 2: final ids, scene graph, actions --------------------------
     temporal = TemporalTracker(config)
@@ -252,6 +317,7 @@ def run(args) -> int:
           raw_path.open("w", encoding="utf-8") as raws):
         for line in source:
             record = json.loads(line)
+            mapping = mappings.get(record.get("scene", 0), {})
             for person in record["persons"]:
                 key = person.get("person_id")
                 person["person_id"] = mapping.get(key) if key is not None else None
