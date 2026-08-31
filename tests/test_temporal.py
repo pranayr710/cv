@@ -57,10 +57,22 @@ def graph_validator() -> Draft202012Validator:
 
 
 def test_sustained_distraction_and_calibration(graph_validator) -> None:
-    tracker = TemporalTracker()
+    """Sustained distraction fires only after the configured duration.
 
-    # Feed 59 seconds of off-task data (sample rate = 1s, timestamp_ms increments by 1000)
-    for t_s in range(60):  # t=0 to t=59
+    Timings are taken from the config rather than written in, because they are
+    a measured choice that has already moved once: the flag was set at 90
+    seconds, far outside anything the classroom literature supports, and
+    lowering it to the 20-second observation interval silently broke a test
+    that had the old number baked into it.
+    """
+    from backend.config import CONFIG
+
+    tracker = TemporalTracker()
+    sustained_s = int(CONFIG.temporal.sustained_attention_seconds)
+    calibration_s = 60
+
+    # Off-task from the start, stopping just short of the sustained threshold.
+    for t_s in range(min(sustained_s, calibration_s)):
         graph = {
             "frame_id": t_s,
             "timestamp_ms": t_s * 1000,
@@ -71,32 +83,12 @@ def test_sustained_distraction_and_calibration(graph_validator) -> None:
         graph_validator.validate(res)
 
         features = res["nodes"][0]["features"]
-        # Attention calibration needs 60s, so baseline is None at t=59 (60th frame is t_s=59)
-        if t_s < 59:
-            assert features["rolling_engagement_pct"] == 0.0
-            assert features["is_sustained_distracted"] is False
-        else:
-            # At t_s=59, 60s has elapsed (59000 - 0 = 59000, wait calibration checks elapsed >= 60000)
-            pass
+        assert features["rolling_engagement_pct"] == 0.0
+        # Below the threshold this is an episode, not sustained distraction.
+        assert features["is_sustained_distracted"] is False
 
-    # Feed at t=60s (elapsed 60000ms)
-    graph = {
-        "frame_id": 60,
-        "timestamp_ms": 60 * 1000,
-        "nodes": [_node(1, engagement="off")],
-        "edges": []
-    }
-    res = tracker.update_frame(graph)
-    features = res["nodes"][0]["features"]
-    # Baseline is now calibrated (all off-task, so baseline is 0.0)
-    profile = tracker.get_student_profiles()[0]
-    assert profile["calibration_baseline"] == 0.0
-
-    # Still not sustained distraction (at 60s, need 90s)
-    assert features["is_sustained_distracted"] is False
-
-    # Feed up to t=90s (90000ms elapsed since t=0)
-    for t_s in range(61, 91):
+    # Carry on to the calibration point and past the sustained threshold.
+    for t_s in range(min(sustained_s, calibration_s), max(sustained_s, calibration_s) + 1):
         graph = {
             "frame_id": t_s,
             "timestamp_ms": t_s * 1000,
@@ -106,13 +98,16 @@ def test_sustained_distraction_and_calibration(graph_validator) -> None:
         res = tracker.update_frame(graph)
         features = res["nodes"][0]["features"]
 
-    # At t=90s, distraction is sustained!
+    # Past the threshold the distraction is sustained, and the baseline has
+    # calibrated (everything so far was off task, so the baseline is 0.0).
     assert features["is_sustained_distracted"] is True
     profile = tracker.get_student_profiles()[0]
     assert profile["sustained_distractions_count"] == 1
+    assert profile["calibration_baseline"] == 0.0
 
-    # Break the streak by feeding on-task for longer than the rolling window (15s)
-    for t_s in range(91, 108):  # 17 frames of on-task
+    # Break the streak with on-task frames for longer than the rolling window.
+    start = max(sustained_s, calibration_s) + 1
+    for t_s in range(start, start + int(CONFIG.temporal.window_seconds) + 3):
         graph = {
             "frame_id": t_s,
             "timestamp_ms": t_s * 1000,

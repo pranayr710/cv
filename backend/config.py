@@ -778,7 +778,31 @@ class TemporalConfig:
 
     # Rolling window sizes and thresholds (consolidated from defaults).
     window_seconds: float = 15.0
-    sustained_attention_seconds: float = 90.0
+    # How long an off-task run must last before it counts against a student.
+    #
+    # Behavioural-observation research treats behaviour as off task once it
+    # lasts beyond about five seconds; below that it is a glance, and counting
+    # glances turns normal looking around into disengagement. Every off-task
+    # frame used to count regardless of duration, which is why a student who
+    # glanced at a neighbour twelve times scored the same as one who spent a
+    # minute on their phone.
+    min_off_task_seconds: float = 5.0
+
+    # How long a continuous off-task run must last to be reported as SUSTAINED
+    # distraction, as opposed to an ordinary off-task episode.
+    #
+    # Was 90 seconds, which was never justified and is far outside anything the
+    # literature supports -- classroom engagement work samples behaviour in
+    # windows of about twenty seconds, and attention is documented to start
+    # wandering within thirty seconds of a lecture beginning. At 90s the flag
+    # almost never fired, so "sustained distraction" silently meant "almost
+    # nothing qualifies". Twenty seconds matches the observation interval used
+    # in the classroom literature and is long enough that a glance, a stretch
+    # or a dropped pen cannot reach it.
+    #
+    # tools/sweep_temporal.py measures how the reported numbers move with this
+    # value, so the choice can be argued rather than asserted.
+    sustained_attention_seconds: float = 20.0
     sustained_interaction_seconds: float = 20.0
 
 

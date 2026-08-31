@@ -51,6 +51,15 @@ import logging
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from backend.actions import OFF_TASK as OFF_TASK_ACTIONS
+
+#: Seconds of on-task frames tolerated inside an off-task stretch before it
+#: counts as two separate episodes. Set from the sampling rate rather than the
+#: literature: at the rates this pipeline runs, a couple of seconds is a few
+#: frames, enough to absorb a label flickering between on_phone and head_down
+#: as a hand moves, and short enough that genuinely returning to task ends the
+#: episode.
+FLICKER_BRIDGE_SECONDS = 2.0
 from backend.config import CONFIG
 from backend.engagement import classify_engagement, summarise_engagement
 
@@ -166,11 +175,62 @@ def _engagement_pct(flags: list[bool | None]) -> float | None:
     return round(100.0 * sum(1 for f in readable if f) / len(readable), 1)
 
 
-def _on_task_pct(actions: list[str | None]) -> float | None:
+def _off_task_runs(actions, times, minimum_seconds):
+    """Indices of off-task frames belonging to a run long enough to count.
+
+    Args:
+        actions: Per-frame action names.
+        times: Per-frame timestamps in milliseconds, index-aligned.
+        minimum_seconds: Shortest run that counts as off task.
+
+    Returns:
+        The set of frame indices inside a qualifying run.
+
+    Behavioural-observation research treats behaviour as off task once it lasts
+    beyond about five seconds. Below that it is a glance -- looking at a
+    neighbour, checking the time, following someone walking past -- and
+    counting glances turns ordinary human movement into disengagement. A
+    student who glanced twelve times used to score the same as one who spent a
+    minute on their phone.
+    """
+    # Per-frame labels flicker: a student on a phone reads as on_phone, then
+    # head_down, then on_phone again as the hand moves. Segmenting naively
+    # chops one long lapse into many short runs that each fail the test, and
+    # the score then measures label stability rather than behaviour -- measured
+    # on real footage, mean on-task swung from 47% to 95% across plausible
+    # thresholds before this. Brief on-task interruptions inside an otherwise
+    # off-task stretch are bridged, the standard debounce for event
+    # segmentation.
+    # Fixed, and deliberately not tied to `minimum_seconds`. Tying them made
+    # the bridge grow with the threshold, so raising the threshold merged
+    # ever-longer stretches and the sweep measured the two effects together
+    # instead of separately.
+    bridge_ms = FLICKER_BRIDGE_SECONDS * 1000
+    spans: list[list[int]] = []
+    for index, action in enumerate(actions):
+        if action not in OFF_TASK_ACTIONS:
+            continue
+        if spans and times[index] - times[spans[-1][1]] <= bridge_ms:
+            spans[-1][1] = index
+        else:
+            spans.append([index, index])
+
+    counted: set[int] = set()
+    for first, last in spans:
+        if times[last] - times[first] >= minimum_seconds * 1000:
+            counted.update(range(first, last + 1))
+    return counted
+
+
+def _on_task_pct(actions: list[str | None], times=None,
+                 minimum_seconds: float = 0.0) -> float | None:
     """Share of graded frames the student was NOT visibly off task.
 
     Args:
         actions: Per-frame action names, ``None`` where nothing was graded.
+        times: Per-frame timestamps in milliseconds, for the glance filter.
+        minimum_seconds: Off-task runs shorter than this are treated as
+            glances and not counted against the student.
 
     Returns:
         A percentage, or ``None`` when nothing was graded at all.
@@ -181,12 +241,15 @@ def _on_task_pct(actions: list[str | None]) -> float | None:
     it from the absence of a behaviour label. A profile that reports 100% here
     means no off-task evidence was seen, not that none could be.
     """
-    from backend.actions import OFF_TASK
-
     graded = [a for a in actions if a and a != "unknown"]
     if not graded:
         return None
-    off = sum(1 for a in graded if a in OFF_TASK)
+    if times and minimum_seconds > 0:
+        counted = _off_task_runs(actions, times, minimum_seconds)
+        off = sum(1 for i, a in enumerate(actions)
+                  if a and a != "unknown" and i in counted)
+    else:
+        off = sum(1 for a in graded if a in OFF_TASK_ACTIONS)
     return round(100.0 * (len(graded) - off) / len(graded), 1)
 
 
@@ -298,6 +361,7 @@ def build_profiles(
     # this module only ever read Stage 1.
     gaze_labels: dict[int, list[str | None]] = defaultdict(list)
     action_labels: dict[int, list[str | None]] = defaultdict(list)
+    action_times: dict[int, list[int]] = defaultdict(list)
     oriented_flags: dict[int, list[bool | None]] = defaultdict(list)
     layout_kinds: dict[int, list[str]] = defaultdict(list)
     posture_samples: dict[int, list[dict | None]] = defaultdict(list)
@@ -358,6 +422,7 @@ def build_profiles(
                 behaviour_label = behaviour["label"] if behaviour else None
                 gaze_labels[person_id].append(gaze_label)
                 action_labels[person_id].append(person.get("action"))
+                action_times[person_id].append(record.get("timestamp_ms", 0))
                 oriented_flags[person_id].append(person.get("oriented"))
                 if person.get("layout"):
                     layout_kinds[person_id].append(person["layout"])
@@ -499,7 +564,9 @@ def build_profiles(
             "attention": _tally(gaze_labels[person_id]),
             # What they were doing, as opposed to where they were looking.
             "actions": _tally(action_labels[person_id]),
-            "on_task_pct": _on_task_pct(action_labels[person_id]),
+            "on_task_pct": _on_task_pct(
+                action_labels[person_id], action_times[person_id],
+                cfg.temporal.min_off_task_seconds),
             # Deliberately a SECOND number rather than folded into the first.
             # One is about what a student did, the other about where they
             # faced; averaging them would hide which evidence a score rests on.
