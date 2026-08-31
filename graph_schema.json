@@ -35,6 +35,13 @@
       "items": {
         "$ref": "#/$defs/edge"
       }
+    },
+    "scene": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Scene index this frame belongs to, carried from Stage 1."
     }
   },
   "$defs": {

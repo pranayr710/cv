@@ -222,6 +222,30 @@ def _off_task_runs(actions, times, minimum_seconds):
     return counted
 
 
+def _below_scene_coverage(person_id, seen_count, scene_of, scene_frames,
+                          minimum_pct) -> bool:
+    """Whether an identity appeared in too little of its scene to be a student.
+
+    Args:
+        person_id: The identity.
+        seen_count: Frames it was seen in.
+        scene_of: ``{person_id: scene}``.
+        scene_frames: ``{scene: set of frame ids}``.
+        minimum_pct: Required share of the scene.
+
+    Returns:
+        ``True`` when the identity is a fragment. Returns ``False`` when the
+        scene is unknown or empty -- a missing scene id is not evidence against
+        a student, and single-video callers have no scenes at all.
+    """
+    if minimum_pct <= 0:
+        return False
+    total = len(scene_frames.get(scene_of.get(person_id), ()))
+    if total <= 0:
+        return False
+    return (100.0 * seen_count / total) < minimum_pct
+
+
 def _on_task_pct(actions: list[str | None], times=None,
                  minimum_seconds: float = 0.0) -> float | None:
     """Share of graded frames the student was NOT visibly off task.
@@ -362,6 +386,8 @@ def build_profiles(
     gaze_labels: dict[int, list[str | None]] = defaultdict(list)
     action_labels: dict[int, list[str | None]] = defaultdict(list)
     action_times: dict[int, list[int]] = defaultdict(list)
+    scene_frames: dict[object, set] = defaultdict(set)
+    scene_of: dict[int, object] = {}
     oriented_flags: dict[int, list[bool | None]] = defaultdict(list)
     layout_kinds: dict[int, list[str]] = defaultdict(list)
     posture_samples: dict[int, list[dict | None]] = defaultdict(list)
@@ -423,6 +449,9 @@ def build_profiles(
                 gaze_labels[person_id].append(gaze_label)
                 action_labels[person_id].append(person.get("action"))
                 action_times[person_id].append(record.get("timestamp_ms", 0))
+                scene = record.get("scene")
+                scene_frames[scene].add(record.get("frame_id"))
+                scene_of.setdefault(person_id, scene)
                 oriented_flags[person_id].append(person.get("oriented"))
                 if person.get("layout"):
                     layout_kinds[person_id].append(person["layout"])
@@ -533,6 +562,18 @@ def build_profiles(
                 "this detection cannot be attributed to a student (reported as "
                 "unidentified rather than counted as one -- see "
                 "ProfileConfig.require_face_verified)"
+            )
+        elif _below_scene_coverage(person_id, seen_count, scene_of, scene_frames,
+                                   cfg.profile.min_scene_coverage_pct):
+            scene = scene_of.get(person_id)
+            total = len(scene_frames.get(scene, ())) or 1
+            rejected = (
+                f"fragment: present in {seen_count} of {total} frames "
+                f"({100 * seen_count / total:.1f}%) of its scene, below the "
+                f"{cfg.profile.min_scene_coverage_pct:.0f}% minimum -- too brief "
+                f"to be a student sitting in the room, and an absolute frame "
+                f"count cannot say so because three frames means something "
+                f"different in a 20-frame clip and a 700-frame scene"
             )
         elif seen_count < cfg.profile.min_frames_for_profile:
             rejected = (

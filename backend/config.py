@@ -1134,6 +1134,19 @@ class ProfileConfig:
     # span 0.0s -- transient detection noise, not people. 3 is deliberately low
     # (a genuinely brief appearance is still a student) but enough to remove the
     # single-frame ghosts.
+    # Share of its own scene an identity must appear in to be a student.
+    #
+    # min_frames_for_profile is an ABSOLUTE count and therefore scale-blind:
+    # three frames is meaningful in a twenty-frame clip and meaningless in a
+    # 764-frame scene, where it let a 3-frame fragment through as a student
+    # alongside people tracked for 700. Coverage is scale-free.
+    #
+    # 10% chosen by measurement against a visual audit of all 36 ids in a real
+    # session: it removes eight fragments (mostly one to four frames) and loses
+    # none of the nine ids judged to be real students. At 15% the first real
+    # student is lost, so the margin is thin and the value is not rounded up.
+    min_scene_coverage_pct: float = 10.0
+
     min_frames_for_profile: int = 3
 
     # Keep filtered entries in the output, marked, rather than deleting them.

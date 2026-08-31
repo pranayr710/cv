@@ -53,6 +53,9 @@ def generate_scene_graph(record: dict, config: Config | None = None) -> dict:
     cfg = config if config is not None else CONFIG
     frame_id = record["frame_id"]
     timestamp_ms = record["timestamp_ms"]
+    # Carried through so downstream coverage is measured against the scene a
+    # student appeared in, not against a whole multi-scene recording.
+    scene = record.get("scene")
     persons = record.get("persons", [])
     objects = record.get("objects", [])
 
@@ -205,6 +208,7 @@ def generate_scene_graph(record: dict, config: Config | None = None) -> dict:
     return {
         "frame_id": frame_id,
         "timestamp_ms": timestamp_ms,
+        "scene": scene,
         "nodes": nodes,
         "edges": edges
     }
