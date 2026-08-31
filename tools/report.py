@@ -1,13 +1,31 @@
-"""Render a session report: what each student did, and how it changed.
+"""Render a session report a person can read and explain.
 
-The interaction graph alone is a poor summary of a session, and for a single
-student it is one dot and nothing else. What actually carries the session is
-**time**: when someone looked away, for how long, and whether it drifted. So
-the report leads with a per-student attention timeline and keeps the node graph
-for what it is genuinely good at -- who was near whom.
+The previous version put everything it knew on the page at once: seventeen
+action colours, a transition graph per student, a combined scene graph, and
+about 12,900 SVG rectangles across sixteen students. Every individual chart was
+defensible and the page as a whole was unreadable -- there is no order in which
+to explain thirty-four colours.
 
-Everything is inline (no external CSS, fonts or scripts), so the file can be
-opened straight from disk or sent to somebody as one attachment.
+This version answers three questions in order, one visual each.
+
+1. **Who needs attention?** One sorted chart of every student. The eye lands on
+   the bottom of the list without being told where to look.
+2. **When did the class drift?** Every student's timeline on ONE shared axis, so
+   a whole-class dip is visible as a vertical band and an individual's lapse as
+   a gap in one row. Separate per-student axes made that comparison impossible.
+3. **What was this student doing?** A compact card each, on demand.
+
+Seventeen actions collapse to four buckets for anything visual. The detail is
+still reported, as text, where text is better than colour: nobody can hold
+seventeen hues in their head, but "on phone 704" is exact and instantly read.
+
+Colour follows the data-viz method rather than taste. The four bucket hues were
+run through the validator's six checks in both light and dark mode -- lightness
+band, chroma floor, colourblind separation, normal-vision separation, and
+contrast against the surface. Adjacent-pair CVD separation is dE 23.1 light and
+17.3 dark against a target of 8. Every bucket also carries a visible text label,
+which is what the one contrast warning (aqua on the light surface, 2.74 against
+a 3.0 minimum) obliges.
 """
 
 from __future__ import annotations
@@ -16,56 +34,51 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-#: Gaze labels in a fixed order, so a colour always means the same thing.
-GAZE_ORDER = ("teacher", "left", "right", "down", "back")
-GAZE_CSS = {
-    "teacher": "#3f9e5f", "left": "#d98324", "right": "#a855b8",
-    "down": "#2f7fd1", "back": "#8a8f98",
+#: Seventeen actions in four buckets. The buckets are what gets drawn; the
+#: actions are what gets named in text.
+BUCKETS = {
+    "participating": ("attentive", "raising_hand", "leaning_forward"),
+    "working": ("writing", "reading", "studying", "typing", "on_laptop"),
+    "passive": ("head_down", "head_on_hand", "slouching", "drinking", "eating"),
+    "off_task": ("on_phone", "eyes_closed", "looking_away", "yawning"),
 }
-ACTION_CSS = {
-    "raising_hand": "#2e8b57", "attentive": "#3f9e5f", "leaning_forward": "#57a86b",
-    "writing": "#3f72af", "reading": "#4a86c9", "studying": "#5d95d1",
-    "typing": "#3d7ea6", "on_laptop": "#3d7ea6",
-    "drinking": "#8a7f5c", "eating": "#9c8552",
-    "head_down": "#7d848f", "head_on_hand": "#8d7f8f", "slouching": "#6f7480",
-    "looking_away": "#d98324", "yawning": "#b05c3a", "on_phone": "#c0522f",
-    "eyes_closed": "#8b3a52", "unknown": "#3a3f46",
+BUCKET_OF = {a: b for b, actions in BUCKETS.items() for a in actions}
+BUCKET_ORDER = ("participating", "working", "passive", "off_task", "unknown")
+BUCKET_LABEL = {
+    "participating": "participating",
+    "working": "working",
+    "passive": "passive",
+    "off_task": "off task",
+    "unknown": "not seen",
 }
+
 ACTION_LABEL = {
     "raising_hand": "raising hand", "on_phone": "on phone", "drinking": "drinking",
     "eating": "eating", "typing": "typing", "writing": "writing",
-    "reading": "reading", "studying": "reading or writing",
-    "on_laptop": "on laptop", "yawning": "yawning", "eyes_closed": "eyes closed",
-    "head_on_hand": "head resting on hand", "looking_away": "looking away",
+    "reading": "reading", "studying": "reading or writing", "on_laptop": "on laptop",
+    "yawning": "yawning", "eyes_closed": "eyes closed",
+    "head_on_hand": "head on hand", "looking_away": "looking away",
     "head_down": "head down", "slouching": "slouching",
     "leaning_forward": "leaning forward", "attentive": "attentive",
-    "unknown": "no face read",
-}
-EXPR_CSS = {
-    "neutral": "#8a8f98", "happy": "#3f9e5f", "sad": "#2f7fd1",
-    "angry": "#c0522f", "surprise": "#d98324", "fear": "#a855b8",
-    "disgust": "#7a6a3a", "contempt": "#6b5b95", "uncertain": "#b9bec6",
+    "unknown": "not seen",
 }
 
 
 def read_session(graph_path: Path):
-    """Read a session graph into per-student series and pair counts.
+    """Read a session graph into per-student series.
 
     Args:
-        graph_path: The session's graph JSONL, one scene graph per line.
+        graph_path: The session's scene-graph JSONL.
 
     Returns:
-        ``(timeline, positions, pairs, frames)`` where ``timeline`` maps
-        ``person_id`` to a list of ``(timestamp_ms, gaze_label|None)``,
-        ``positions`` maps to a mean on-screen point, ``pairs`` counts frames
-        each pair was linked, and ``frames`` is the frame count.
+        ``(timeline, positions, pairs, frames, objects, layouts)`` where
+        ``timeline`` maps ``person_id`` to ``(timestamp_ms, bucket)`` samples.
     """
     timeline: dict[int, list] = defaultdict(list)
     sums: dict[int, list[float]] = defaultdict(lambda: [0.0, 0.0, 0])
     pairs: Counter = Counter()
     objects: Counter = Counter()
-    transitions: Counter = Counter()
-    previous: dict[int, str] = {}
+    layouts: Counter = Counter()
     frames = 0
 
     for line in graph_path.read_text(encoding="utf-8").splitlines():
@@ -82,17 +95,11 @@ def read_session(graph_path: Path):
                 continue
             feat = node.get("features") or {}
             action = feat.get("action")
-            timeline[pid].append((ts, feat.get("gaze_label"), action))
+            timeline[pid].append((ts, BUCKET_OF.get(action, "unknown")))
+            if feat.get("layout"):
+                layouts[feat["layout"]] += 1
             if feat.get("object"):
                 objects[(pid, feat["object"])] += 1
-            # A change of state is an edge: this is the graph a single student
-            # still has, because behaviour moves between states over time even
-            # when there is nobody to interact with.
-            if action and action != "unknown":
-                last = previous.get(pid)
-                if last and last != action:
-                    transitions[(pid, last, action)] += 1
-                previous[pid] = action
             bbox = feat.get("bbox")
             if bbox:
                 entry = sums[pid]
@@ -100,269 +107,162 @@ def read_session(graph_path: Path):
                 entry[1] += bbox[1] + bbox[3] / 2
                 entry[2] += 1
         for edge in graph.get("edges", []):
+            if edge["type"] != "shared_action":
+                continue
             a, b = of_node.get(edge["source"]), of_node.get(edge["target"])
             if a and b and a > 0 and b > 0 and a != b:
                 pairs[tuple(sorted((a, b)))] += 1
 
     positions = {p: (x / n, y / n) for p, (x, y, n) in sums.items() if n}
-    return (timeline, positions, dict(pairs), frames,
-            dict(objects), dict(transitions))
+    return timeline, positions, dict(pairs), frames, dict(objects), layouts
 
 
-def _timeline_svg(series, duration_ms: int, width=680, height=64, key="action") -> str:
-    """Draw one student's attention over the session as a banded strip.
+def _runs(series):
+    """Collapse consecutive same-bucket samples into runs.
 
     Args:
-        series: ``(timestamp_ms, gaze_label|None)`` in order.
-        duration_ms: Total session length, so every student shares an x-axis.
-        width: SVG width in user units.
-        height: SVG height in user units.
+        series: ``(timestamp_ms, bucket)`` samples in order.
 
     Returns:
-        An SVG fragment. Each sample is a vertical band coloured by where the
-        student was looking, so a glance away is visible as a stripe rather
-        than being averaged out of existence.
+        ``(start_ms, end_ms, bucket)`` runs.
+
+    One rectangle per sample produced about 12,900 of them for a sixteen-student
+    session, which is both unreadable and a megabyte of SVG. Runs carry exactly
+    the same information -- a band is a band whether drawn once or thirty times.
     """
+    runs = []
+    for ts, bucket in series:
+        if runs and runs[-1][2] == bucket:
+            runs[-1][1] = ts
+        else:
+            runs.append([ts, ts, bucket])
+    return runs
+
+
+def _timeline_row(series, duration_ms, width=1000, height=18):
+    """One student's session as a strip of coloured runs."""
     if not series or duration_ms <= 0:
-        return '<p class="muted">No timeline — nothing was graded.</p>'
+        return ""
+    parts = []
+    for start, end, bucket in _runs(series):
+        x = (start / duration_ms) * width
+        w = max(1.0, ((end - start) / duration_ms) * width)
+        parts.append(f'<rect x="{x:.1f}" y="0" width="{w:.1f}" height="{height}" '
+                     f'fill="var(--{bucket})"><title>{BUCKET_LABEL[bucket]} · '
+                     f'{start / 1000:.0f}-{end / 1000:.0f}s</title></rect>')
+    return "".join(parts)
 
-    palette = ACTION_CSS if key == "action" else GAZE_CSS
-    band = max(1.6, width / max(len(series), 1))
-    bars = []
-    for ts, gaze, action in series:
-        label = action if key == "action" else gaze
-        x = (ts / duration_ms) * width
-        colour = palette.get(label, "#3a3f46") if label else "#2b2f35"
-        bars.append(f'<rect x="{x:.2f}" y="0" width="{band:.2f}" height="{height}" '
-                    f'fill="{colour}"/>')
 
-    ticks = []
+def _class_timeline(timeline, names, duration_ms, order):
+    """Every student on one shared time axis.
+
+    Args:
+        timeline: Per-student samples.
+        names: ``{person_id: label}``.
+        duration_ms: Session length, so every row shares an x-axis.
+        order: Person ids, top to bottom.
+
+    Returns:
+        An SVG fragment. A shared axis is the entire point: a whole-class dip
+        reads as a vertical band, which per-student axes made impossible to see.
+    """
+    if not order or duration_ms <= 0:
+        return '<p class="muted">No timeline to draw.</p>'
+    row_h, gap, label_w = 18, 6, 120
+    height = len(order) * (row_h + gap) + 26
+    width = 1000
+
+    opening = (f'<svg viewBox="0 0 {label_w + width} {height}" class="wide" '
+               f'role="img" aria-label="Every student over the session">')
+    parts = [opening]
+    for i, pid in enumerate(order):
+        y = i * (row_h + gap)
+        parts.append(f'<text x="{label_w - 10}" y="{y + 13}" class="rowlab">'
+                     f'{names.get(pid, f"#{pid}")}</text>')
+        parts.append(f'<g transform="translate({label_w},{y})">'
+                     f'{_timeline_row(timeline.get(pid, []), duration_ms, width, row_h)}'
+                     f'</g>')
+    base = len(order) * (row_h + gap)
     for i in range(6):
-        x = width * i / 5
-        secs = duration_ms / 1000 * i / 5
-        ticks.append(f'<line x1="{x:.1f}" y1="{height}" x2="{x:.1f}" y2="{height + 4}" '
-                     f'stroke="var(--line)"/>'
-                     f'<text x="{x:.1f}" y="{height + 16}" class="tick">{secs:.0f}s</text>')
-
-    return (f'<svg viewBox="0 -1 {width} {height + 22}" class="timeline" '
-            f'preserveAspectRatio="none" role="img" aria-label="Attention over time">'
-            f'{"".join(bars)}{"".join(ticks)}</svg>')
+        x = label_w + width * i / 5
+        parts.append(f'<text x="{x:.0f}" y="{base + 14}" class="tick">'
+                     f'{duration_ms / 1000 * i / 5:.0f}s</text>')
+    parts.append("</svg>")
+    return "".join(parts)
 
 
-def _graph_svg(positions, pairs, names, scores) -> str:
-    """Draw who sat near whom, or explain why there is nothing to draw."""
-    if len(positions) < 2:
-        return ('<p class="muted">An interaction graph needs at least two '
-                'recognised students — with one person there are no pairs to '
-                'link. Register a second student and run again.</p>')
-
-    xs = [p[0] for p in positions.values()]
-    ys = [p[1] for p in positions.values()]
-    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
-    W, H, PAD = 680, 340, 64
-
-    def place(pid):
-        px, py = positions[pid]
-        fx = 0.5 if x1 == x0 else (px - x0) / (x1 - x0)
-        fy = 0.5 if y1 == y0 else (py - y0) / (y1 - y0)
-        return PAD + fx * (W - 2 * PAD), PAD + fy * (H - 2 * PAD)
-
-    top = max(pairs.values()) if pairs else 1
-    opening = (f'<svg viewBox="0 0 {W} {H}" class="graph" role="img" '
-               f'aria-label="Who sat near whom">')
-    out = [opening]
-    for (a, b), n in sorted(pairs.items(), key=lambda kv: kv[1]):
-        if a not in positions or b not in positions:
-            continue
-        ax, ay = place(a)
-        bx, by = place(b)
-        out.append(f'<line x1="{ax:.0f}" y1="{ay:.0f}" x2="{bx:.0f}" y2="{by:.0f}" '
-                   f'stroke="var(--edge)" stroke-width="{1 + 6 * n / top:.1f}" '
-                   f'stroke-linecap="round"><title>{n} frames</title></line>')
-    for pid in positions:
-        cx, cy = place(pid)
-        pct = scores.get(pid)
-        fill = ("#5a6068" if pct is None else
-                "#3f9e5f" if pct >= .7 else "#d98324" if pct >= .4 else "#c0522f")
-        out.append(
-            f'<circle cx="{cx:.0f}" cy="{cy:.0f}" r="28" fill="{fill}"/>'
-            f'<text x="{cx:.0f}" y="{cy + 5:.0f}" class="nodeval">'
-            f'{"—" if pct is None else f"{pct * 100:.0f}%"}</text>'
-            f'<text x="{cx:.0f}" y="{cy + 48:.0f}" class="nodename">'
-            f'{names.get(pid, f"#{pid}")}</text>')
-    out.append("</svg>")
-    return "".join(out)
+def _overview(students, scores, engagement, names):
+    """Sorted bars: who needs attention, without being told where to look."""
+    if not students:
+        return '<p class="muted">Nobody was recognised.</p>'
+    order = sorted(students, key=lambda p: (scores.get(p["person_id"]) is None,
+                                            scores.get(p["person_id"], 0)))
+    row_h, gap, label_w, bar_w = 22, 8, 120, 620
+    height = len(order) * (row_h + gap) + 8
+    opening = (f'<svg viewBox="0 0 {label_w + bar_w + 190} {height}" class="wide" '
+               f'role="img" aria-label="Students by on-task percentage">')
+    parts = [opening]
+    for i, p in enumerate(order):
+        pid = p["person_id"]
+        y = i * (row_h + gap)
+        on = scores.get(pid)
+        en = engagement.get(pid)
+        parts.append(f'<text x="{label_w - 10}" y="{y + 15}" class="rowlab">'
+                     f'{names.get(pid, f"#{pid}")}</text>')
+        parts.append(f'<rect x="{label_w}" y="{y}" width="{bar_w}" height="{row_h}" '
+                     f'rx="3" fill="var(--track)"/>')
+        if on is not None:
+            parts.append(f'<rect x="{label_w}" y="{y}" width="{bar_w * on / 100:.1f}" '
+                         f'height="{row_h}" rx="3" fill="var(--working)"/>')
+            parts.append(f'<text x="{label_w + bar_w + 12}" y="{y + 15}" '
+                         f'class="val">{on:.0f}% on task</text>')
+        else:
+            parts.append(f'<text x="{label_w + bar_w + 12}" y="{y + 15}" '
+                         f'class="val muted">not graded</text>')
+        if en is not None:
+            cx = label_w + bar_w * en / 100
+            parts.append(f'<circle cx="{cx:.1f}" cy="{y + row_h / 2}" r="5" '
+                         f'fill="var(--surface)" stroke="var(--participating)" '
+                         f'stroke-width="2.5"><title>{en:.0f}% facing the room '
+                         f'focus</title></circle>')
+    parts.append("</svg>")
+    return "".join(parts)
 
 
-def _action_key(counts: dict) -> str:
-    """Legend for the action timeline, only for actions actually observed."""
-    if not counts:
-        return '<span class="muted">no actions graded</span>'
-    return "".join(
-        f'<span class="key"><i style="background:{ACTION_CSS.get(k, "#6b7280")}"></i>'
-        f'{ACTION_LABEL.get(k, k)} <b>{v}</b></span>'
-        for k, v in sorted(counts.items(), key=lambda kv: -kv[1]))
-
-
-OBJECT_CSS = {"book": "#4a86c9", "laptop": "#3d7ea6", "cell phone": "#c0522f"}
-
-
-def _scene_graph_svg(names, scores, pairs, objects, present) -> str:
-    """Draw students, the objects they handled, and links between them.
-
-    Args:
-        names: ``{person_id: name}``.
-        scores: ``{person_id: attention fraction or None}``.
-        pairs: ``{(a, b): frames}`` shared-action links between students.
-        objects: ``{(person_id, object class): frames}``.
-        present: Person ids that appear in this session.
-
-    Returns:
-        An SVG fragment. A student sitting alone still produces a graph here,
-        because a person handling a book is a relation -- the seating-only
-        version had nothing to draw with one node, which made an empty picture
-        look like a broken feature rather than an absent relationship.
-    """
-    if not present:
-        return '<p class="muted">Nobody was recognised, so there is nothing to link.</p>'
-
-    people = sorted(present)
-    used = sorted({o for _, o in objects})
-    W, H = 680, max(240, 120 + 80 * max(len(people), len(used)))
-    px = 190
-    ox = 500
-
-    place_p = {p: (px, 80 + i * (H - 140) / max(len(people) - 1, 1) if len(people) > 1
-                   else H / 2) for i, p in enumerate(people)}
-    place_o = {o: (ox, 80 + i * (H - 140) / max(len(used) - 1, 1) if len(used) > 1
-                   else H / 2) for i, o in enumerate(used)}
-
-    top_obj = max(objects.values(), default=1)
-    top_pair = max(pairs.values(), default=1)
-    opening = (f'<svg viewBox="0 0 {W} {H}" class="graph" role="img" '
-               f'aria-label="Students, objects and the links between them">')
-    out = [opening]
-
-    for (pid, obj), n in sorted(objects.items(), key=lambda kv: kv[1]):
-        if pid not in place_p:
-            continue
-        ax, ay = place_p[pid]
-        bx, by = place_o[obj]
-        out.append(f'<line x1="{ax:.0f}" y1="{ay:.0f}" x2="{bx:.0f}" y2="{by:.0f}" '
-                   f'stroke="{OBJECT_CSS.get(obj, "#6b7280")}" stroke-opacity=".55" '
-                   f'stroke-width="{1 + 6 * n / top_obj:.1f}" stroke-linecap="round">'
-                   f'<title>{n} frames</title></line>'
-                   f'<text x="{(ax + bx) / 2:.0f}" y="{(ay + by) / 2 - 6:.0f}" '
-                   f'class="edgelab">{n}</text>')
-
-    for (a, b), n in sorted(pairs.items(), key=lambda kv: kv[1]):
-        if a not in place_p or b not in place_p:
-            continue
-        ax, ay = place_p[a]
-        bx, by = place_p[b]
-        mid = ax - 70
-        out.append(f'<path d="M{ax:.0f},{ay:.0f} Q{mid:.0f},{(ay + by) / 2:.0f} '
-                   f'{bx:.0f},{by:.0f}" fill="none" stroke="var(--edge)" '
-                   f'stroke-width="{1 + 6 * n / top_pair:.1f}"><title>'
-                   f'{n} frames doing the same thing</title></path>')
-
-    for pid, (x, y) in place_p.items():
-        pct = scores.get(pid)
-        fill = ("#5a6068" if pct is None else "#3f9e5f" if pct >= .7
-                else "#d98324" if pct >= .4 else "#c0522f")
-        out.append(
-            f'<circle cx="{x:.0f}" cy="{y:.0f}" r="30" fill="{fill}"/>'
-            f'<text x="{x:.0f}" y="{y + 5:.0f}" class="nodeval">'
-            f'{"—" if pct is None else f"{pct * 100:.0f}%"}</text>'
-            f'<text x="{x:.0f}" y="{y + 50:.0f}" class="nodename">'
-            f'{names.get(pid, f"#{pid}")}</text>')
-
-    for obj, (x, y) in place_o.items():
-        colour = OBJECT_CSS.get(obj, "#6b7280")
-        out.append(
-            f'<rect x="{x - 34:.0f}" y="{y - 22:.0f}" width="68" height="44" rx="9" '
-            f'fill="{colour}" fill-opacity=".22" stroke="{colour}" stroke-width="2"/>'
-            f'<text x="{x:.0f}" y="{y + 5:.0f}" class="objname">{obj}</text>')
-
-    out.append("</svg>")
-    return "".join(out)
-
-
-def _transition_svg(pid, transitions) -> str:
-    """Draw one student's action-transition graph.
-
-    Args:
-        pid: The student.
-        transitions: ``{(person_id, from, to): count}``.
-
-    Returns:
-        An SVG fragment, or a note when the student never changed state. Nodes
-        are actions and edges are moves between them, so this is a genuine
-        graph for a single person -- what they did, and what it led to.
-    """
-    mine = {(a, b): n for (p, a, b), n in transitions.items() if p == pid}
-    if not mine:
-        return ('<p class="muted">No state changes — this student stayed in one '
-                'action for the whole session.</p>')
-
-    states = sorted({a for a, _ in mine} | {b for _, b in mine})
-    W, H, R = 660, 200, 26
-    step = W / (len(states) + 1)
-    at = {s: ((i + 1) * step, H / 2) for i, s in enumerate(states)}
-    top = max(mine.values())
-
-    opening = (f'<svg viewBox="0 0 {W} {H}" class="graph" role="img" '
-               f'aria-label="How this student moved between actions">')
-    marker = ('<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" '
-              'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
-              '<path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/></marker></defs>')
-    out = [opening, marker]
-
-    for (a, b), n in sorted(mine.items(), key=lambda kv: kv[1]):
-        ax, ay = at[a]
-        bx, by = at[b]
-        lift = 58 if ax < bx else -58
-        out.append(
-            f'<path d="M{ax:.0f},{ay - (R if lift > 0 else -R):.0f} '
-            f'Q{(ax + bx) / 2:.0f},{ay - lift * 1.5:.0f} '
-            f'{bx:.0f},{by - (R if lift > 0 else -R):.0f}" fill="none" '
-            f'stroke="var(--edge)" stroke-width="{1 + 5 * n / top:.1f}" '
-            f'marker-end="url(#ah)"><title>{a} to {b}: {n} times</title></path>'
-            f'<text x="{(ax + bx) / 2:.0f}" y="{ay - lift * 1.1:.0f}" '
-            f'class="edgelab">{n}</text>')
-
-    for state, (x, y) in at.items():
-        out.append(
-            f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{R}" '
-            f'fill="{ACTION_CSS.get(state, "#6b7280")}"/>'
-            f'<text x="{x:.0f}" y="{y + 44:.0f}" class="nodename">'
-            f'{ACTION_LABEL.get(state, state)}</text>')
-    out.append("</svg>")
-    return "".join(out)
-
-
-def _stack(counts: dict, palette: dict) -> str:
-    """A stacked proportion bar with a legend, widest segment first."""
-    total = sum(counts.values())
+def _bucket_bar(counts):
+    """Four-bucket proportion bar with visible labels."""
+    totals = Counter()
+    for action, n in counts.items():
+        totals[BUCKET_OF.get(action, "unknown")] += n
+    total = sum(totals.values())
     if not total:
         return '<span class="muted">no data</span>'
-    items = sorted(counts.items(), key=lambda kv: -kv[1])
-    segs = "".join(
-        f'<span style="width:{100 * v / total:.2f}%;background:'
-        f'{palette.get(k, "#6b7280")}" title="{k}: {v}"></span>' for k, v in items)
-    keys = "".join(
-        f'<span class="key"><i style="background:{palette.get(k, "#6b7280")}"></i>'
-        f'{k} <b>{v}</b></span>' for k, v in items)
-    return f'<div class="stack">{segs}</div><div class="legend">{keys}</div>'
+    segs, keys = [], []
+    for bucket in BUCKET_ORDER:
+        n = totals.get(bucket, 0)
+        if not n:
+            continue
+        segs.append(f'<span style="width:{100 * n / total:.2f}%;'
+                    f'background:var(--{bucket})" title="{BUCKET_LABEL[bucket]}: {n}">'
+                    f'</span>')
+        keys.append(f'<span class="key"><i style="background:var(--{bucket})"></i>'
+                    f'{BUCKET_LABEL[bucket]} <b>{100 * n / total:.0f}%</b></span>')
+    return f'<div class="stack">{"".join(segs)}</div><div class="legend">{"".join(keys)}</div>'
+
+
+def _legend():
+    """The one legend for the whole page."""
+    return "".join(
+        f'<span class="key"><i style="background:var(--{b})"></i>'
+        f'{BUCKET_LABEL[b]}</span>' for b in BUCKET_ORDER)
 
 
 def build(out_dir: Path, gallery, title="Classroom session") -> Path:
     """Write ``report.html`` for a finished session.
 
     Args:
-        out_dir: Directory holding ``live_graph.jsonl`` and
-            ``live_profiles.json``.
-        gallery: The registered students, for names.
+        out_dir: Directory holding ``live_graph.jsonl`` and ``live_profiles.json``.
+        gallery: Registered students, for names.
         title: Page title.
 
     Returns:
@@ -378,128 +278,131 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
 
     names = {p.person_id: p.name for p in gallery.people}
     profiles = json.loads(profiles_path.read_text(encoding="utf-8"))
-    students = sorted((p for p in profiles if p.get("is_student")),
-                      key=lambda p: p["person_id"])
-    timeline, positions, pairs, frames, objects, transitions = read_session(graph_path)
+    students = [p for p in profiles if p.get("is_student")]
+    timeline, _positions, _pairs, frames, _objects, layouts = read_session(graph_path)
     duration = max((s[-1][0] for s in timeline.values() if s), default=0)
 
-    scores = {}
-    for p in students:
-        counts = p["attention"]["counts"]
-        total = sum(counts.values())
-        scores[p["person_id"]] = (counts.get("teacher", 0) / total) if total else None
-
-    keep = set(scores)
-    positions = {k: v for k, v in positions.items() if k in keep}
-    pairs = {k: v for k, v in pairs.items() if k[0] in keep and k[1] in keep}
+    label = {p["person_id"]: names.get(p["person_id"], f"Student {p['person_id']}")
+             for p in students}
+    on_task = {p["person_id"]: p.get("on_task_pct") for p in students}
+    engaged = {p["person_id"]: p.get("engagement_pct") for p in students}
+    order = sorted((p["person_id"] for p in students),
+                   key=lambda pid: (on_task.get(pid) is None, on_task.get(pid, 0)))
 
     cards = []
-    for p in students:
+    for p in sorted(students, key=lambda p: p["person_id"]):
         pid = p["person_id"]
-        pct = scores[pid]
-        on_task = p.get("on_task_pct")
+        counts = p.get("actions", {}).get("counts", {})
+        top = ", ".join(f"{ACTION_LABEL.get(k, k)} <b>{v}</b>"
+                        for k, v in sorted(counts.items(), key=lambda kv: -kv[1])[:4])
         lean = p["posture"]["mean_vertical_lean"]
-        away = sum(v for k, v in p["attention"]["counts"].items() if k != "teacher")
         cards.append(f"""
     <article class="card">
-      <header>
-        <div><h3>{names.get(pid, f"Student #{pid}")}</h3>
-             <span class="id">id {pid} · seen in {p["frames_seen"]} frames</span></div>
-        <div class="scores">
-          <div class="big" style="color:{"#3f9e5f" if (on_task or 0) >= 70 else "#d98324"}">
-            {"—" if on_task is None else f"{on_task:.0f}%"}<small>on task</small></div>
-          <div class="big small2" style="color:{"#3f9e5f" if (pct or 0) >= .7 else "#d98324"}">
-            {"—" if pct is None else f"{pct * 100:.0f}%"}<small>looking forward</small></div>
-        </div>
-      </header>
-      <div class="tl-head">What they were doing</div>
-      {_timeline_svg(timeline.get(pid, []), duration, key="action")}
-      <div class="legend">{_action_key(p.get("actions", {}).get("counts", {}))}</div>
+      <header><h3>{label[pid]}</h3>
+        <span class="id">{p["frames_seen"]} frames</span></header>
+      <div class="pair">
+        <div><b>{"—" if on_task[pid] is None else f"{on_task[pid]:.0f}%"}</b>
+             <small>on task</small></div>
+        <div><b>{"—" if engaged[pid] is None else f"{engaged[pid]:.0f}%"}</b>
+             <small>facing the room</small></div>
+      </div>
+      {_bucket_bar(counts)}
       <dl>
-        <dt>Actions</dt><dd>{_stack(p.get("actions", {}).get("counts", {}), ACTION_CSS)}</dd>
-        <dt>Where they looked</dt><dd>{_stack(p["attention"]["counts"], GAZE_CSS)}</dd>
-        <dt>Expression</dt><dd>{_stack(p["expression"]["counts"], EXPR_CSS)}</dd>
-        <dt>Posture</dt><dd>{"no body keypoints" if lean is None else
-          f"mean lean {lean:+.3f} · keypoints in {p['posture']['frames_with_keypoints']} frames"}</dd>
-        <dt>Looked away</dt><dd>{away} frame(s)</dd>
+        <dt>Most of the time</dt><dd>{top or "—"}</dd>
+        <dt>Posture</dt><dd>{"not read" if lean is None else f"mean lean {lean:+.2f}"}</dd>
       </dl>
-      <div class="tl-head" style="margin-top:20px">How they moved between actions</div>
-      {_transition_svg(pid, transitions)}
     </article>""")
 
-    caveat = (students[0]["concentration"]["caveat"] if students else "")
-    unknown = len(profiles) - len(students)
+    kind = layouts.most_common(1)[0][0] if layouts else "unknown"
+    explain = {
+        "group": "Students faced each other, so <b>facing the room</b> means "
+                 "engaged with the group rather than with a front.",
+        "lecture": "Students faced a common point outside the seating, so "
+                   "<b>facing the room</b> means oriented toward it.",
+        "unknown": "The room layout could not be determined, so the "
+                   "<b>facing the room</b> figure is unavailable or unreliable.",
+    }[kind]
 
     html = f"""<title>{title}</title>
 <style>
-:root{{--bg:#0f1113;--panel:#17191c;--panel2:#1e2126;--ink:#eceef1;--muted:#9aa1ab;
---line:#2b2f35;--edge:#3a4049;}}
-@media (prefers-color-scheme: light){{:root:not([data-theme="dark"]){{
---bg:#f7f7f6;--panel:#fff;--panel2:#f1f2f4;--ink:#16181b;--muted:#666d78;
---line:#e2e5e9;--edge:#c3c9d1;}}}}
-:root[data-theme="light"]{{--bg:#f7f7f6;--panel:#fff;--panel2:#f1f2f4;--ink:#16181b;
---muted:#666d78;--line:#e2e5e9;--edge:#c3c9d1;}}
+:root{{
+  --surface:#fcfcfb; --panel:#ffffff; --ink:#0b0b0b; --muted:#52514e;
+  --line:#e4e3df; --track:#eeedea;
+  --participating:#2a78d6; --working:#1baf7a; --passive:#4a3aa7;
+  --off_task:#eb6834; --unknown:#b9b8b3;
+}}
+@media (prefers-color-scheme:dark){{:root:not([data-theme="light"]){{
+  --surface:#1a1a19; --panel:#232321; --ink:#ffffff; --muted:#c3c2b7;
+  --line:#33332f; --track:#2c2c29;
+  --participating:#3987e5; --working:#199e70; --passive:#9085e9;
+  --off_task:#d95926; --unknown:#6b6a65;
+}}}}
+:root[data-theme="dark"]{{
+  --surface:#1a1a19; --panel:#232321; --ink:#ffffff; --muted:#c3c2b7;
+  --line:#33332f; --track:#2c2c29;
+  --participating:#3987e5; --working:#199e70; --passive:#9085e9;
+  --off_task:#d95926; --unknown:#6b6a65;
+}}
 *{{box-sizing:border-box}}
-body{{margin:0;background:var(--bg);color:var(--ink);padding:40px 20px 72px;
+body{{margin:0;background:var(--surface);color:var(--ink);padding:40px 20px 72px;
 font:15px/1.55 "Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,sans-serif}}
-.wrap{{max-width:820px;margin:0 auto}}
-h1{{font-size:1.75rem;margin:0 0 6px;letter-spacing:-.02em}}
-.sub{{color:var(--muted);margin:0 0 34px}}
-h2{{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
-margin:40px 0 14px}}
-.panel{{background:var(--panel);border:1px solid var(--line);border-radius:14px;
-padding:22px;overflow-x:auto}}
-.card{{background:var(--panel);border:1px solid var(--line);border-radius:14px;
-padding:22px;margin-bottom:18px}}
-.card header{{display:flex;justify-content:space-between;align-items:flex-start;
-gap:16px;margin-bottom:16px}}
-.card h3{{margin:0;font-size:1.15rem}}
-.id{{color:var(--muted);font-size:.82rem}}
-.big{{font-size:2.3rem;font-weight:600;line-height:1;letter-spacing:-.03em;
-text-align:right}}
-.big small{{display:block;font-size:.68rem;font-weight:400;color:var(--muted);
-text-transform:uppercase;letter-spacing:.08em;margin-top:6px}}
-.timeline{{width:100%;height:86px;display:block;border-radius:6px;overflow:hidden;
-background:var(--panel2)}}
-.tick{{font-size:9px;fill:var(--muted);text-anchor:middle}}
-.graph{{width:100%;height:auto;min-width:520px;display:block}}
-.nodeval{{font-size:13px;font-weight:600;fill:#fff;text-anchor:middle}}
-.nodename{{font-size:12px;fill:var(--ink);text-anchor:middle}}
-dl{{margin:18px 0 0;display:grid;grid-template-columns:150px 1fr;gap:10px 16px;
-align-items:center}}
-dt{{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}}
-dd{{margin:0}}
-.stack{{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line)}}
+.wrap{{max-width:1080px;margin:0 auto}}
+h1{{font-size:1.7rem;margin:0 0 6px;letter-spacing:-.02em}}
+.sub{{color:var(--muted);margin:0 0 8px}}
+.note{{color:var(--muted);font-size:.88rem;margin:0 0 30px;
+border-left:3px solid var(--line);padding-left:14px}}
+h2{{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;
+color:var(--muted);margin:38px 0 6px}}
+.q{{color:var(--muted);font-size:.9rem;margin:0 0 14px}}
+.panel{{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+padding:20px;overflow-x:auto}}
+.wide{{width:100%;height:auto;min-width:680px;display:block}}
+.rowlab{{font-size:12px;fill:var(--ink);text-anchor:end}}
+.val{{font-size:12px;fill:var(--ink)}}
+.tick{{font-size:10px;fill:var(--muted);text-anchor:middle}}
+.grid{{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}}
+.card{{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}}
+.card header{{display:flex;justify-content:space-between;align-items:baseline}}
+.card h3{{margin:0;font-size:1rem}}
+.id{{color:var(--muted);font-size:.8rem}}
+.pair{{display:flex;gap:26px;margin:10px 0 14px}}
+.pair b{{font-size:1.6rem;font-weight:600;letter-spacing:-.02em;display:block}}
+.pair small{{color:var(--muted);font-size:.68rem;text-transform:uppercase;
+letter-spacing:.07em}}
+.stack{{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--track);
+gap:2px}}
 .stack span{{display:block}}
-.legend{{margin-top:7px;font-size:.78rem;color:var(--muted)}}
-.key{{margin-right:12px;white-space:nowrap}}
-.key i{{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}}
+.legend{{margin-top:8px;font-size:.78rem;color:var(--muted)}}
+.key{{margin-right:12px;white-space:nowrap;display:inline-block}}
+.key i{{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;
+vertical-align:baseline}}
+dl{{margin:14px 0 0;display:grid;grid-template-columns:110px 1fr;gap:8px 12px}}
+dt{{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}}
+dd{{margin:0;font-size:.88rem}}
 .muted{{color:var(--muted)}}
-.note{{border-left:3px solid var(--line);padding:4px 0 4px 16px;color:var(--muted);
-font-size:.86rem;margin-top:34px}}
+.pagelegend{{margin:0 0 22px;font-size:.82rem;color:var(--muted)}}
 </style>
 <div class="wrap">
   <h1>{title}</h1>
-  <p class="sub">{len(students)} student(s) · {frames} frames ·
-     {duration / 1000:.0f}s{f" · {unknown} unidentified detection(s) not counted" if unknown else ""}</p>
+  <p class="sub">{len(students)} students · {frames} frames · {duration / 1000:.0f}s
+     · room read as <b>{kind}</b></p>
+  <p class="note">{explain} <b>On task</b> is what a student was doing, from
+     detected objects and body pose. The two are reported separately and never
+     averaged, because they rest on different evidence.</p>
+  <p class="pagelegend">{_legend()}</p>
 
-  <h2>Per student</h2>
-  {"".join(cards) or '<p class="muted">Nobody was recognised.</p>'}
+  <h2>Who needs attention</h2>
+  <p class="q">Sorted lowest first. The ring marks how much of the time each
+     student faced the room.</p>
+  <div class="panel">{_overview(students, on_task, engaged, label)}</div>
 
-  <h2>Scene graph</h2>
-  <div class="panel">
-    {_scene_graph_svg(names, scores, pairs, objects, set(scores))}
-    <p class="muted" style="margin:14px 0 0;font-size:.85rem">
-      Circles are students, coloured by attention. Rectangles are objects they
-      were seen handling; a line's thickness is how many frames that lasted.
-      Curved links between students mean they were doing the same thing at the
-      same time.</p>
-  </div>
+  <h2>When the class drifted</h2>
+  <p class="q">Every student on one shared clock, so a whole-class dip reads as
+     a vertical band and one student's lapse as a gap in a single row.</p>
+  <div class="panel">{_class_timeline(timeline, label, duration, order)}</div>
 
-  <h2>Where they sat</h2>
-  <div class="panel">{_graph_svg(positions, pairs, names, scores)}</div>
-
-  <p class="note">{caveat}</p>
+  <h2>Each student</h2>
+  <div class="grid">{"".join(cards) or '<p class="muted">Nobody recognised.</p>'}</div>
 </div>
 """
     path = out_dir / "report.html"
