@@ -210,6 +210,13 @@
                 "null"
               ],
               "description": "Degrees between the student facing direction and the room focus."
+            },
+            "action_confidence": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "direct when an action rests on a detected object or unambiguous landmark geometry, inferred when it is a plausible reading of weaker evidence."
             }
           }
         }
@@ -287,6 +294,13 @@
               ],
               "minimum": 0.0,
               "maximum": 1.0
+            },
+            "action": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "For a shared_action edge, the action both students were doing at the same time."
             }
           }
         }

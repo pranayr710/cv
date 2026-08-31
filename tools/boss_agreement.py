@@ -13,7 +13,7 @@ number that goes in reports.
 
 Inputs: two CSVs with identical interval keys, one row per (interval, student):
 
-    human CSV : interval,student_id,code      code ∈ {on,off,unknown}
+    human CSV : interval,student_id,code      code  in  {on,off,unknown}
     system CSV: interval,student_id,code
 
 Rows are joined on (interval, student_id); unmatched rows are REPORTED as
@@ -21,7 +21,7 @@ coverage gaps, never silently dropped — a 40%-coverage kappa is a different
 claim than an 95%-coverage one, and this tool refuses to let them look alike.
 
 Also supports rater-vs-rater mode (--rater2) for the pre-study training gate:
-two humans should reach kappa ≥ 0.6 before either codes the real study
+two humans should reach kappa >= 0.6 before either codes the real study
 (published BOSS studies typically report higher; 0.6 is our floor, stated in
 the protocol doc).
 

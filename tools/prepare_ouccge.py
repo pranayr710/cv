@@ -31,7 +31,7 @@ labels.csv columns (header required, order-free)::
 * ``camera`` is free text (e.g. front/side); kept verbatim in the manifest.
   Multi-angle clips of the same instant share one ``source_video`` and are
   NEVER split across folds from each other (see split rule).
-* ``label`` ∈ {High, Medium, Low} — matched case-insensitively.
+* ``label``  in  {High, Medium, Low} — matched case-insensitively.
 
 THE ONE RULE THIS SCRIPT EXISTS TO ENFORCE: **splits are assigned by source
 video / recording session, never by frame or clip.** Frames inside one

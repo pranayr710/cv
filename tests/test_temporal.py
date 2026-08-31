@@ -179,7 +179,7 @@ def test_process_jsonl_temporal(tmp_path: Path, graph_validator) -> None:
     outfile = tmp_path / "stage4.jsonl"
     infile.write_text(json.dumps(record) + "\n", encoding="utf-8")
 
-    tracker = process_jsonl(infile, outfile)
+    process_jsonl(infile, outfile)
     assert outfile.is_file()
 
     content = outfile.read_text(encoding="utf-8")

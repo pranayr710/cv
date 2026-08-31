@@ -35,6 +35,13 @@
       "items": {
         "$ref": "#/$defs/object_detection"
       }
+    },
+    "scene": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Scene index within a multi-clip session. Frames in different scenes are different rooms or camera setups, and identity is resolved within a scene rather than across them."
     }
   },
   "$defs": {
@@ -434,7 +441,21 @@
           "enum": [
             "cell phone",
             "laptop",
-            "book"
+            "book",
+            "bottle",
+            "cup",
+            "keyboard",
+            "mouse",
+            "backpack",
+            "handbag",
+            "sandwich",
+            "apple",
+            "banana",
+            "donut",
+            "pizza",
+            "scissors",
+            "remote",
+            "tv"
           ]
         },
         "bbox": {

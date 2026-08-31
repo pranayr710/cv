@@ -41,6 +41,7 @@ traced to a detected phone rather than an assumption.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 #: Evaluated in order; the first rule that fires wins. The ordering encodes
@@ -455,6 +456,7 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
     index_of = {id(p): i for i, p in enumerate(persons)}
 
     actions: dict[int, str] = {}
+    centres: dict[int, tuple[float, float]] = {}
     for node in graph.get("nodes", []):
         feat = node.setdefault("features", {})
         person = by_person.get(node.get("person_id"))
@@ -482,6 +484,9 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
         feat["object"] = action.obj
         if node.get("role") == "student":
             actions[node["id"]] = action.name
+            box = person.get("bbox")
+            if box:
+                centres[node["id"]] = (box[0] + box[2] / 2.0, box[1] + box[3] / 2.0)
 
     # Two students doing the same thing at the same time is the relation worth
     # drawing: it turns the picture from a seating chart into something about
@@ -493,10 +498,27 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
         for b in ids[i + 1:]:
             if actions[a] != actions[b] or actions[a] in ("attentive", "unknown"):
                 continue
+            # The schema requires every edge to carry the full feature set,
+            # so a consumer never has to branch on edge type to read a field.
+            # The pair-interaction fields do not apply to a shared action and
+            # are null rather than absent -- "not measured here" is a different
+            # claim from "measured as zero".
+            centre_a, centre_b = centres.get(a), centres.get(b)
+            distance = (
+                math.dist(centre_a, centre_b)
+                if centre_a and centre_b else None
+            )
             graph.setdefault("edges", []).append({
                 "type": "shared_action",
                 "source": a,
                 "target": b,
-                "features": {"action": actions[a]},
+                "features": {
+                    "action": actions[a],
+                    "distance_px": distance,
+                    "oriented_fraction": None,
+                    "shared_object_class": None,
+                    "is_sustained_interaction": None,
+                    "rolling_interaction_fraction": None,
+                },
             })
     return graph
