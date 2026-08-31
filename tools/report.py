@@ -250,6 +250,104 @@ def _bucket_bar(counts):
     return f'<div class="stack">{"".join(segs)}</div><div class="legend">{"".join(keys)}</div>'
 
 
+OBJECT_CSS = {"cell phone": "off_task", "laptop": "working", "book": "working",
+              "keyboard": "working", "mouse": "working", "bottle": "passive",
+              "cup": "passive", "tv": "participating"}
+
+
+def _scene_graph(names, on_task, objects, pairs, present):
+    """Students, what they handled, and who did the same thing at the same time.
+
+    Args:
+        names: ``{person_id: label}``.
+        on_task: ``{person_id: percentage or None}``, for node colour.
+        objects: ``{(person_id, object class): frames}``.
+        pairs: ``{(a, b): frames}`` shared-action links.
+        present: Person ids to draw.
+
+    Returns:
+        An SVG fragment. Students on the left, the objects they were seen
+        handling on the right, links weighted by how long each lasted. Curved
+        links on the left join students who were doing the same thing at the
+        same time.
+
+    Laid out as two columns rather than a force-directed cloud. A spring layout
+    of sixteen students and their objects is a hairball, and position in it
+    means nothing; two columns mean "person" and "thing", which is a claim a
+    reader can check.
+    """
+    people = [p for p in sorted(present)]
+    if not people:
+        return '<p class="muted">Nobody was recognised, so there is nothing to link.</p>'
+
+    # Only the links worth drawing: the strongest per student, so one busy
+    # student cannot bury everybody else's.
+    per_student = defaultdict(list)
+    for (pid, obj), n in objects.items():
+        if pid in present:
+            per_student[pid].append((n, obj))
+    links = []
+    for pid, entries in per_student.items():
+        for n, obj in sorted(entries, reverse=True)[:3]:
+            links.append((pid, obj, n))
+    used = sorted({o for _, o, _ in links})
+
+    if not links and not pairs:
+        return ('<p class="muted">No objects were attributed to anyone and no '
+                'two students were doing the same thing at the same time, so '
+                'there are no links to draw.</p>')
+
+    rows = max(len(people), len(used), 1)
+    row_h, pad = 46, 40
+    H = rows * row_h + pad * 2
+    W, px, ox = 760, 210, 540
+
+    def y_of(i, total):
+        return pad + (H - 2 * pad) * ((i + 0.5) / max(total, 1))
+
+    py = {pid: y_of(i, len(people)) for i, pid in enumerate(people)}
+    oy = {obj: y_of(i, len(used)) for i, obj in enumerate(used)}
+
+    top_obj = max((n for _, _, n in links), default=1)
+    top_pair = max(pairs.values(), default=1) if pairs else 1
+    opening = (f'<svg viewBox="0 0 {W} {H}" class="wide" role="img" '
+               f'aria-label="Students, the objects they used, and shared actions">')
+    out = [opening]
+
+    for (a, b), n in sorted(pairs.items(), key=lambda kv: kv[1]):
+        if a not in py or b not in py:
+            continue
+        bend = px - 70 - 40 * (abs(py[a] - py[b]) / max(H, 1))
+        out.append(f'<path d="M{px},{py[a]:.0f} Q{bend:.0f},'
+                   f'{(py[a] + py[b]) / 2:.0f} {px},{py[b]:.0f}" fill="none" '
+                   f'stroke="var(--passive)" stroke-opacity=".55" '
+                   f'stroke-width="{1 + 4 * n / top_pair:.1f}">'
+                   f'<title>{names.get(a, a)} and {names.get(b, b)}: same action '
+                   f'in {n} frames</title></path>')
+
+    for pid, obj, n in sorted(links, key=lambda t: t[2]):
+        out.append(f'<line x1="{px}" y1="{py[pid]:.0f}" x2="{ox}" '
+                   f'y2="{oy[obj]:.0f}" stroke="var(--{OBJECT_CSS.get(obj, "unknown")})" '
+                   f'stroke-opacity=".5" stroke-width="{1 + 5 * n / top_obj:.1f}">'
+                   f'<title>{names.get(pid, pid)} - {obj}: {n} frames</title></line>')
+
+    for pid in people:
+        pct = on_task.get(pid)
+        fill = ("var(--unknown)" if pct is None else
+                "var(--working)" if pct >= 60 else
+                "var(--passive)" if pct >= 30 else "var(--off_task)")
+        out.append(f'<circle cx="{px}" cy="{py[pid]:.0f}" r="9" fill="{fill}"/>'
+                   f'<text x="{px - 16}" y="{py[pid] + 4:.0f}" class="rowlab">'
+                   f'{names.get(pid, f"#{pid}")}</text>')
+    for obj in used:
+        out.append(f'<rect x="{ox}" y="{oy[obj] - 12:.0f}" width="150" height="24" '
+                   f'rx="6" fill="var(--{OBJECT_CSS.get(obj, "unknown")})" '
+                   f'fill-opacity=".18" stroke="var(--{OBJECT_CSS.get(obj, "unknown")})"/>'
+                   f'<text x="{ox + 10}" y="{oy[obj] + 4:.0f}" class="objlab">{obj}</text>')
+    out.append("</svg>")
+    return "".join(out)
+
+
 def _legend():
     """The one legend for the whole page."""
     return "".join(
@@ -279,7 +377,7 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
     names = {p.person_id: p.name for p in gallery.people}
     profiles = json.loads(profiles_path.read_text(encoding="utf-8"))
     students = [p for p in profiles if p.get("is_student")]
-    timeline, _positions, _pairs, frames, _objects, layouts = read_session(graph_path)
+    timeline, _positions, pairs, frames, objects, layouts = read_session(graph_path)
     duration = max((s[-1][0] for s in timeline.values() if s), default=0)
 
     label = {p["person_id"]: names.get(p["person_id"], f"Student {p['person_id']}")
@@ -358,6 +456,7 @@ color:var(--muted);margin:38px 0 6px}}
 padding:20px;overflow-x:auto}}
 .wide{{width:100%;height:auto;min-width:680px;display:block}}
 .rowlab{{font-size:12px;fill:var(--ink);text-anchor:end}}
+.objlab{{font-size:12px;fill:var(--ink)}}
 .val{{font-size:12px;fill:var(--ink)}}
 .tick{{font-size:10px;fill:var(--muted);text-anchor:middle}}
 .grid{{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}}
@@ -400,6 +499,13 @@ dd{{margin:0;font-size:.88rem}}
   <p class="q">Every student on one shared clock, so a whole-class dip reads as
      a vertical band and one student's lapse as a gap in a single row.</p>
   <div class="panel">{_class_timeline(timeline, label, duration, order)}</div>
+
+  <h2>Who used what, and who acted together</h2>
+  <p class="q">A dot per student, coloured by how much of the time they were on
+     task. Lines to the right show the objects they were seen handling, thicker
+     the longer it lasted. Curves on the left join students who were doing the
+     same thing at the same moment.</p>
+  <div class="panel">{_scene_graph(label, on_task, objects, pairs, set(on_task))}</div>
 
   <h2>Each student</h2>
   <div class="grid">{"".join(cards) or '<p class="muted">Nobody recognised.</p>'}</div>
