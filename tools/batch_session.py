@@ -151,6 +151,7 @@ def run(args) -> int:
         _build_posture_analyzer,
     )
     from backend.scene_graph import generate_scene_graph
+    from backend.scene_layout import annotate as annotate_layout
     from backend.scene_layout import detect as detect_layout
     from backend.scene_layout import summarise as summarise_layout
     from backend.student_profile import build_profiles
@@ -322,8 +323,12 @@ def run(args) -> int:
                 key = person.get("person_id")
                 person["person_id"] = mapping.get(key) if key is not None else None
             raws.write(json.dumps(record) + "\n")
+            # Layout first: actions read `oriented` from it to decide
+            # looking_away without a camera-relative gaze constant.
             graph = annotate_graph(
-                temporal.update_frame(generate_scene_graph(record, config)),
+                annotate_layout(
+                    temporal.update_frame(generate_scene_graph(record, config)),
+                    record),
                 record, config)
             graphs.write(json.dumps(graph) + "\n")
     keyed_path.unlink(missing_ok=True)

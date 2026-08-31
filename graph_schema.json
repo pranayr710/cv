@@ -189,6 +189,27 @@
                 "null"
               ],
               "description": "Object class this student was interacting with, if any."
+            },
+            "layout": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "What the room was doing: lecture, group or unknown."
+            },
+            "oriented": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the student faced the room focus. Null when shoulders were unreadable."
+            },
+            "focus_offset_deg": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "Degrees between the student facing direction and the room focus."
             }
           }
         }

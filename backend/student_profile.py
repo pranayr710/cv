@@ -112,6 +112,10 @@ def _people_in(record: dict) -> tuple[list[dict], bool]:
             # graphs carry it; a Stage 1 record has no such field and the
             # profile simply reports no actions rather than inventing them.
             "action": features.get("action"),
+            # Orientation relative to the room's measured focus
+            # (backend/scene_layout.py), independent of any action.
+            "oriented": features.get("oriented"),
+            "layout": features.get("layout"),
         })
     return people, True
 
@@ -137,6 +141,29 @@ def _summarise_posture(samples: list[dict]) -> dict[str, object]:
         "frames_without_keypoints": len(samples) - len(present),
         "mean_vertical_lean": (sum(leans) / len(leans)) if leans else None,
     }
+
+
+def _engagement_pct(flags: list[bool | None]) -> float | None:
+    """Share of readable frames the student faced the room's focus.
+
+    Args:
+        flags: Per-frame ``True``/``False``/``None`` from
+            :func:`backend.scene_layout.annotate`.
+
+    Returns:
+        A percentage, or ``None`` when the student's shoulders were never
+        readable.
+
+    ``None`` frames are excluded rather than counted against the student: not
+    having seen someone is not evidence that they looked away. This is reported
+    beside ``on_task_pct`` and never merged with it -- one measures what a
+    student was doing, the other where they were facing, and a single blended
+    figure would obscure which evidence it rested on.
+    """
+    readable = [f for f in flags if f is not None]
+    if not readable:
+        return None
+    return round(100.0 * sum(1 for f in readable if f) / len(readable), 1)
 
 
 def _on_task_pct(actions: list[str | None]) -> float | None:
@@ -271,6 +298,8 @@ def build_profiles(
     # this module only ever read Stage 1.
     gaze_labels: dict[int, list[str | None]] = defaultdict(list)
     action_labels: dict[int, list[str | None]] = defaultdict(list)
+    oriented_flags: dict[int, list[bool | None]] = defaultdict(list)
+    layout_kinds: dict[int, list[str]] = defaultdict(list)
     posture_samples: dict[int, list[dict | None]] = defaultdict(list)
     rolling_pct: dict[int, list[float]] = defaultdict(list)
     sustained_distracted: dict[int, int] = defaultdict(int)
@@ -329,6 +358,9 @@ def build_profiles(
                 behaviour_label = behaviour["label"] if behaviour else None
                 gaze_labels[person_id].append(gaze_label)
                 action_labels[person_id].append(person.get("action"))
+                oriented_flags[person_id].append(person.get("oriented"))
+                if person.get("layout"):
+                    layout_kinds[person_id].append(person["layout"])
 
                 # Fallback signals, used when the behaviour model produced
                 # nothing -- both already computed by the pipeline and
@@ -468,6 +500,12 @@ def build_profiles(
             # What they were doing, as opposed to where they were looking.
             "actions": _tally(action_labels[person_id]),
             "on_task_pct": _on_task_pct(action_labels[person_id]),
+            # Deliberately a SECOND number rather than folded into the first.
+            # One is about what a student did, the other about where they
+            # faced; averaging them would hide which evidence a score rests on.
+            "engagement_pct": _engagement_pct(oriented_flags[person_id]),
+            "layout": (Counter(layout_kinds[person_id]).most_common(1)[0][0]
+                       if layout_kinds[person_id] else None),
             "posture": _summarise_posture(posture_samples[person_id]),
             # Only populated from a Stage 4 input; a Stage 1 file has no
             # temporal analysis to carry, and reporting zeros there would read

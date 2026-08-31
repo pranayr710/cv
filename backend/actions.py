@@ -270,6 +270,7 @@ def classify(
     config=None,
     posture: dict | None = None,
     landmarks=None,
+    oriented: bool | None = None,
 ) -> Action:
     """Decide what one student is doing this frame.
 
@@ -355,8 +356,17 @@ def classify(
         return Action("head_on_hand", "wrist close to the face", False,
                       confidence="inferred")
 
-    if gaze_label in ("left", "right", "back"):
-        return Action("looking_away", f"gaze {gaze_label}", True)
+    # Prefer the room-relative answer when it exists. `gaze_label` compares
+    # head yaw against a single global reference, which cannot be right for
+    # every seat: on real footage students sat at yaws from -58 to +84 degrees
+    # and a student facing the front read as "looking right" purely from where
+    # they sat. `oriented` compares the student's shoulders against the focus
+    # the room was measured to have, so it carries no camera constant at all.
+    if oriented is False:
+        return Action("looking_away", "facing away from the room focus", True)
+    if oriented is None and gaze_label in ("left", "right", "back"):
+        return Action("looking_away", f"gaze {gaze_label}", True,
+                      confidence="inferred")
 
     if down:
         return Action("head_down", f"pitch {pitch:.0f} deg", False)
@@ -462,6 +472,9 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
             config,
             posture=person.get("posture") or feat.get("posture"),
             landmarks=face.get("landmarks"),
+            # Set by backend.scene_layout.annotate, which must run first. When
+            # present it replaces the camera-relative gaze test entirely.
+            oriented=feat.get("oriented"),
         )
         feat["action"] = action.name
         feat["action_evidence"] = action.evidence

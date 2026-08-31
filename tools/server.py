@@ -123,6 +123,7 @@ class Session:
             _build_posture_analyzer,
         )
         from backend.scene_graph import generate_scene_graph
+        from backend.scene_layout import annotate as annotate_layout
         from backend.temporal import TemporalTracker
 
         capture = cv2.VideoCapture(self.camera)
@@ -185,8 +186,13 @@ class Session:
                         [None] * len(persons), [None] * len(persons),
                         person_ids, objects,
                     )
+                    # Layout first: actions read `oriented` from it.
                     graph = annotate_graph(
-                        temporal.update_frame(generate_scene_graph(record, self.config)),
+                        annotate_layout(
+                            temporal.update_frame(
+                                generate_scene_graph(record, self.config)),
+                            record,
+                        ),
                         record, self.config,
                     )
                     frames_file.write(json.dumps(record) + "\n")

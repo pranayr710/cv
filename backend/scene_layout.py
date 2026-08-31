@@ -281,3 +281,38 @@ def summarise(layouts) -> Layout:
                   median([x.radius for x in agreeing]),
                   median([x.ratio for x in agreeing]),
                   max(x.n for x in agreeing))
+
+
+def annotate(graph: dict, record: dict) -> dict:
+    """Record each student's orientation relative to the room's focus.
+
+    Args:
+        graph: A scene graph whose nodes carry ``person_id``.
+        record: The Stage 1 record it was built from, for ``bbox`` and
+            ``posture``.
+
+    Returns:
+        The same graph. Every node gains ``layout`` (what the room is doing),
+        ``oriented`` (``True``/``False``/``None``) and ``focus_offset_deg``.
+
+    The focus is measured on this frame rather than inherited from a scene
+    summary, so the same code serves a live session and an offline pass. A
+    student whose shoulders could not be read gets ``None``, never ``False``:
+    not having seen someone is not evidence that they looked away.
+    """
+    people = record.get("persons", [])
+    layout = detect(people)
+    by_person = {p.get("person_id"): p for p in people}
+
+    for node in graph.get("nodes", []):
+        feat = node.setdefault("features", {})
+        feat["layout"] = layout.kind
+        person = by_person.get(node.get("person_id"))
+        if person is None:
+            feat["oriented"] = None
+            feat["focus_offset_deg"] = None
+            continue
+        ok, off = oriented_toward(person, layout.focus)
+        feat["oriented"] = ok
+        feat["focus_offset_deg"] = None if off is None else round(off, 1)
+    return graph
