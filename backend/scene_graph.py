@@ -252,8 +252,8 @@ def main(argv: list[str] | None = None) -> int:
         count = process_jsonl(input_path, output_path)
         logger.info("Successfully processed %d frames and wrote to %s", count, output_path)
         return 0
-    except Exception as exc:
-        logger.exception("Failed to generate scene graph: %s", exc)
+    except Exception:
+        logger.exception("Failed to generate scene graph")
         return 1
 
 

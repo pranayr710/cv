@@ -16,7 +16,6 @@ import numpy as np
 import pytest
 
 from backend.group_activity import (
-    LABELS,
     GroupActivityConfig,
     build_graph,
     classify_clip,
@@ -136,13 +135,12 @@ def test_injected_model_decides_the_label() -> None:
 
 def test_clip_majority_vote_uses_window() -> None:
     frames = []
-    for i in range(20):
-        winner = "high" if i % 3 else "low"
-        fn = (lambda w: lambda a, f: np.eye(3)[LABELS.index(w)])(winner)
+    for _ in range(20):
         frames.append(classroom(6))
-    decisions = {"high": 0, "low": 0}
-    # simpler: run classify_clip with a model voting 'medium' everywhere
-    medium = lambda a, f: np.array([0.0, 5.0, 0.0])
+
+    def medium(_adjacency, _features):
+        """A model that votes 'medium' on every frame."""
+        return np.array([0.0, 5.0, 0.0])
     clip = classify_clip(frames * 1, model_fn=medium)  # 20 frames
     assert clip.label == "medium"
     assert clip.n_frames_used == 15  # window default trims to last 15

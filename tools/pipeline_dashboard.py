@@ -111,7 +111,6 @@ def generate_simulation_data(duration_seconds=180):
             ear_2 = 0.31
             expr_2 = "neutral"
             lean_2 = -0.12
-            phone_nearby = False
         elif 25 <= sec < 70:
             # Using cell phone
             gaze_2 = "off-task"
@@ -119,7 +118,6 @@ def generate_simulation_data(duration_seconds=180):
             ear_2 = 0.30
             expr_2 = "happy"
             lean_2 = -0.38
-            phone_nearby = True
             objects.append({
                 "cls": "cell phone",
                 "bbox": [500, 240, 30, 20],
@@ -132,7 +130,6 @@ def generate_simulation_data(duration_seconds=180):
             ear_2 = 0.16 # trigger ear closed threshold < 0.25
             expr_2 = "neutral"
             lean_2 = -0.45
-            phone_nearby = False
             
         p2 = {
             "track_id": 2,
@@ -1541,7 +1538,7 @@ class PipelineDashboardRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(response_body)))
                 self.end_headers()
                 self.wfile.write(response_body)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - a request handler must not let one bad request kill the server
                 err_msg = f"Failed to execute classroom simulation: {e}"
                 import traceback
                 traceback.print_exc()

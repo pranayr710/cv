@@ -265,7 +265,7 @@ class PostureAnalyzer:
             self.config.min_detection_confidence,
         )
 
-    def __enter__(self) -> PostureAnalyzer:
+    def __enter__(self) -> PostureAnalyzer:  # noqa: PYI034 - typing.Self needs 3.11; this runs on 3.10
         """Enter the runtime context and return the analyzer."""
         return self
 

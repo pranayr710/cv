@@ -182,7 +182,6 @@ def build_graph(
     n = len(nodes)
 
     def abstain(reason: str, adj: dict[str, np.ndarray] | None = None) -> GraphResult:
-        empty = np.zeros((n, n))
         return GraphResult(
             adjacencies=adj or {},
             features=np.zeros((n, 0)),

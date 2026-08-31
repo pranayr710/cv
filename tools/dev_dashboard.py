@@ -816,7 +816,7 @@ class TestUIRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(response_body)))
                 self.end_headers()
                 self.wfile.write(response_body)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - a request handler must not let one bad request kill the server
                 self.send_error(500, str(e))
         else:
             self.send_error(404, "File not found")
@@ -853,7 +853,7 @@ class TestUIRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(response_body)))
                 self.end_headers()
                 self.wfile.write(response_body)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - a request handler must not let one bad request kill the server
                 err_msg = f"Failed to run tests: {e}"
                 res_data = [{"nodeid": "error", "name": "Execution failure", "file": "system", "outcome": "failed", "duration": 0, "error": err_msg}]
                 response_body = json.dumps(res_data).encode("utf-8")

@@ -315,8 +315,8 @@ def main(argv: list[str] | None = None) -> int:
         logger.info("Wrote Stage 4 JSONL to %s", output_path)
         logger.info("Wrote summary report to %s", report_path)
         return 0
-    except Exception as exc:
-        logger.exception("Failed to run temporal analysis: %s", exc)
+    except Exception:
+        logger.exception("Failed to run temporal analysis")
         return 1
 
 

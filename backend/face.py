@@ -368,7 +368,7 @@ class FaceAnalyzer:
             self.config.num_landmarks,
         )
 
-    def __enter__(self) -> FaceAnalyzer:
+    def __enter__(self) -> FaceAnalyzer:  # noqa: PYI034 - typing.Self needs 3.11; this runs on 3.10
         """Enter the runtime context and return the analyzer."""
         return self
 

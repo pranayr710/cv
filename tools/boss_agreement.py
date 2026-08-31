@@ -142,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"percent agreement = {res['percent_agreement']:.3f}")
     print(f"cohen's kappa     = {res['cohen_kappa']:.3f}"
           f"   ({'rater1 vs rater2' if args.rater2 else 'human vs system'})")
-    print("\nconfusion (rows=--human, cols=--%s):" % who)
+    print(f"\nconfusion (rows=--human, cols=--{who}):")
     for h in CODES:
         cells = "  ".join(
             f"{s}={res['confusion_human_x_system'][h][s]:3d}" for s in CODES
