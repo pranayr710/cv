@@ -37,9 +37,26 @@ The Phase 1 gate is **≤10 ids for 8 people**. Best achieved by threshold alone
 was 11, and the audited clip still reported 12–18. Everything downstream — every
 per-student number, every graph node — inherits that error.
 
-Scene splitting has removed the largest contributor (a roster that was the sum
-of all scenes), but the within-scene count has not been re-audited by eye since.
-**Nothing should be claimed about per-student accuracy until it has.**
+Scene splitting removed the largest contributor (a roster that was the sum of
+all scenes). A visual audit of all 36 ids from a 10-minute session has now been
+done, and it splits the remaining error into two different problems:
+
+* **Genuinely-not-a-person ids.** One of 36 was 108 blurred crops with a best
+  face of 33px. Raising the founding size floor to 35px removes it and keeps
+  9 of 9 audited students, whose best faces were all 72px or better.
+* **Contaminated ids — the larger share, and not fixable this way.** Two ids
+  were a real student's track that had also absorbed furniture, hands and
+  paper. Their best face is a genuine face (81px, 130px), so no founding
+  threshold can reach them. This is an *association* failure, not a quality
+  one: the tracker or the face-to-person binding drifted onto background.
+
+Two candidate discriminators were measured and **rejected**, both overlapping:
+blur (real ids 42–279, false 32–63) and median face size (real 56–63, false
+26–69). Neither can separate a contaminated id from a real one, because a
+contaminated id mostly *is* a real student.
+
+**Per-student figures remain usable per id; the headcount does not.** The next
+step is association, not another threshold.
 
 ### 2.2 Three of the five headline signals are weakly evidenced
 
@@ -114,9 +131,11 @@ Not weaknesses in the code — limits of what evidence exists.
 
 ## 4. What to do next, in order
 
-1. **Re-audit identity by eye, per scene.** Contact sheets already exist
-   (`tools/audit_identity.py`). This is the gate, and it is the only item
-   blocking honest per-student claims.
+1. **Fix track contamination.** The visual audit is done and points here: ids
+   absorb background crops mid-track. Look at the face-to-person binding
+   (`FaceConfig.assign_min_containment`) and at whether a track should reject a
+   face whose embedding is far from its own running mean. Two quality
+   thresholds have already been measured and rejected, so do not add a third.
 2. **Agree the removal of `concentration` with Person C**, whose reporting
    layer reads it. It is marked superseded; the deletion itself is theirs to
    approve.

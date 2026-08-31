@@ -445,7 +445,9 @@ def main() -> int:
                         help="Only the first N clips.")
     parser.add_argument("--behaviour-imgsz", type=int, default=None,
                         help="Override; defaults to 1280 for HD input.")
-    parser.add_argument("--min-face-px-to-found", type=int, default=24)
+    parser.add_argument("--min-face-px-to-found", type=int, default=35,
+                        help="Smallest best-face a cluster needs to become "
+                             "a person. See IdentityConfig for the audit.")
     parser.add_argument("--gallery", default=None,
                         help="Registered-student gallery, to name people.")
     parser.add_argument("--title", default=None)

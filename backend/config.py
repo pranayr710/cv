@@ -1061,7 +1061,25 @@ class IdentityConfig:
     # exist, and demanding sustained quality would delete back-row students who
     # are only ever seen well once.
     min_face_score_to_found: float = 0.60
-    min_face_px_to_found: int = 20
+
+    # Raised from 20 after a visual audit of a real session.
+    #
+    # Contact sheets for all 36 ids in a 10-minute recording showed one id that
+    # was not a person at all -- 108 blurred crops whose best face reached only
+    # 33px. Every id judged to be a real student had a best observation of at
+    # least 72px, so 35 removes the impostor and touches none of them: 9 of 9
+    # audited students survive, and the id count falls 36 -> 35.
+    #
+    # It is deliberately modest, because the audit also showed what a founding
+    # threshold CANNOT fix. Two of the three non-student ids were not false
+    # identities but CONTAMINATED ones -- a real student's track that had also
+    # absorbed furniture and hands -- so their best face is a genuine face
+    # (81px and 130px) and no founding threshold can reach them. Two candidate
+    # discriminators were measured and rejected: blur (real ids ranged 42-279
+    # against false 32-63, overlapping) and median face size (real 56-63,
+    # false 26-69, also overlapping). That residue is an association problem,
+    # not a quality one.
+    min_face_px_to_found: int = 35
 
     # Path to a registered-face gallery written by tools/register_faces.py.
     #
