@@ -1,0 +1,138 @@
+# Project review — what is solid, what is not, and what to do next
+
+An honest assessment of ClassGraph as it stands. Written to be read by someone
+deciding what to trust in a presentation and what to build next, so it leads
+with the weaknesses rather than the feature list.
+
+Scope: 63 modules, ~22,000 lines, 413 tests.
+
+---
+
+## 1. What is genuinely solid
+
+These have been measured on real footage, not asserted.
+
+| Capability | Evidence |
+|---|---|
+| **Room-layout detection** | Focus ratios: round tables 0.76/0.97/1.26, classrooms 2.36/4.95/5.62. Threshold 1.6 sits in the gap. 7/7 on real scenes. |
+| **Scene segmentation** | Histogram correlation: ordinary motion median 1.000 (p10 0.999), real changes 0.75–0.90. |
+| **Object → action** | 17 actions from detections the pipeline already made. All rules unit-tested. |
+| **Exclusive object ownership** | 35% of phones had overlapped 2+ students before the fix. |
+| **Face recognition, close range** | Held-out webcam photo 0.978, stranger 0.032. |
+| **Behaviour model** | mAP50 0.607; `write` 0.769 — the strongest class, which settled the read/write merge question. |
+| **Identity clustering** | Duplicate-id frames 0 at every threshold. |
+
+The architectural decision that matters most: **`facing_direction` comes from
+shoulder geometry in image space**, so orientation never passes through
+camera-relative yaw. That is what removed the per-camera calibration constant
+rather than tuning it.
+
+---
+
+## 2. Where the project falls short
+
+### 2.1 Identity over-counts, and it is the top of the stack
+
+The Phase 1 gate is **≤10 ids for 8 people**. Best achieved by threshold alone
+was 11, and the audited clip still reported 12–18. Everything downstream — every
+per-student number, every graph node — inherits that error.
+
+Scene splitting has removed the largest contributor (a roster that was the sum
+of all scenes), but the within-scene count has not been re-audited by eye since.
+**Nothing should be claimed about per-student accuracy until it has.**
+
+### 2.2 Three of the five headline signals are weakly evidenced
+
+| Signal | State |
+|---|---|
+| action (object-derived) | **solid** — rests on detection |
+| orientation / engagement | **solid** — rests on measured geometry |
+| behaviour model | **conditional** — works at 1080p, fires 3/801 at 640×360 |
+| expression | **weak** — `min_confidence = 0.40` is uncalibrated |
+| gaze label | **weak** — camera-relative; now bypassed for `looking_away`, still used elsewhere |
+
+`concentration` remains in the profile alongside `on_task_pct` and
+`engagement_pct`, and disagrees with both. Three numbers for one idea is one
+too many; `concentration` should be retired.
+
+### 2.3 Constants that are still asserted
+
+`temporal.window_seconds = 15.0` and `sustained_interaction_seconds = 20.0`
+have no measurement behind them. `expression.min_confidence = 0.40` is
+documented in-repo as "explicitly a starting point".
+
+### 2.4 Coverage is uneven
+
+413 tests, but concentrated in `backend/`. **Not one of the 27 tools has a test
+file** — including `server.py`, `batch_session.py` and `report.py`, which are
+what a demo actually runs. Two real bugs shipped through that gap this month:
+the FastAPI 403 (annotations resolved against module globals) and a `pgrep`
+liveness check that cannot see Windows processes.
+
+### 2.5 Performance is CPU-bound on a stage that need not be
+
+MediaPipe posture is ~43% of frame time and has no Windows GPU build.
+YOLO11-pose was benchmarked at **24.6 ms vs 371 ms**, on GPU, with shoulder
+midpoints agreeing within 2.4% of box width. Not yet adopted.
+
+### 2.6 Long runs are fragile
+
+`batch_session` resolves identity only after seeing everything, so a run that
+dies loses all of pass 1. This happened twice: once at 42/157 clips when a
+session ended, once through my own faulty liveness check.
+
+---
+
+## 3. What is out of reach without people or better data
+
+Not weaknesses in the code — limits of what evidence exists.
+
+- **Expression validation** needs two human raters labelling 120 crops blind
+  (Cohen's kappa). No substitute.
+- **SAHI tiling** requires a size-bucketed eval set built from this footage
+  first, deliberately, so an aggregate recall number cannot hide the back-row
+  failure it is meant to fix.
+- **Social vs academic talk** cannot be separated from vision alone. The
+  difference is in what is said. Available proxies — shared object, duration,
+  whether they return to task — are correlational and should be labelled as such.
+- **Behaviour below 1080p.** The model works in its own domain and does not
+  transfer down. That is a footage-resolution problem, not a training one.
+
+---
+
+## 4. What to do next, in order
+
+1. **Re-audit identity by eye, per scene.** Contact sheets already exist
+   (`tools/audit_identity.py`). This is the gate, and it is the only item
+   blocking honest per-student claims.
+2. **Retire `concentration`.** Keep `on_task_pct` and `engagement_pct`; delete
+   the third number that disagrees with both.
+3. **Swap posture to YOLO11-pose** behind a config flag, with the agreement
+   study across a few hundred frames rather than the single frame tested so far.
+4. **Test the tools.** `server.py`, `batch_session.py`, `report.py` at minimum.
+5. **Checkpoint `batch_session`** so a long run can resume.
+6. **Calibrate `expression.min_confidence`** — needs the rater study, so it
+   waits on item 1 of section 3.
+
+---
+
+## 5. What to say, and not say, in a presentation
+
+**Defensible:**
+- The system detects the room's layout from geometry and adapts what
+  "attention" means to it, with no per-video configuration.
+- Actions come from detected objects and body pose, with the evidence recorded
+  per frame.
+- Two scores are reported separately because they rest on different evidence.
+- Thresholds are grounded in published work and their sensitivity is measured.
+
+**Say with the caveat attached:**
+- Per-student percentages — identity is not yet audited at scene level.
+- Expression — the confidence threshold is uncalibrated.
+
+**Do not claim:**
+- That the system measures attention. It measures orientation and observable
+  action. Neither is attention, and the report says so on its face.
+- That it distinguishes on-topic from off-topic discussion.
+- Any accuracy figure for reading vs writing beyond the model's own 0.607 mAP50
+  in its own domain.
