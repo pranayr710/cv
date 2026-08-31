@@ -556,7 +556,15 @@ def build_profiles(
             "duration_ms": last_ms[person_id] - first_ms[person_id],
             "expression": _tally(expression_labels[person_id]),
             "behaviour": behaviour_summary,
-            "concentration": concentration,
+            # SUPERSEDED by on_task_pct and engagement_pct, and kept only
+            # because backend/reporting.py and tools/dashboard.py still read
+            # it. It disagrees with both -- it can only reach "on task" through
+            # a gaze label matched against a global reference, which cannot be
+            # right for every seat, so on real footage it reported 0% for
+            # students the action layer scored at 50%. Removing it is a
+            # cross-owner change, not a local one; see docs/PROJECT_REVIEW.md.
+            "concentration": {**concentration, "superseded_by":
+                              ["on_task_pct", "engagement_pct"]},
             # Where the student was looking, frame by frame, tallied. Head-pose
             # gaze is the one attention signal available on every face, and it
             # was previously consumed to compute concentration and then thrown

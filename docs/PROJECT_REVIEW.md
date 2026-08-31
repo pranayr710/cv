@@ -52,8 +52,14 @@ of all scenes), but the within-scene count has not been re-audited by eye since.
 | gaze label | **weak** — camera-relative; now bypassed for `looking_away`, still used elsewhere |
 
 `concentration` remains in the profile alongside `on_task_pct` and
-`engagement_pct`, and disagrees with both. Three numbers for one idea is one
-too many; `concentration` should be retired.
+`engagement_pct` and disagrees with both — one student measures 93.0%, 23.8%
+and 6.25% on the three. It can only reach "on task" through a gaze label
+matched against a global reference, which cannot be right for every seat.
+
+It is now marked `superseded_by: [on_task_pct, engagement_pct]` rather than
+deleted. Deleting it is a **cross-owner change**: `backend/reporting.py` and
+`tools/dashboard.py` read it, and both belong to Person C. That needs their
+agreement, not a unilateral removal.
 
 ### 2.3 Constants that are still asserted
 
@@ -63,11 +69,17 @@ documented in-repo as "explicitly a starting point".
 
 ### 2.4 Coverage is uneven
 
-413 tests, but concentrated in `backend/`. **Not one of the 27 tools has a test
+418 tests, but concentrated in `backend/`. **Not one of the 27 tools has a test
 file** — including `server.py`, `batch_session.py` and `report.py`, which are
-what a demo actually runs. Two real bugs shipped through that gap this month:
-the FastAPI 403 (annotations resolved against module globals) and a `pgrep`
-liveness check that cannot see Windows processes.
+what a demo actually runs. Three real bugs shipped through that gap: the
+FastAPI 403 (annotations resolved against module globals), a `pgrep` liveness
+check that cannot see Windows processes, and two tools whose `--help` crashed on
+any Windows console because their docstrings contained a character cp1252 cannot
+encode.
+
+`tests/test_output_contract.py` now closes the narrower gap that let four schema
+violations ship silently — it validates what the pipeline really writes rather
+than hand-built records — but the tools themselves remain untested.
 
 ### 2.5 Performance is CPU-bound on a stage that need not be
 
@@ -105,8 +117,9 @@ Not weaknesses in the code — limits of what evidence exists.
 1. **Re-audit identity by eye, per scene.** Contact sheets already exist
    (`tools/audit_identity.py`). This is the gate, and it is the only item
    blocking honest per-student claims.
-2. **Retire `concentration`.** Keep `on_task_pct` and `engagement_pct`; delete
-   the third number that disagrees with both.
+2. **Agree the removal of `concentration` with Person C**, whose reporting
+   layer reads it. It is marked superseded; the deletion itself is theirs to
+   approve.
 3. **Swap posture to YOLO11-pose** behind a config flag, with the agreement
    study across a few hundred frames rather than the single frame tested so far.
 4. **Test the tools.** `server.py`, `batch_session.py`, `report.py` at minimum.
