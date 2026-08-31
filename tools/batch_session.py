@@ -56,6 +56,21 @@ CONTINUITY_LIMIT = 20.0
 #: A histogram moves when the ROOM changes, not when people do.
 SCENE_HIST_CORRELATION = 0.90
 
+#: Two segments whose median appearance correlates above this are the same
+#: room, and are merged back together.
+#:
+#: A camera panning away and back, or somebody crossing in front of it, ends one
+#: segment and starts another that is the SAME room. Without this the roster is
+#: paid twice: on a 10-minute recording, naive segmentation found six scenes and
+#: 56 distinct people where merging finds four scenes, because a student
+#: briefly occluded came back as a stranger.
+SCENE_MERGE_CORRELATION = 0.95
+
+#: Segments shorter than this are absorbed into the preceding one. A handful of
+#: frames is a blip -- a person crossing the lens -- not a change of room, and
+#: it cannot support an identity roster of its own.
+MIN_SCENE_FRAMES = 15
+
 
 def ordered_clips(directory: Path, pattern: str) -> list[Path]:
     """Return the clips in numeric order.
@@ -123,6 +138,79 @@ def _histogram(frame):
     small = cv2.resize(frame, (160, 90))
     hist = cv2.calcHist([small], [0, 1, 2], None, [8, 8, 8], [0, 256] * 3)
     return cv2.normalize(hist, hist).flatten()
+
+
+def plan_scenes(clips, sample_rate):
+    """Decide the scene of every sampled frame, before any model runs.
+
+    Args:
+        clips: The clips, in order.
+        sample_rate: Take every Nth frame, matching the perception pass.
+
+    Returns:
+        A list of scene ids, one per sampled frame.
+
+    This is a separate decode-only pass, and it is worth its cost. Scene
+    membership has to be known BEFORE perception, because each scene gets its
+    own identity resolver and a resolver cannot be split after the fact.
+    Deciding it during perception forced a purely local choice -- compare this
+    frame with the last one -- which cannot recognise a room being revisited.
+    Decoding is cheap next to detection and face embedding.
+    """
+    import cv2
+    import numpy as np
+
+    hists = []
+    for clip in clips:
+        capture = cv2.VideoCapture(str(clip))
+        index = 0
+        while True:
+            ok, frame = capture.read()
+            if not ok:
+                break
+            if index % sample_rate == 0:
+                hists.append(_histogram(frame))
+            index += 1
+        capture.release()
+    if not hists:
+        return []
+
+    # 1. cut wherever the picture changes from one sampled frame to the next
+    scenes = [0]
+    for i in range(1, len(hists)):
+        similarity = float(cv2.compareHist(hists[i - 1], hists[i], cv2.HISTCMP_CORREL))
+        scenes.append(scenes[-1] + (1 if similarity < SCENE_HIST_CORRELATION else 0))
+
+    # 2. absorb blips too short to support a roster
+    groups: dict[int, list[int]] = {}
+    for i, scene in enumerate(scenes):
+        groups.setdefault(scene, []).append(i)
+    for scene in sorted(groups):
+        if len(groups[scene]) < MIN_SCENE_FRAMES and scene > 0:
+            for i in groups[scene]:
+                scenes[i] = scenes[groups[scene][0] - 1]
+
+    # 3. merge segments that are the same room seen again
+    groups = {}
+    for i, scene in enumerate(scenes):
+        groups.setdefault(scene, []).append(i)
+    medians = {
+        scene: np.median([hists[i] for i in idx], axis=0).astype("float32")
+        for scene, idx in groups.items()
+    }
+    canonical: dict[int, int] = {}
+    for scene in sorted(groups):
+        for earlier in sorted(set(canonical.values())):
+            if float(cv2.compareHist(medians[scene], medians[earlier],
+                                     cv2.HISTCMP_CORREL)) > SCENE_MERGE_CORRELATION:
+                canonical[scene] = earlier
+                break
+        else:
+            canonical[scene] = scene
+
+    # renumber densely so scene ids read 0, 1, 2 rather than 0, 3, 5
+    order = {s: i for i, s in enumerate(sorted(set(canonical.values())))}
+    return [order[canonical[s]] for s in scenes]
 
 
 def run(args) -> int:
@@ -218,8 +306,9 @@ def run(args) -> int:
     # scenes rather than the size of the class.
     resolvers: dict[int, TwoPassIdentityResolver] = {}
     layouts_by_scene: dict[int, list] = {}
+    plan = plan_scenes(clips, args.sample_rate)
+    print(f"  {len(set(plan))} scene(s) planned from {len(plan)} sampled frames")
     scene = 0
-    previous_hist = None
 
     started = time.time()
     frame_id = 0
@@ -235,14 +324,10 @@ def run(args) -> int:
                 if not ok:
                     break
                 if index % args.sample_rate == 0:
-                    hist = _histogram(frame)
-                    if previous_hist is not None:
-                        similarity = float(cv2.compareHist(
-                            previous_hist, hist, cv2.HISTCMP_CORREL))
-                        if similarity < SCENE_HIST_CORRELATION:
-                            scene += 1
-                            tracker.reset()
-                    previous_hist = hist
+                    planned = plan[frame_id] if frame_id < len(plan) else scene
+                    if planned != scene:
+                        scene = planned
+                        tracker.reset()
                     resolver = resolvers.setdefault(
                         scene, TwoPassIdentityResolver(config.identity))
 
