@@ -118,10 +118,19 @@ _LEFT_CORNER, _RIGHT_CORNER = 78, 308
 BLINK_MS = 600
 
 #: Mouth opening (vertical over horizontal) above which a face reads as a yawn.
-#: A relaxed closed mouth sits near 0.02 and speech peaks around 0.35, so this
-#: is set clear of speech: mistaking talking for yawning would turn classroom
-#: discussion into disengagement.
-YAWN_RATIO = 0.55
+#:
+#: Was 0.55, reasoned from an assumption that speech peaks near 0.35. Measured
+#: on a real session that assumption was wrong by a factor of two: across 192
+#: readings the mouth ratio ran 0.000 to 0.274 with a median of 0.039, so the
+#: threshold sat above anything the signal could reach and the yawn label was
+#: unreachable rather than merely rare.
+#:
+#: 0.35 sits about 28% above the highest non-yawn opening observed, which keeps
+#: it clear of speech while being attainable. It remains UNCALIBRATED in the
+#: strict sense -- no labelled yawn has been measured -- so the action is
+#: reported as inferred, and calibrating it needs footage of somebody actually
+#: yawning.
+YAWN_RATIO = 0.35
 
 
 @dataclass(frozen=True)

@@ -116,9 +116,25 @@ class DetectionConfig:
     # holding -- a bottle means drinking, a keyboard means typing, food means
     # eating, and none of those were expressible before.
     object_whitelist: tuple[str, ...] = (
-        "cell phone", "laptop", "book", "bottle", "cup", "keyboard", "mouse",
-        "backpack", "handbag", "sandwich", "apple", "banana", "donut", "pizza",
-        "scissors", "remote", "tv",
+        # Everything in COCO that a person can pick up. COCO has 80 classes in
+        # total, so this is the ceiling of what any COCO-trained detector can
+        # ever name -- there is no pen, pencil, eraser, ruler, notebook or
+        # paper in it, and no threshold reaches a class that does not exist.
+        #
+        # Filtered by "can a hand hold it", not by "does it belong in a
+        # classroom": a held object is evidence about a person whatever it is,
+        # and DetectionConfig.object_conf_near_person already restricts the
+        # relaxed threshold to things actually touching somebody. Fixed
+        # furniture, vehicles and animals are excluded because holding one is
+        # not a thing that happens.
+        "cell phone", "laptop", "book", "bottle", "cup", "wine glass",
+        "keyboard", "mouse", "remote", "scissors", "toothbrush", "hair drier",
+        "backpack", "handbag", "suitcase", "umbrella", "tie",
+        "fork", "knife", "spoon", "bowl",
+        "sandwich", "apple", "banana", "orange", "donut", "pizza", "cake",
+        "carrot", "broccoli", "hot dog",
+        "sports ball", "frisbee", "baseball bat", "baseball glove",
+        "tennis racket", "skateboard", "teddy bear", "clock", "vase",
     )
 
     # Inference resolution. YOLO resizes the frame to this before inference, so
