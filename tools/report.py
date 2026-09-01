@@ -500,10 +500,11 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
       </div>
       {_bucket_bar(counts)}
       <dl>
-        <dt>Dominant Actions</dt><dd>{top or "—"}</dd>
-        <dt>Posture Lean</dt><dd>{"not read" if lean is None else f"mean lean {lean:+.2f} rad"}</dd>
+        <dt>Most of the time</dt><dd>{top or "—"}</dd>
+        <dt>Expression</dt><dd>{_stack_expr(p["expression"]["counts"])}</dd>
+        <dt>Posture</dt><dd>{posture_label(lean)}</dd>
       </dl>
-      <div class="tghead">State Machine Transitions</div>
+      <div class="tghead">How they moved between actions</div>
       {_transitions_svg(pid, transitions)}
     </article>""")
 
