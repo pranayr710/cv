@@ -223,6 +223,11 @@ dialog::backdrop { background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); }
       <div class="tile"><div class="k">Frames</div><div class="v" id="tFrames">—</div></div>
       <div class="tile"><div class="k">FPS</div><div class="v" id="tFps">—</div></div>
     </div>
+    <div id="room" class="room">
+      <div class="verdict"><span id="roomKind">waiting</span></div>
+      <div class="roomwhy" id="roomWhy">The room's layout is measured from where
+        the students face, not configured.</div>
+    </div>
     <div id="hint" class="hint" hidden></div>
     <div id="stage">
       <div class="placeholder" id="ph">

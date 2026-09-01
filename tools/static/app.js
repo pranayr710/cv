@@ -93,6 +93,29 @@ function paintPairs(pairs, students) {
     : '<p class="empty">Needs two students doing the same thing.</p>';
 }
 
+function paintRoom(L) {
+  const box = $("room"), kind = $("roomKind"), why = $("roomWhy");
+  if (!L) return;
+  box.classList.toggle("group", L.kind === "group");
+  box.classList.toggle("lecture", L.kind === "lecture");
+  if (L.kind === "group") {
+    kind.textContent = "Group work";
+    why.innerHTML = `They face <b>each other</b> — the focus falls among them `
+      + `(ratio ${L.ratio}). Engagement here means engagement with the group, `
+      + `so turning away from the front is correct behaviour.`;
+  } else if (L.kind === "lecture") {
+    kind.textContent = "Lecture";
+    why.innerHTML = `They share a focus <b>outside the seating</b> `
+      + `(ratio ${L.ratio}). Engagement means orientation toward it.`;
+  } else {
+    kind.textContent = "Layout unknown";
+    why.textContent = L.n < 3
+      ? `Needs 3 people to fit the facing rays — ${L.n} in frame. `
+        + `The second score stays blank rather than being guessed.`
+      : "The facing directions do not converge, so no shared focus can be claimed.";
+  }
+}
+
 /* ---------------------------------------------------------------- overlay */
 
 function paintOverlay(boxes) {
@@ -105,6 +128,28 @@ function paintOverlay(boxes) {
   const ox = (box.width - w * scale) / 2, oy = (box.height - h * scale) / 2;
 
   ctx.clearRect(0, 0, overlay.width, overlay.height);
+  const X = (v) => ox + v * scale, Y = (v) => oy + v * scale;
+
+  // The geometry the layout verdict is built from: one ray per student along
+  // their shoulder direction, and the point those rays converge on.
+  if (window._layout && window._layout.focus) {
+    const L = window._layout, fx = X(L.focus[0]), fy = Y(L.focus[1]);
+    const hue = L.kind === "group" ? "#4ea36b" : "#4a86c9";
+    ctx.save();
+    ctx.strokeStyle = hue; ctx.globalAlpha = .38; ctx.lineWidth = 1.5;
+    for (const b of boxes) {
+      if (!b.facing) continue;
+      const cx = X(b.bbox[0] + b.bbox[2] / 2), cy = Y(b.bbox[1] + b.bbox[3] / 2);
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(fx, fy); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(fx, fy, 13, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(fx - 20, fy); ctx.lineTo(fx + 20, fy);
+    ctx.moveTo(fx, fy - 20); ctx.lineTo(fx, fy + 20); ctx.stroke();
+    ctx.fillStyle = hue; ctx.font = "600 12px 'Segoe UI',sans-serif";
+    ctx.fillText("room focus", fx + 26, fy + 4);
+    ctx.restore();
+  }
   ctx.lineWidth = 2;
   ctx.font = "600 13px 'Segoe UI',sans-serif";
   for (const b of boxes) {
@@ -141,6 +186,7 @@ function connect() {
     $("tFrames").textContent = d.frame;
     $("tFps").textContent = d.fps;
     $("hdr").textContent = `${d.seconds}s · ${d.fps} fps`;
+    paintRoom(d.layout);
     const hint = $("hint");
     if (d.hint) { hint.textContent = d.hint; hint.hidden = false; }
     else hint.hidden = true;
@@ -153,6 +199,7 @@ function connect() {
     paintRoster(d.students);
     paintPairs(d.pairs, d.students);
     paintLiveGraph(d.students, d.objects, d.pairs);
+    window._layout = d.layout;
     requestAnimationFrame(() => paintOverlay(d.boxes));
   };
   socket.onclose = () => setTimeout(connect, 1200);

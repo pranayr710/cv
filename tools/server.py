@@ -262,6 +262,25 @@ class Session:
             if a and b and a > 0 and b > 0:
                 self.pairs[tuple(sorted((a, b)))] += 1
 
+    def _layout_now(self, record):
+        """The room's measured layout for this frame, for the live view.
+
+        The layout verdict is the project's distinguishing measurement and it
+        was computed on every frame and never sent anywhere, so the one thing
+        the system does that others do not was invisible while it ran.
+        """
+        from backend.scene_layout import detect as detect_layout
+
+        layout = detect_layout(record.get("persons", []))
+        return {
+            "kind": layout.kind,
+            "ratio": round(layout.ratio, 2) if layout.focus else None,
+            "focus": [round(layout.focus[0]), round(layout.focus[1])] if layout.focus else None,
+            "centre": [round(layout.centre[0]), round(layout.centre[1])] if layout.centre else None,
+            "radius": round(layout.radius) if layout.centre else None,
+            "n": layout.n,
+        }
+
     def _snapshot(self, record, graph, names, elapsed) -> dict:
         """Build the JSON payload the browser renders each frame."""
         feats = {n.get("person_id"): (n.get("features") or {})
@@ -276,6 +295,7 @@ class Session:
             face_px = int(min(box[2], box[3])) if box else None
             if (pid is None or pid <= 0) and face_px and face_px < self.min_face_px:
                 small_unknown += 1
+            posture = person.get("posture") or {}
             boxes.append({
                 "bbox": person["bbox"],
                 "person_id": pid,
@@ -283,6 +303,10 @@ class Session:
                 "gaze": feat.get("gaze_label"),
                 "action": feat.get("action"),
                 "face_px": face_px,
+                # The shoulder direction each person contributes to the focus
+                # calculation, so the viewer can see the geometry being used.
+                "facing": posture.get("facing_direction"),
+                "oriented": feat.get("oriented"),
             })
 
         students = []
@@ -321,6 +345,7 @@ class Session:
 
         return {
             "hint": hint,
+            "layout": self._layout_now(record),
             "frame": record["frame_id"],
             "seconds": round(elapsed, 1),
             "fps": round(self.fps, 1),
