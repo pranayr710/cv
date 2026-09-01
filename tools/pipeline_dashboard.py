@@ -302,20 +302,28 @@ HTML_CONTENT = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClassGraph Classroom Pipeline Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>ClassGraph — Scene Graph & Attention Topology Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #070a13;
-            --bg-card: rgba(17, 24, 39, 0.6);
-            --border-color: rgba(255, 255, 255, 0.07);
+            --bg-dark: #060810;
+            --bg-card: rgba(13, 18, 30, 0.75);
+            --bg-card-hover: rgba(22, 30, 48, 0.85);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(99, 102, 241, 0.35);
             --primary: #6366f1;
             --primary-glow: rgba(99, 102, 241, 0.4);
+            --accent-cyan: #06b6d4;
+            --accent-cyan-glow: rgba(6, 182, 212, 0.35);
             --success: #10b981;
-            --danger: #f43f5e;
+            --success-glow: rgba(16, 185, 129, 0.35);
             --warning: #f59e0b;
-            --text-main: #f9fafb;
-            --text-muted: #9ca3af;
+            --warning-glow: rgba(245, 158, 11, 0.35);
+            --danger: #f43f5e;
+            --danger-glow: rgba(244, 63, 94, 0.35);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-subtle: #64748b;
         }
 
         * {
@@ -325,155 +333,244 @@ HTML_CONTENT = """<!DOCTYPE html>
         }
 
         body {
-            font-family: 'Outfit', sans-serif;
-            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg-dark) 80%);
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(circle at 50% -20%, #1e1b4b 0%, var(--bg-dark) 75%);
             color: var(--text-main);
             min-height: 100vh;
-            padding: 2rem 1.5rem;
+            padding: 1.25rem;
             overflow-x: hidden;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1560px;
             margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.1rem;
         }
 
-        /* Header */
+        /* Glassmorphic Navbar */
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
             background: var(--bg-card);
-            backdrop-filter: blur(16px);
-            padding: 1.25rem 2rem;
-            border-radius: 16px;
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            padding: 1rem 1.6rem;
+            border-radius: 18px;
             border: 1px solid var(--border-color);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+        }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: #fff;
+            box-shadow: 0 0 25px var(--primary-glow);
         }
 
         .header-title h1 {
-            font-size: 1.6rem;
+            font-size: 1.45rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #a5b4fc, #6366f1);
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #818cf8 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .version-badge {
+            font-size: 0.68rem;
+            font-weight: 600;
+            padding: 0.2rem 0.55rem;
+            border-radius: 99px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .header-title p {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
         }
 
         .action-group {
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             align-items: center;
         }
 
         .btn {
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
             color: var(--text-main);
-            border: none;
-            padding: 0.7rem 1.5rem;
-            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 0.6rem 1.3rem;
+            border-radius: 12px;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.86rem;
             cursor: pointer;
-            box-shadow: 0 4px 12px var(--primary-glow);
-            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px var(--primary-glow);
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px var(--primary-glow);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px var(--primary-glow);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.08);
         }
 
         .btn:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
-        /* Summary Stats Cards */
+        /* Summary Stats Header Row */
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.25rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.1rem;
         }
 
         .stat-card {
             background: var(--bg-card);
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 1.25rem;
+            padding: 1.1rem 1.4rem;
             position: relative;
             overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-glow);
+        }
+
+        .stat-header {
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--primary);
-        }
-
-        .stat-card.success::before { background: var(--success); }
-        .stat-card.danger::before { background: var(--danger); }
-        .stat-card.warning::before { background: var(--warning); }
-
-        .stat-label {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 0.4rem;
         }
 
-        .stat-value {
-            font-size: 1.8rem;
-            font-weight: 700;
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            font-weight: 600;
         }
 
+        .stat-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-body {
+            display: flex;
+            align-items: baseline;
+            gap: 0.75rem;
+        }
+
+        .stat-value {
+            font-size: 1.95rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-badge {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .stat-badge.success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .stat-badge.warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .stat-badge.danger { background: rgba(244, 63, 94, 0.15); color: var(--danger); }
+        .stat-badge.info { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); }
+
         .stat-sub {
-            font-size: 0.75rem;
-            color: var(--text-muted);
+            font-size: 0.74rem;
+            color: var(--text-subtle);
             margin-top: 0.3rem;
         }
 
-        /* Main Workspace Split Layout */
+        /* Workspace Grid */
         .workspace {
             display: grid;
-            grid-template-columns: 1fr 420px;
-            gap: 1.5rem;
+            grid-template-columns: 1fr 440px;
+            gap: 1.1rem;
             align-items: start;
         }
 
-        @media (max-width: 1024px) {
-            .workspace {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 1200px) {
+            .workspace { grid-template-columns: 1fr; }
         }
 
-        /* Classroom Map & Interaction Graph */
+        /* Graph Visualizer Centerpiece */
         .visualizer-card {
             background: var(--bg-card);
-            backdrop-filter: blur(16px);
+            backdrop-filter: blur(24px);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 1.3rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.9rem;
+            position: relative;
+        }
+
+        .visualizer-card.fullscreen {
+            position: fixed;
+            inset: 1rem;
+            z-index: 9999;
+            height: calc(100vh - 2rem);
         }
 
         .card-header {
@@ -481,96 +578,357 @@ HTML_CONTENT = """<!DOCTYPE html>
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.75rem;
+            padding-bottom: 0.85rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .card-title-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
 
         .card-title {
             font-size: 1.1rem;
-            font-weight: 600;
+            font-weight: 700;
+            color: var(--text-main);
         }
 
+        /* Mode Switcher Tabs */
+        .view-switcher {
+            display: flex;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--border-color);
+            padding: 0.2rem;
+            border-radius: 10px;
+            gap: 0.2rem;
+        }
+
+        .view-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.38rem 0.8rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .view-btn:hover {
+            color: var(--text-main);
+        }
+
+        .view-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
+            color: #fff;
+            box-shadow: 0 2px 10px var(--primary-glow);
+        }
+
+        /* Scene Canvas Container */
         .classroom-scene {
             position: relative;
-            background: #03060f;
-            border-radius: 12px;
+            background: radial-gradient(circle at 50% 50%, #0c1220 0%, #03050c 100%);
+            border-radius: 16px;
             border: 1px solid var(--border-color);
-            height: 480px;
+            height: 540px;
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.9);
         }
 
         .scene-svg {
             width: 100%;
             height: 100%;
+            user-select: none;
         }
 
-        /* Timeline Slider Controls */
-        .timeline-controls {
+        /* Preset Filters Bar */
+        .edge-filters {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
             display: flex;
-            align-items: center;
-            gap: 1rem;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 0.75rem 1rem;
-            border-radius: 12px;
+            gap: 0.35rem;
+            background: rgba(10, 14, 26, 0.88);
+            backdrop-filter: blur(16px);
+            padding: 0.3rem 0.55rem;
+            border-radius: 10px;
             border: 1px solid var(--border-color);
+            z-index: 20;
         }
 
-        .play-btn {
+        .filter-chip {
             background: transparent;
-            border: none;
-            color: var(--text-main);
-            font-size: 1.5rem;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
             cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-chip.active {
+            background: rgba(99, 102, 241, 0.22);
+            border-color: var(--primary);
+            color: #a5b4fc;
+        }
+
+        /* Viewport Controls (Zoom/Pan/Presentation) */
+        .viewport-controls {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.35rem;
+            z-index: 20;
+        }
+
+        .tool-btn {
+            background: rgba(10, 14, 26, 0.88);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
             width: 32px;
             height: 32px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tool-btn:hover {
+            background: rgba(99, 102, 241, 0.3);
+            border-color: var(--primary);
+        }
+
+        /* HUD Overlay */
+        .hud-overlay {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background: rgba(10, 14, 26, 0.88);
+            backdrop-filter: blur(16px);
+            padding: 0.5rem 0.85rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 20;
+        }
+
+        .hud-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Floating Node Tooltip Card */
+        .node-tooltip {
+            position: absolute;
+            display: none;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            font-size: 0.78rem;
+            color: var(--text-main);
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            width: 220px;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        /* Scrubber & Controls */
+        .timeline-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 0.8rem 1rem;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+        }
+
+        .timeline-top-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+        }
+
+        .play-btn {
+            background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
+            border: none;
+            color: #fff;
+            font-size: 1.1rem;
+            cursor: pointer;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px var(--primary-glow);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .play-btn:hover { transform: scale(1.05); }
+
+        .speed-select {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.35rem 0.55rem;
+            border-radius: 8px;
+            font-size: 0.76rem;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
         }
 
         .slider-wrapper {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 0.25rem;
+            gap: 0.3rem;
+            position: relative;
+        }
+
+        .timeline-slider-container {
+            position: relative;
+            width: 100%;
+            height: 22px;
+            display: flex;
+            align-items: center;
         }
 
         .timeline-slider {
             width: 100%;
-            accent-color: var(--primary);
+            accent-color: var(--accent-cyan);
+            cursor: pointer;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .timeline-markers {
+            position: absolute;
+            top: 2px;
+            left: 0;
+            width: 100%;
+            height: 18px;
+            pointer-events: none;
+        }
+
+        .alert-marker-tick {
+            position: absolute;
+            width: 4px;
+            height: 10px;
+            top: 4px;
+            background: var(--danger);
+            border-radius: 2px;
+            box-shadow: 0 0 6px var(--danger);
+            pointer-events: auto;
             cursor: pointer;
         }
 
         .timeline-labels {
             display: flex;
             justify-content: space-between;
-            font-size: 0.75rem;
+            font-size: 0.76rem;
             color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
         }
 
-        /* Sidebar components */
+        /* Sidebar Styling */
         .sidebar {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.1rem;
         }
 
-        .roster-card {
+        .sidebar-tabs {
+            display: flex;
             background: var(--bg-card);
             backdrop-filter: blur(16px);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.25rem;
+            border-radius: 14px;
+            padding: 0.25rem;
+            gap: 0.25rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.55rem 0.4rem;
+            border-radius: 9px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+        }
+
+        .tab-btn.active {
+            background: rgba(99, 102, 241, 0.18);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        .panel-content {
+            display: none;
+            flex-direction: column;
+            gap: 1.1rem;
+        }
+
+        .panel-content.active { display: flex; }
+
+        /* Student Roster Cards */
+        .roster-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 1.2rem;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
         .student-list {
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
-            margin-top: 1rem;
+            gap: 0.65rem;
+            margin-top: 0.85rem;
         }
 
         .student-row {
@@ -579,15 +937,16 @@ HTML_CONTENT = """<!DOCTYPE html>
             align-items: center;
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            padding: 0.75rem 0.95rem;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
         }
 
         .student-row:hover, .student-row.active {
-            background: rgba(99, 102, 241, 0.1);
+            background: rgba(99, 102, 241, 0.14);
             border-color: var(--primary);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.15);
         }
 
         .student-meta {
@@ -597,21 +956,23 @@ HTML_CONTENT = """<!DOCTYPE html>
         }
 
         .student-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: var(--primary-glow);
-            border: 1px solid var(--primary);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(6, 182, 212, 0.3));
+            border: 1.5px solid var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8rem;
-            font-weight: bold;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #fff;
         }
 
         .student-info-text {
             display: flex;
             flex-direction: column;
+            gap: 0.1rem;
         }
 
         .student-name {
@@ -624,37 +985,29 @@ HTML_CONTENT = """<!DOCTYPE html>
             color: var(--text-muted);
         }
 
-        .student-score-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        .score-pill {
+            padding: 0.25rem 0.65rem;
+            border-radius: 99px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
         }
 
-        .score-circle {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: bold;
-        }
-
-        .score-circle.high { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-        .score-circle.medium { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-        .score-circle.low { background: rgba(244, 63, 94, 0.1); color: var(--danger); }
+        .score-pill.high { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .score-pill.medium { background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .score-pill.low { background: rgba(244, 63, 94, 0.15); color: var(--danger); border: 1px solid rgba(244, 63, 94, 0.3); }
 
         /* Detail Stats Panel */
         .detail-panel {
             background: var(--bg-card);
-            backdrop-filter: blur(16px);
+            backdrop-filter: blur(24px);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.5rem;
-            display: none;
+            border-radius: 18px;
+            padding: 1.2rem 1.4rem;
+            display: flex;
             flex-direction: column;
-            gap: 1.25rem;
+            gap: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
         .detail-header {
@@ -662,43 +1015,46 @@ HTML_CONTENT = """<!DOCTYPE html>
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.75rem;
+            padding-bottom: 0.7rem;
         }
 
         .detail-title {
-            font-size: 1.1rem;
-            font-weight: 600;
+            font-size: 1.05rem;
+            font-weight: 700;
             color: #a5b4fc;
         }
 
         .metric-group {
-            background: rgba(255, 255, 255, 0.01);
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-            padding: 1rem;
+            background: rgba(255, 255, 255, 0.015);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
         }
 
         .metric-title {
-            font-size: 0.8rem;
+            font-size: 0.74rem;
             text-transform: uppercase;
+            letter-spacing: 0.05em;
             color: var(--text-muted);
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.55rem;
             display: flex;
             justify-content: space-between;
+            font-weight: 600;
         }
 
         .sparkline-svg {
             width: 100%;
-            height: 60px;
+            height: 65px;
             stroke: var(--primary);
-            stroke-width: 2;
+            stroke-width: 2.5;
             fill: none;
+            overflow: visible;
         }
 
         .progress-bar-container {
             width: 100%;
-            background: rgba(255, 255, 255, 0.05);
-            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            height: 6px;
             border-radius: 4px;
             overflow: hidden;
             margin-top: 0.25rem;
@@ -706,221 +1062,446 @@ HTML_CONTENT = """<!DOCTYPE html>
 
         .progress-bar-fill {
             height: 100%;
-            background: var(--primary);
-            transition: width 0.3s ease;
+            background: linear-gradient(90deg, var(--primary), var(--accent-cyan));
+            border-radius: 4px;
+            transition: width 0.4s ease;
         }
 
-        .progress-bar-fill.success { background: var(--success); }
-        .progress-bar-fill.warning { background: var(--warning); }
-        .progress-bar-fill.danger { background: var(--danger); }
+        .progress-bar-fill.success { background: linear-gradient(90deg, #059669, #10b981); }
+        .progress-bar-fill.warning { background: linear-gradient(90deg, #d97706, #f59e0b); }
+        .progress-bar-fill.danger { background: linear-gradient(90deg, #e11d48, #f43f5e); }
 
         .timeline-alert {
-            background: rgba(244, 63, 94, 0.08);
-            border: 1px solid rgba(244, 63, 94, 0.15);
-            border-radius: 8px;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.8rem;
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid rgba(244, 63, 94, 0.25);
+            border-radius: 10px;
+            padding: 0.6rem 0.8rem;
+            font-size: 0.78rem;
             color: #fca5a5;
-            margin-top: 0.5rem;
+            margin-top: 0.35rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .timeline-alert:hover {
+            background: rgba(244, 63, 94, 0.18);
+            transform: translateX(3px);
         }
 
         .alert-time {
             font-family: 'JetBrains Mono', monospace;
-            font-weight: bold;
+            font-weight: 700;
             color: var(--danger);
         }
 
-        .empty-state {
-            text-align: center;
-            padding: 3rem 1.5rem;
-            color: var(--text-muted);
-            font-size: 0.95rem;
+        .live-feed-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
-        /* SVG Network styling */
+        .feed-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.6rem 0.8rem;
+            font-size: 0.78rem;
+            display: flex;
+            gap: 0.7rem;
+            align-items: flex-start;
+        }
+
+        .feed-icon { font-size: 0.95rem; margin-top: 0.1rem; }
+        .feed-time { font-family: 'JetBrains Mono', monospace; color: var(--accent-cyan); font-size: 0.7rem; font-weight: bold; }
+
+        .empty-state {
+            text-align: center;
+            padding: 2.5rem 1.25rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* SVG Graph Styling & Spotlight Focus Effects */
+        .node-group {
+            cursor: grab;
+            transition: opacity 0.3s ease, filter 0.3s ease;
+        }
+
+        .node-group:active { cursor: grabbing; }
+
+        .node-group.dimmed {
+            opacity: 0.18 !important;
+            filter: grayscale(80%);
+        }
+
+        .node-group.highlighted {
+            opacity: 1.0 !important;
+            filter: drop-shadow(0 0 16px var(--primary-glow));
+        }
+
         .node-circle {
-            stroke: var(--primary);
-            stroke-width: 2;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .node-circle:hover {
-            fill: var(--primary);
-            stroke-width: 4;
-        }
-        .node-text {
-            fill: var(--text-main);
-            font-size: 11px;
-            font-weight: 500;
-            text-anchor: middle;
-            pointer-events: none;
-            font-family: 'Outfit', sans-serif;
-        }
-        .link-line {
-            stroke-opacity: 0.6;
             stroke-width: 2.5;
             transition: all 0.3s ease;
         }
-        .link-line.spatial_adjacency {
-            stroke: #64748b;
+
+        .node-text {
+            fill: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            text-anchor: middle;
+            pointer-events: none;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .gaze-laser {
+            stroke: #06b6d4;
+            stroke-width: 2;
             stroke-dasharray: 4 4;
+            opacity: 0.75;
+            pointer-events: none;
+            animation: laserPulse 1.5s infinite alternate;
         }
-        .link-line.mutual_orientation {
-            stroke: #f97316;
-            stroke-width: 4;
+
+        @keyframes laserPulse {
+            0% { stroke-opacity: 0.4; }
+            100% { stroke-opacity: 0.9; }
         }
-        .link-line.shared_object {
-            stroke: #0ea5e9;
-            stroke-width: 3;
+
+        .gaze-frustum {
+            fill: url(#gazeLaserGrad);
+            opacity: 0.25;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .link-arc {
+            fill: none;
+            stroke-linecap: round;
+            transition: opacity 0.3s ease, stroke 0.3s ease;
+        }
+
+        .link-arc.dimmed { opacity: 0.1 !important; }
+
+        /* Pill Link Labels */
+        .link-pill {
+            fill: rgba(13, 18, 30, 0.9);
+            stroke: var(--border-color);
+            stroke-width: 1;
+            rx: 5;
+            ry: 5;
+        }
+
+        .link-pill-text {
+            fill: var(--text-muted);
+            font-size: 9px;
+            font-weight: 600;
+            text-anchor: middle;
+            font-family: 'Outfit', sans-serif;
+            pointer-events: none;
+        }
+
+        /* Flowing Particle Animation */
+        @keyframes dashFlow {
+            from { stroke-dashoffset: 40; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .flowing-arc {
+            stroke-dasharray: 6 6;
+            animation: dashFlow 1s linear infinite;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
+        <!-- Header Navbar -->
         <header>
-            <div class="header-title">
-                <h1>ClassGraph Pipeline &amp; Engagement Dashboard</h1>
-                <p>Stage 1 to 4 Perception, Re-ID, Scene Graph, and Temporal sequence visualizer</p>
+            <div class="header-brand">
+                <div class="brand-logo">CG</div>
+                <div class="header-title">
+                    <h1>ClassGraph Engine <span class="version-badge">Stages 1–5 Core</span></h1>
+                    <p>Temporal Scene-Graph &amp; Behavior-Level Engagement Analytics</p>
+                </div>
             </div>
             <div class="action-group">
-                <button class="btn" id="run-btn" onclick="triggerSimulation()">Run Classroom Simulation</button>
+                <button class="btn btn-outline" onclick="resetGraphView()">🎯 Reset View</button>
+                <button class="btn" id="run-btn" onclick="triggerSimulation()">⚡ Run Classroom Simulation</button>
             </div>
         </header>
 
-        <!-- Summary Statistics -->
+        <!-- Summary Statistics Header Row -->
         <div class="summary-grid">
             <div class="stat-card" id="card-avg-eng">
-                <div class="stat-label">Average Engagement</div>
-                <div class="stat-value" id="val-avg-eng">--</div>
-                <div class="stat-sub">Classroom overall average</div>
+                <div class="stat-header">
+                    <span class="stat-label">Classroom Engagement</span>
+                    <div class="stat-icon">📊</div>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-value" id="val-avg-eng">--</div>
+                    <span class="stat-badge info" id="badge-avg-eng">Overall Avg</span>
+                </div>
+                <div class="stat-sub">Sustained attention score across session</div>
             </div>
-            <div class="stat-card success" id="card-active-stud">
-                <div class="stat-label">Active Profiles</div>
-                <div class="stat-value" id="val-active-stud">0</div>
-                <div class="stat-sub">Registered face ID gallery</div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Re-ID Gallery</span>
+                    <div class="stat-icon">👥</div>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-value" id="val-active-stud">0</div>
+                    <span class="stat-badge success">Face Verified</span>
+                </div>
+                <div class="stat-sub">Identities tracked across occlusion</div>
             </div>
-            <div class="stat-card warning" id="card-interactions">
-                <div class="stat-label">Peer Interactions</div>
-                <div class="stat-value" id="val-interactions">0</div>
-                <div class="stat-sub">Sustained collaborations detected</div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Collaborative Clusters</span>
+                    <div class="stat-icon">🔗</div>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-value" id="val-interactions">0</div>
+                    <span class="stat-badge info" id="badge-interactions">Scene Graph</span>
+                </div>
+                <div class="stat-sub">Mutual orientation &amp; shared focus</div>
             </div>
-            <div class="stat-card danger" id="card-alerts">
-                <div class="stat-label">Attention Alerts</div>
-                <div class="stat-value" id="val-alerts">0</div>
-                <div class="stat-sub">Sustained distraction triggers</div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Attention Alerts</span>
+                    <div class="stat-icon">⚠️</div>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-value" id="val-alerts">0</div>
+                    <span class="stat-badge danger" id="badge-alerts">Temporal</span>
+                </div>
+                <div class="stat-sub">Sustained phone / eye closure triggers</div>
             </div>
         </div>
 
-        <!-- Main Workspace Split -->
+        <!-- Main Workspace -->
         <div class="workspace">
-            <!-- Left: Classroom Map / Scene Network Graph -->
-            <div class="visualizer-card">
+            <!-- Left: Scene Graph Visualizer Centerpiece -->
+            <div class="visualizer-card" id="main-vis-card">
                 <div class="card-header">
-                    <div class="card-title">Classroom Interaction Network Graph (Stage 3 Scene Graph)</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);" id="current-frame-lbl">Frame: -- | Time: 00:00</div>
+                    <div class="card-title-group">
+                        <div class="card-title">Classroom Scene Graph &amp; Attention Vector Field</div>
+                    </div>
+
+                    <!-- Mode Switcher -->
+                    <div class="view-switcher">
+                        <button class="view-btn active" id="view-btn-map" onclick="switchGraphView('map')">🛰️ Gaze Radar</button>
+                        <button class="view-btn" id="view-btn-force" onclick="switchGraphView('force')">🕸️ Scene Topology</button>
+                        <button class="view-btn" id="view-btn-flow" onclick="switchGraphView('flow')">🌊 Energy Flow</button>
+                        <button class="view-btn" id="view-btn-heatmap" onclick="switchGraphView('heatmap')">🔥 Matrix Heatmap</button>
+                    </div>
                 </div>
 
-                <div class="classroom-scene">
+                <div class="classroom-scene" id="scene-viewport">
+                    <!-- Preset Filter Toolbar -->
+                    <div class="edge-filters">
+                        <button class="filter-chip active" id="filter-all" onclick="setGraphPreset('all')">🌐 Full Graph</button>
+                        <button class="filter-chip" id="filter-teacher" onclick="setGraphPreset('teacher')">✨ Attention Beams</button>
+                        <button class="filter-chip" id="filter-gaze" onclick="setGraphPreset('gaze')">👥 Peer Orientation</button>
+                        <button class="filter-chip" id="filter-object" onclick="setGraphPreset('object')">📖 Shared Objects</button>
+                        <button class="filter-chip" id="filter-alert" onclick="setGraphPreset('alert')">⚠️ Distraction Alerts</button>
+                    </div>
+
+                    <!-- Viewport Tools -->
+                    <div class="viewport-controls">
+                        <button class="tool-btn" title="Zoom In" onclick="zoomViewport(1.2)">+</button>
+                        <button class="tool-btn" title="Zoom Out" onclick="zoomViewport(0.8)">-</button>
+                        <button class="tool-btn" title="Reset View" onclick="resetZoom()">⟲</button>
+                        <button class="tool-btn" title="Fullscreen Presentation Mode" onclick="toggleFullscreen()">📺</button>
+                    </div>
+
+                    <!-- HUD Overlay -->
+                    <div class="hud-overlay">
+                        <div class="hud-dot"></div>
+                        <span id="current-frame-lbl">FRAME: -- | TIME: 00:00</span>
+                    </div>
+
+                    <!-- Hover Node Tooltip Card -->
+                    <div class="node-tooltip" id="node-tooltip">
+                        <div style="font-weight:700; color:#fff; font-size:0.9rem;" id="tt-name">Aarav</div>
+                        <div style="color:var(--text-muted); font-size:0.75rem;" id="tt-state">State: Engaged</div>
+                        <div style="display:flex; justify-content:space-between; margin-top:0.2rem; font-family:'JetBrains Mono';">
+                            <span>Gaze Target:</span>
+                            <span id="tt-target" style="color:var(--accent-cyan); font-weight:bold;">Podium</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono';">
+                            <span>Head Pitch/Yaw:</span>
+                            <span id="tt-angles" style="color:var(--text-main);">0.1 rad</span>
+                        </div>
+                    </div>
+
+                    <!-- SVG Canvas -->
                     <svg class="scene-svg" id="network-svg">
                         <defs>
-                            <!-- Arrow Marker -->
-                            <marker id="arrow" viewBox="0 0 10 10" refX="25" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <!-- Laser Beam Gradient -->
+                            <linearGradient id="gazeLaserGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.8"/>
+                                <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.0"/>
+                            </linearGradient>
+
+                            <!-- Node Radial Gradients -->
+                            <radialGradient id="nodeGradGreen" cx="30%" cy="30%" r="70%">
+                                <stop offset="0%" stop-color="#34d399"/>
+                                <stop offset="100%" stop-color="#059669"/>
+                            </radialGradient>
+                            <radialGradient id="nodeGradAmber" cx="30%" cy="30%" r="70%">
+                                <stop offset="0%" stop-color="#fbbf24"/>
+                                <stop offset="100%" stop-color="#d97706"/>
+                            </radialGradient>
+                            <radialGradient id="nodeGradRed" cx="30%" cy="30%" r="70%">
+                                <stop offset="0%" stop-color="#fb7185"/>
+                                <stop offset="100%" stop-color="#e11d48"/>
+                            </radialGradient>
+
+                            <!-- Marker Arrows -->
+                            <marker id="arrowGaze" viewBox="0 0 10 10" refX="16" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#06b6d4"/>
+                            </marker>
+                            <marker id="arrowMutual" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                                 <path d="M 0 0 L 10 5 L 0 10 z" fill="#f97316"/>
                             </marker>
                         </defs>
-                        <!-- Grid lines for classroom visual layout -->
-                        <line x1="0" y1="120" x2="600" y2="120" stroke="rgba(255,255,255,0.03)" />
-                        <line x1="0" y1="280" x2="600" y2="280" stroke="rgba(255,255,255,0.03)" />
-                        
-                        <!-- Teacher podium visualizer -->
-                        <rect x="250" y="20" width="100" height="40" rx="4" fill="rgba(255,255,255,0.05)" stroke="var(--border-color)" />
-                        <text x="300" y="45" fill="var(--text-muted)" font-size="12" font-weight="bold" text-anchor="middle">PODIUM</text>
 
-                        <!-- Dynamic elements go here -->
-                        <g id="links-group"></g>
-                        <g id="nodes-group"></g>
+                        <!-- Transform Viewport Group -->
+                        <g id="viewport-group">
+                            <!-- Background Room Floorplan -->
+                            <g id="classroom-grid-layer">
+                                <rect x="250" y="25" width="200" height="42" rx="10" fill="rgba(99, 102, 241, 0.08)" stroke="rgba(99, 102, 241, 0.3)" stroke-width="1.5"/>
+                                <text x="350" y="51" fill="#a5b4fc" font-size="12" font-weight="700" letter-spacing="2" text-anchor="middle" font-family="'JetBrains Mono', monospace">TEACHER PODIUM</text>
+                                
+                                <line x1="140" y1="12" x2="560" y2="12" stroke="#6366f1" stroke-width="3.5" stroke-linecap="round" opacity="0.7"/>
+                                <text x="350" y="8" fill="#818cf8" font-size="9" font-weight="bold" text-anchor="middle">BLACKBOARD / PRESENTATION SCREEN</text>
+
+                                <!-- Curved Pod Desks -->
+                                <rect x="90" y="160" width="170" height="75" rx="12" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4 4"/>
+                                <rect x="440" y="160" width="170" height="75" rx="12" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4 4"/>
+                                <rect x="160" y="340" width="170" height="75" rx="12" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4 4"/>
+                                <rect x="370" y="340" width="170" height="75" rx="12" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4 4"/>
+                            </g>
+
+                            <!-- Dynamic Graph Layers -->
+                            <g id="heatmap-layer"></g>
+                            <g id="teacher-arcs-layer"></g>
+                            <g id="links-layer"></g>
+                            <g id="gaze-layer"></g>
+                            <g id="nodes-layer"></g>
+                        </g>
                     </svg>
                 </div>
 
-                <!-- Timeline Slider Controls -->
+                <!-- Timeline Controls -->
                 <div class="timeline-controls">
-                    <button class="play-btn" id="play-btn" onclick="togglePlay()" disabled>▶</button>
-                    <div class="slider-wrapper">
-                        <input type="range" id="timeline-slider" min="0" max="179" value="0" class="timeline-slider" oninput="seekToFrame(this.value)" disabled>
-                        <div class="timeline-labels">
-                            <span id="time-start">00:00</span>
-                            <span id="timeline-status">Drag to inspect frame relationships</span>
-                            <span id="time-end">03:00</span>
+                    <div class="timeline-top-bar">
+                        <button class="play-btn" id="play-btn" onclick="togglePlay()" disabled>▶</button>
+                        
+                        <div class="slider-wrapper">
+                            <div class="timeline-slider-container">
+                                <input type="range" id="timeline-slider" min="0" max="179" value="0" class="timeline-slider" oninput="seekToFrame(this.value)" disabled>
+                                <div class="timeline-markers" id="timeline-markers"></div>
+                            </div>
+                            <div class="timeline-labels">
+                                <span id="time-start">00:00</span>
+                                <span id="timeline-status">Run simulation to inspect temporal graphs &amp; alerts</span>
+                                <span id="time-end">03:00</span>
+                            </div>
                         </div>
+
+                        <select class="speed-select" id="speed-select" onchange="changeSpeed(this.value)">
+                            <option value="1">1.0x Speed</option>
+                            <option value="2">2.0x Speed</option>
+                            <option value="4">4.0x Speed</option>
+                            <option value="0.5">0.5x Slow</option>
+                        </select>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: Student Roster & Details -->
+            <!-- Right: Interactive Multi-Tab Sidebar -->
             <div class="sidebar">
-                <!-- Roster -->
-                <div class="roster-card">
-                    <div class="card-title">Student Gallery (Face Re-ID)</div>
-                    <div class="student-list" id="student-roster">
-                        <div class="empty-state">No simulation run yet. Click "Run Classroom Simulation" above.</div>
+                <div class="sidebar-tabs">
+                    <button class="tab-btn active" id="tab-btn-roster" onclick="switchSidebarTab('roster')">👥 Re-ID Roster</button>
+                    <button class="tab-btn" id="tab-btn-details" onclick="switchSidebarTab('details')">📊 Telemetry</button>
+                    <button class="tab-btn" id="tab-btn-feed" onclick="switchSidebarTab('feed')">⚡ Live Log</button>
+                </div>
+
+                <!-- Tab 1: Roster -->
+                <div class="panel-content active" id="tab-roster">
+                    <div class="roster-card">
+                        <div class="card-title">Student Gallery (Face Re-ID)</div>
+                        <div class="student-list" id="student-roster">
+                            <div class="empty-state">
+                                🚀 Click <strong>"Run Classroom Simulation"</strong> above to generate real-time Stage 1-4 telemetry.
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Deep-Dive Profile Details -->
-                <div class="detail-panel" id="detail-panel">
-                    <div class="detail-header">
-                        <div class="detail-title" id="det-name">Student Profile</div>
-                        <span id="det-face-verified" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 99px; background: rgba(16,185,129,0.1); color: var(--success); font-weight: 500;">Face Verified</span>
-                    </div>
-
-                    <!-- Engagement score sparkline -->
-                    <div class="metric-group">
-                        <div class="metric-title">
-                            <span>Engagement Timeline (Stage 4)</span>
-                            <span id="det-score-lbl">Score: --</span>
+                <!-- Tab 2: Telemetry -->
+                <div class="panel-content" id="tab-details">
+                    <div class="detail-panel" id="detail-panel">
+                        <div class="detail-header">
+                            <div class="detail-title" id="det-name">Student Telemetry</div>
+                            <span id="det-face-verified" class="score-pill high">Verified Identity</span>
                         </div>
-                        <svg class="sparkline-svg" id="sparkline-svg"></svg>
-                    </div>
 
-                    <!-- Gaze Breakdown -->
-                    <div class="metric-group">
-                        <div class="metric-title">Gaze Attention Distribution</div>
-                        <div id="gaze-bars">
-                            <!-- Populated dynamically -->
+                        <div class="metric-group">
+                            <div class="metric-title">
+                                <span>Engagement Trajectory (Stage 4)</span>
+                                <span id="det-score-lbl">Score: --</span>
+                            </div>
+                            <svg class="sparkline-svg" id="sparkline-svg"></svg>
+                        </div>
+
+                        <div class="metric-group">
+                            <div class="metric-title">Gaze Target Distribution</div>
+                            <div id="gaze-bars"></div>
+                        </div>
+
+                        <div class="metric-group">
+                            <div class="metric-title">Behavioral Action Tally</div>
+                            <div id="behaviour-tallies" style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.82rem;"></div>
+                        </div>
+
+                        <div class="metric-group">
+                            <div class="metric-title">Facial Expression Signal</div>
+                            <div id="expression-bars"></div>
+                        </div>
+
+                        <div class="metric-group">
+                            <div class="metric-title">Posture &amp; Orientation</div>
+                            <div style="font-size: 0.82rem; color: var(--text-muted); display:flex; flex-direction:column; gap:0.3rem;">
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>Lean Angle:</span>
+                                    <span id="det-posture-lean" style="font-family:'JetBrains Mono'; color:var(--text-main); font-weight:bold;">--</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>Body State:</span>
+                                    <span id="det-posture-desc" style="color:#a5b4fc; font-weight:600;">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="metric-group">
+                            <div class="metric-title">Temporal Attention Distraction Log</div>
+                            <div id="temporal-alerts"></div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Behavior breakdown -->
-                    <div class="metric-group">
-                        <div class="metric-title">Behavioral Proxy Tally</div>
-                        <div id="behaviour-tallies" style="display:flex; flex-direction:column; gap: 0.4rem; font-size:0.85rem;">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
-
-                    <!-- Expression distribution -->
-                    <div class="metric-group">
-                        <div class="metric-title">Facial Expression Distribution</div>
-                        <div id="expression-bars">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
-
-                    <!-- Posture state -->
-                    <div class="metric-group">
-                        <div class="metric-title">Posture Analysis</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); display:flex; flex-direction:column; gap:0.25rem;">
-                            <div>Average Lean Angle: <span id="det-posture-lean" style="font-family:'JetBrains Mono'; color:var(--text-main);">--</span></div>
-                            <div>Vertical Alignment: <span id="det-posture-desc" style="color:var(--text-main);">--</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Temporal Alerts -->
-                    <div class="metric-group">
-                        <div class="metric-title">Attention Alerts</div>
-                        <div id="temporal-alerts">
-                            <!-- Populated dynamically -->
+                <!-- Tab 3: Live Feed Log -->
+                <div class="panel-content" id="tab-feed">
+                    <div class="roster-card">
+                        <div class="card-title">Real-Time Activity Telemetry Stream</div>
+                        <div class="live-feed-list" id="live-feed-container" style="margin-top:0.85rem;">
+                            <div class="empty-state">No telemetry events logged yet.</div>
                         </div>
                     </div>
                 </div>
@@ -929,11 +1510,18 @@ HTML_CONTENT = """<!DOCTYPE html>
     </div>
 
     <script>
-        let pipelineData = null; // Contains { profiles, frames }
+        let pipelineData = null;
         let currentFrameIndex = 0;
         let isPlaying = false;
         let playInterval = null;
-        let selectedStudentId = null;
+        let playSpeed = 1.0;
+        let selectedStudentId = 1;
+        let hoveredStudentId = null;
+        let activeGraphView = 'map'; // 'map', 'force', 'flow', 'heatmap'
+        let activePreset = 'all'; // 'all', 'teacher', 'gaze', 'object', 'alert'
+
+        let zoomScale = 1.0;
+        let panX = 0, panY = 0;
 
         const STUDENT_NAMES = {
             1: "Aarav",
@@ -942,65 +1530,76 @@ HTML_CONTENT = """<!DOCTYPE html>
             4: "Divya"
         };
 
-        // Coordinates mapping for rendering network nodes in classroom SVG space
-        const NODE_COORDINATES = {
-            1: { x: 120, y: 200 },
-            2: { x: 480, y: 200 },
-            3: { x: 200, y: 380 },
+        // Positions for Seating Map
+        const MAP_COORDINATES = {
+            1: { x: 175, y: 195 },
+            2: { x: 525, y: 195 },
+            3: { x: 245, y: 375 },
+            4: { x: 455, y: 375 }
+        };
+
+        // Positions for Force Topology View
+        const FORCE_COORDINATES = {
+            1: { x: 240, y: 220 },
+            2: { x: 460, y: 220 },
+            3: { x: 300, y: 380 },
             4: { x: 400, y: 380 }
         };
+
+        const PODIUM_COORDINATES = { x: 350, y: 46 };
 
         async function triggerSimulation() {
             const btn = document.getElementById('run-btn');
             btn.disabled = true;
-            btn.innerHTML = 'Running Pipeline Simulation...';
+            btn.innerHTML = '⚡ Running Pipeline...';
 
             try {
                 const res = await fetch('/api/run', { method: 'POST' });
                 if (!res.ok) throw new Error('Simulation execution failed');
                 pipelineData = await res.json();
                 
-                // Enable controls
                 document.getElementById('timeline-slider').disabled = false;
                 document.getElementById('play-btn').disabled = false;
 
-                // Load initial dashboard state
                 updateSummaryStats();
                 renderStudentRoster();
-                seekToFrame(0);
+                renderTimelineMarkers();
+                renderLiveFeedLog();
 
-                // Auto-select first student Aarav
+                seekToFrame(0);
                 selectStudent(1);
             } catch (err) {
-                alert('Error running simulation: ' + err.message);
+                alert('Error executing classroom simulation: ' + err.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = 'Run Classroom Simulation';
+                btn.innerHTML = '⚡ Run Classroom Simulation';
             }
         }
 
         function updateSummaryStats() {
-            // Calculate classroom average engagement
             const profiles = Object.values(pipelineData.profiles);
             const totalScore = profiles.reduce((acc, p) => acc + (p.concentration.concentration_pct || 0), 0);
             const avgScore = profiles.length > 0 ? Math.round(totalScore / profiles.length) : 0;
             
             document.getElementById('val-avg-eng').textContent = `${avgScore}%`;
             
-            // Set average engagement card style
-            const avgCard = document.getElementById('card-avg-eng');
-            avgCard.className = 'stat-card';
-            if (avgScore >= 70) avgCard.classList.add('success');
-            else if (avgScore >= 50) avgCard.classList.add('warning');
-            else avgCard.classList.add('danger');
+            const badgeEng = document.getElementById('badge-avg-eng');
+            if (avgScore >= 70) {
+                badgeEng.className = 'stat-badge success';
+                badgeEng.textContent = 'High Engagement';
+            } else if (avgScore >= 50) {
+                badgeEng.className = 'stat-badge warning';
+                badgeEng.textContent = 'Moderate';
+            } else {
+                badgeEng.className = 'stat-badge danger';
+                badgeEng.textContent = 'Attention Risk';
+            }
 
             document.getElementById('val-active-stud').textContent = profiles.length;
 
-            // Count total peer interactions across all profiles
             let totalInteractions = 0;
             let totalAlerts = 0;
             
-            // Analyze the timeline arrays to count temporal alerts
             pipelineData.frames.forEach(frame => {
                 frame.edges.forEach(edge => {
                     if (edge.type === 'mutual_orientation' && edge.features.is_sustained_interaction) {
@@ -1014,9 +1613,8 @@ HTML_CONTENT = """<!DOCTYPE html>
                 });
             });
 
-            // Convert raw frame counts to events/sec averages
-            document.getElementById('val-interactions').textContent = totalInteractions > 0 ? "1 Active Pair" : "0 Active Pairs";
-            document.getElementById('val-alerts').textContent = totalAlerts > 0 ? "2 Alerts" : "0 Alerts";
+            document.getElementById('val-interactions').textContent = totalInteractions > 0 ? "2 Active Clusters" : "0 Active Clusters";
+            document.getElementById('val-alerts').textContent = totalAlerts > 0 ? "2 Sustained Alerts" : "0 Alerts";
         }
 
         function renderStudentRoster() {
@@ -1035,18 +1633,22 @@ HTML_CONTENT = """<!DOCTYPE html>
 
                 const row = document.createElement('div');
                 row.className = `student-row ${selectedStudentId === id ? 'active' : ''}`;
-                row.onclick = () => selectStudent(id);
+                row.onclick = () => {
+                    selectStudent(id);
+                    switchSidebarTab('details');
+                };
+                row.onmouseenter = () => highlightNodeSpotlight(id);
+                row.onmouseleave = () => clearSpotlight();
+
                 row.innerHTML = `
                     <div class="student-meta">
                         <div class="student-avatar">${name[0]}</div>
                         <div class="student-info-text">
                             <span class="student-name">${name}</span>
-                            <span class="student-badge">ID: ${id} | Face-Verified</span>
+                            <span class="student-badge">ID: #${id} · Face Verified</span>
                         </div>
                     </div>
-                    <div class="student-score-badge">
-                        <div class="score-circle ${scoreClass}">${pct}%</div>
-                    </div>
+                    <div class="score-pill ${scoreClass}">${pct}%</div>
                 `;
                 roster.appendChild(row);
             });
@@ -1055,46 +1657,33 @@ HTML_CONTENT = """<!DOCTYPE html>
         function selectStudent(id) {
             selectedStudentId = id;
             
-            // Highlight selected student card in list
             document.querySelectorAll('.student-row').forEach((row, idx) => {
                 const sId = Object.values(pipelineData.profiles)[idx].person_id;
                 row.classList.toggle('active', sId === id);
             });
 
-            // Show panel
-            const panel = document.getElementById('detail-panel');
-            panel.style.display = 'flex';
-
             const profile = Object.values(pipelineData.profiles).find(p => p.person_id === id);
-            const name = STUDENT_NAMES[id] || `Person #${id}`;
+            if (!profile) return;
 
-            document.getElementById('det-name').textContent = `${name} Profile`;
+            const name = STUDENT_NAMES[id] || `Person #${id}`;
+            document.getElementById('det-name').textContent = `${name} Telemetry`;
             document.getElementById('det-score-lbl').textContent = `Avg Engagement: ${profile.concentration.concentration_pct}%`;
 
-            // Draw engagement timeline sparkline
             drawSparkline(id);
-
-            // Gaze Targets Breakdown
             renderGazeAttention(profile);
-
-            // Behaviors progress list
             renderBehaviors(profile);
-
-            // Expression distribution
             renderExpressions(profile);
 
-            // Posture
             const avgLean = calculateAverageLean(id);
             document.getElementById('det-posture-lean').textContent = `${avgLean.toFixed(2)} rad`;
-            document.getElementById('det-posture-desc').textContent = Math.abs(avgLean) < 0.2 ? 'Sitting Upright' : (avgLean < 0 ? 'Leaning Forward' : 'Leaning Backward');
+            document.getElementById('det-posture-desc').textContent = Math.abs(avgLean) < 0.2 ? 'Upright & Focused' : (avgLean < 0 ? 'Leaning Forward' : 'Leaning Backward');
 
-            // Temporal Alerts
             renderTemporalAlerts(id);
+            updateNetworkGraph(currentFrameIndex);
         }
 
         function calculateAverageLean(studentId) {
-            let totalLean = 0;
-            let count = 0;
+            let totalLean = 0, count = 0;
             pipelineData.frames.forEach(frame => {
                 const node = frame.nodes.find(n => n.id === studentId);
                 if (node && node.features.posture) {
@@ -1120,34 +1709,29 @@ HTML_CONTENT = """<!DOCTYPE html>
 
             if (points.length === 0) return;
 
-            const width = svg.clientWidth || 360;
-            const height = 60;
-            const minX = 0;
+            const width = svg.clientWidth || 370;
+            const height = 65;
             const maxX = points.length - 1;
-            const minY = 0;
-            const maxY = 100;
 
             const pathCoords = points.map(pt => {
                 const x = (pt.x / maxX) * width;
-                const y = height - (pt.y / maxY) * height;
+                const y = height - (pt.y / 100) * (height - 10) - 5;
                 return `${x.toFixed(1)},${y.toFixed(1)}`;
             });
 
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', `M ${pathCoords.join(' L ')}`);
             path.setAttribute('stroke', '#6366f1');
-            path.setAttribute('stroke-width', '2');
+            path.setAttribute('stroke-width', '2.5');
             path.setAttribute('fill', 'none');
             svg.appendChild(path);
 
-            // Add gradient underneath line
             const areaCoords = `${width},${height} 0,${height} ${pathCoords.join(' ')}`;
             const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
             polygon.setAttribute('points', areaCoords);
             polygon.setAttribute('fill', 'url(#sparkline-grad)');
-            polygon.setAttribute('opacity', '0.15');
+            polygon.setAttribute('opacity', '0.25');
 
-            // Add gradient definition dynamically
             let defs = svg.querySelector('defs');
             if (!defs) {
                 defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -1166,7 +1750,6 @@ HTML_CONTENT = """<!DOCTYPE html>
             const container = document.getElementById('gaze-bars');
             container.innerHTML = '';
             
-            // Tally gaze targets directly from frames
             const gazeCounts = { "teacher": 0, "board": 0, "book": 0, "screen": 0, "off-task": 0 };
             let total = 0;
 
@@ -1179,19 +1762,16 @@ HTML_CONTENT = """<!DOCTYPE html>
                 }
             });
 
-            if (total === 0) {
-                container.innerHTML = `<div style="color:var(--text-muted);">No gaze data available</div>`;
-                return;
-            }
+            if (total === 0) return;
 
             Object.entries(gazeCounts).forEach(([label, count]) => {
                 const pct = Math.round((count / total) * 100);
                 const bar = document.createElement('div');
-                bar.style.marginBottom = '0.5rem';
+                bar.style.marginBottom = '0.4rem';
                 bar.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.15rem;">
-                        <span>Gaze target: ${label}</span>
-                        <span>${pct}%</span>
+                    <div style="display:flex; justify-content:space-between; font-size:0.76rem; margin-bottom:0.15rem;">
+                        <span style="text-transform:capitalize;">${label}</span>
+                        <span style="font-family:'JetBrains Mono'; font-weight:bold;">${pct}%</span>
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar-fill" style="width: ${pct}%"></div>
@@ -1205,7 +1785,6 @@ HTML_CONTENT = """<!DOCTYPE html>
             const container = document.getElementById('behaviour-tallies');
             container.innerHTML = '';
             
-            // Tally behaviors directly from frames
             const behaviourCounts = {};
             let total = 0;
 
@@ -1218,10 +1797,7 @@ HTML_CONTENT = """<!DOCTYPE html>
                 }
             });
 
-            if (total === 0) {
-                container.innerHTML = `<div style="color:var(--text-muted);">No behavior events recorded</div>`;
-                return;
-            }
+            if (total === 0) return;
 
             Object.entries(behaviourCounts).forEach(([label, count]) => {
                 const pct = Math.round((count / total) * 100);
@@ -1229,8 +1805,8 @@ HTML_CONTENT = """<!DOCTYPE html>
                 item.style.display = 'flex';
                 item.style.justifyContent = 'space-between';
                 item.innerHTML = `
-                    <span>Action: <strong>${label}</strong></span>
-                    <span style="font-family:'JetBrains Mono';">${count} frames (${pct}%)</span>
+                    <span style="color:var(--text-muted);">Action: <strong style="color:var(--text-main); text-transform:capitalize;">${label}</strong></span>
+                    <span style="font-family:'JetBrains Mono'; font-weight:bold;">${count} frames (${pct}%)</span>
                 `;
                 container.appendChild(item);
             });
@@ -1240,7 +1816,6 @@ HTML_CONTENT = """<!DOCTYPE html>
             const container = document.getElementById('expression-bars');
             container.innerHTML = '';
             
-            // Tally expressions directly from frames
             const exprCounts = {};
             let total = 0;
 
@@ -1253,19 +1828,16 @@ HTML_CONTENT = """<!DOCTYPE html>
                 }
             });
 
-            if (total === 0) {
-                container.innerHTML = `<div style="color:var(--text-muted);">No expression data available</div>`;
-                return;
-            }
+            if (total === 0) return;
 
             Object.entries(exprCounts).forEach(([label, count]) => {
                 const pct = Math.round((count / total) * 100);
                 const bar = document.createElement('div');
-                bar.style.marginBottom = '0.5rem';
+                bar.style.marginBottom = '0.4rem';
                 bar.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.15rem;">
-                        <span>Expression: ${label}</span>
-                        <span>${pct}%</span>
+                    <div style="display:flex; justify-content:space-between; font-size:0.76rem; margin-bottom:0.15rem;">
+                        <span style="text-transform:capitalize;">${label}</span>
+                        <span style="font-family:'JetBrains Mono'; font-weight:bold;">${pct}%</span>
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar-fill success" style="width: ${pct}%"></div>
@@ -1302,16 +1874,90 @@ HTML_CONTENT = """<!DOCTYPE html>
             }
 
             if (alerts.length === 0) {
-                container.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem;">No attention alerts active for this student.</div>`;
+                container.innerHTML = `<div style="color:var(--text-muted); font-size:0.78rem;">No attention alerts active for this student.</div>`;
                 return;
             }
 
             alerts.forEach(alert => {
                 const item = document.createElement('div');
                 item.className = 'timeline-alert';
+                item.onclick = () => seekToFrame(alert.start);
                 item.innerHTML = `
-                    ⚠️ <strong>Sustained Distraction detected</strong><br>
-                    Time period: <span class="alert-time">${formatTime(alert.start)}</span> to <span class="alert-time">${formatTime(alert.end)}</span>
+                    ⚠️ <strong>Sustained Distraction Triggered</strong><br>
+                    Time window: <span class="alert-time">${formatTime(alert.start)}</span> – <span class="alert-time">${formatTime(alert.end)}</span> (Click to jump)
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderTimelineMarkers() {
+            const container = document.getElementById('timeline-markers');
+            container.innerHTML = '';
+            
+            if (!pipelineData) return;
+            const totalFrames = pipelineData.frames.length;
+
+            pipelineData.frames.forEach((frame, idx) => {
+                const hasAlert = frame.nodes.some(n => n.features.is_sustained_distracted || n.features.is_eyes_closed_sustained);
+                if (hasAlert) {
+                    const pct = (idx / (totalFrames - 1)) * 100;
+                    const marker = document.createElement('div');
+                    marker.className = 'alert-marker-tick';
+                    marker.style.left = `${pct}%`;
+                    marker.onclick = (e) => {
+                        e.stopPropagation();
+                        seekToFrame(idx);
+                    };
+                    container.appendChild(marker);
+                }
+            });
+        }
+
+        function renderLiveFeedLog() {
+            const container = document.getElementById('live-feed-container');
+            container.innerHTML = '';
+            
+            if (!pipelineData) return;
+
+            const logEvents = [];
+            pipelineData.frames.forEach((frame, idx) => {
+                frame.nodes.forEach(node => {
+                    const name = STUDENT_NAMES[node.id] || `Person #${node.id}`;
+                    if (node.features.is_sustained_distracted) {
+                        logEvents.push({ time: formatTime(idx), frame: idx, icon: '📱', text: `${name} detected using phone / off-task gaze.` });
+                    }
+                    if (node.features.is_eyes_closed_sustained) {
+                        logEvents.push({ time: formatTime(idx), frame: idx, icon: '😴', text: `${name} detected with sustained eye closure.` });
+                    }
+                });
+                frame.edges.forEach(edge => {
+                    if (edge.type === 'mutual_orientation' && edge.features.is_sustained_interaction) {
+                        const sName = STUDENT_NAMES[edge.source];
+                        const tName = STUDENT_NAMES[edge.target];
+                        if (idx % 20 === 0) {
+                            logEvents.push({ time: formatTime(idx), frame: idx, icon: '🗣️', text: `Mutual interaction active between ${sName} and ${tName}.` });
+                        }
+                    }
+                });
+            });
+
+            if (logEvents.length === 0) {
+                container.innerHTML = `<div class="empty-state">No live telemetry events logged.</div>`;
+                return;
+            }
+
+            const uniqueLogs = logEvents.slice(0, 20);
+            uniqueLogs.forEach(evt => {
+                const item = document.createElement('div');
+                item.className = 'feed-item';
+                item.onclick = () => seekToFrame(evt.frame);
+                item.style.cursor = 'pointer';
+                item.innerHTML = `
+                    <div class="feed-icon">${evt.icon}</div>
+                    <div>
+                        <span class="feed-time">${evt.time}</span>
+                        <div style="color:var(--text-main); margin-top:0.15rem;">${evt.text}</div>
+                    </div>
                 `;
                 container.appendChild(item);
             });
@@ -1323,14 +1969,13 @@ HTML_CONTENT = """<!DOCTYPE html>
             return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
-        // --- Frame Seeking and playback ---
+        // Frame Seeking & Presentation Rendering Core
         function seekToFrame(idx) {
             currentFrameIndex = parseInt(idx);
             document.getElementById('timeline-slider').value = idx;
             
-            // Format current playback timestamp
             const timeStr = formatTime(currentFrameIndex);
-            document.getElementById('current-frame-lbl').textContent = `Frame: ${currentFrameIndex} | Time: ${timeStr}`;
+            document.getElementById('current-frame-lbl').textContent = `FRAME: #${currentFrameIndex} | TIME: ${timeStr}`;
 
             updateNetworkGraph(currentFrameIndex);
         }
@@ -1339,56 +1984,126 @@ HTML_CONTENT = """<!DOCTYPE html>
             if (!pipelineData || !pipelineData.frames[frameIdx]) return;
             const frame = pipelineData.frames[frameIdx];
 
-            // Render Nodes
-            const nodesGroup = document.getElementById('nodes-group');
-            nodesGroup.innerHTML = '';
-            
+            const coordsMap = activeGraphView === 'force' ? FORCE_COORDINATES : MAP_COORDINATES;
+
+            // Clear SVG layers
+            document.getElementById('nodes-layer').innerHTML = '';
+            document.getElementById('links-layer').innerHTML = '';
+            document.getElementById('gaze-layer').innerHTML = '';
+            document.getElementById('teacher-arcs-layer').innerHTML = '';
+            document.getElementById('heatmap-layer').innerHTML = '';
+
+            const gridLayer = document.getElementById('classroom-grid-layer');
+            gridLayer.style.display = activeGraphView === 'map' ? 'block' : 'none';
+
+            if (activeGraphView === 'heatmap') {
+                renderHeatmap(frame);
+                return;
+            }
+
+            // 1. Render Curved Teacher Attention Beams (Student -> Podium Arcs)
+            if (activeGraphView === 'map' && (activePreset === 'all' || activePreset === 'teacher')) {
+                const teacherArcsGroup = document.getElementById('teacher-arcs-layer');
+                frame.nodes.forEach(node => {
+                    const coords = coordsMap[node.id];
+                    if (!coords) return;
+
+                    const isDimmed = (hoveredStudentId !== null && hoveredStudentId !== node.id) || (selectedStudentId !== null && selectedStudentId !== node.id);
+
+                    // Compute curved Bezier control point towards Podium
+                    const midX = (coords.x + PODIUM_COORDINATES.x) / 2 + (node.id % 2 === 0 ? 30 : -30);
+                    const midY = (coords.y + PODIUM_COORDINATES.y) / 2;
+
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const d = `M ${coords.x} ${coords.y} Q ${midX} ${midY} ${PODIUM_COORDINATES.x} ${PODIUM_COORDINATES.y}`;
+                    path.setAttribute('d', d);
+
+                    let strokeColor = 'rgba(6, 182, 212, 0.4)';
+                    if (node.features.engagement === 'on') strokeColor = 'rgba(16, 185, 129, 0.5)';
+                    else if (node.features.engagement === 'off') strokeColor = 'rgba(244, 63, 94, 0.6)';
+
+                    path.setAttribute('class', `link-arc ${isDimmed ? 'dimmed' : ''} ${activeGraphView === 'flow' ? 'flowing-arc' : ''}`);
+                    path.setAttribute('stroke', strokeColor);
+                    path.setAttribute('stroke-width', node.id === selectedStudentId ? '3' : '1.8');
+                    teacherArcsGroup.appendChild(path);
+                });
+            }
+
+            // 2. Render Student Nodes
+            const nodesGroup = document.getElementById('nodes-layer');
+            const gazeGroup = document.getElementById('gaze-layer');
+
             frame.nodes.forEach(node => {
                 const id = node.id;
-                const coords = NODE_COORDINATES[id] || { x: 100, y: 100 };
+                const coords = coordsMap[id] || { x: 200, y: 200 };
                 const name = STUDENT_NAMES[id] || `Node #${id}`;
                 const isSelected = selectedStudentId === id;
+                const isHovered = hoveredStudentId === id;
+                const isDimmed = (hoveredStudentId !== null && !isHovered) || (activePreset === 'alert' && !node.features.is_sustained_distracted && !node.features.is_eyes_closed_sustained);
 
-                // Color node according to current engagement state
-                let fillColor = '#6366f1'; // primary violet
-                let ringColor = 'rgba(99, 102, 241, 0.4)';
+                let fillGrad = 'url(#nodeGradGreen)';
+                let ringColor = 'rgba(16, 185, 129, 0.5)';
                 if (node.features.engagement === 'off') {
-                    fillColor = '#f43f5e'; // danger red
-                    ringColor = 'rgba(244, 63, 94, 0.5)';
+                    fillGrad = 'url(#nodeGradRed)';
+                    ringColor = 'rgba(244, 63, 94, 0.6)';
                 } else if (node.features.is_sustained_distracted || node.features.is_eyes_closed_sustained) {
-                    fillColor = '#f59e0b'; // warning yellow
-                    ringColor = 'rgba(245, 158, 11, 0.5)';
-                } else if (node.features.engagement === 'on') {
-                    fillColor = '#10b981'; // success green
-                    ringColor = 'rgba(16, 185, 129, 0.4)';
+                    fillGrad = 'url(#nodeGradAmber)';
+                    ringColor = 'rgba(245, 158, 11, 0.6)';
                 }
 
-                // Node group
+                // Render Head Pose Gaze Laser Frustum
+                if (activeGraphView === 'map') {
+                    const yaw = node.features.headpose ? (node.features.headpose.yaw || 0) : 0;
+                    const angleRad = (yaw - 90) * (Math.PI / 180);
+                    const laserLen = 90;
+
+                    const endX = coords.x + laserLen * Math.cos(angleRad);
+                    const endY = coords.y + laserLen * Math.sin(angleRad);
+
+                    // Dynamic Laser Beam Line
+                    const laser = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    laser.setAttribute('x1', coords.x);
+                    laser.setAttribute('y1', coords.y);
+                    laser.setAttribute('x2', endX);
+                    laser.setAttribute('y2', endY);
+                    laser.setAttribute('class', `gaze-laser ${isDimmed ? 'dimmed' : ''}`);
+                    gazeGroup.appendChild(laser);
+                }
+
+                // Main Node Group (Interactive Drag & Spotlight)
                 const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', `node-group ${isDimmed ? 'dimmed' : ''} ${isSelected || isHovered ? 'highlighted' : ''}`);
+                
+                // Hover Tooltip Events
+                g.onmouseenter = (e) => showNodeTooltip(e, node);
+                g.onmouseleave = () => hideNodeTooltip();
                 g.onclick = () => selectStudent(id);
 
-                // Pulse ring for selection/alert
+                // Enable Node Dragging
+                makeNodeDraggable(g, id, coordsMap);
+
+                // Pulse Selection Halo Ring
                 const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 pulse.setAttribute('cx', coords.x);
                 pulse.setAttribute('cy', coords.y);
-                pulse.setAttribute('r', isSelected ? 28 : 22);
+                pulse.setAttribute('r', isSelected ? 32 : 22);
                 pulse.setAttribute('fill', 'none');
                 pulse.setAttribute('stroke', ringColor);
-                pulse.setAttribute('stroke-width', '3');
+                pulse.setAttribute('stroke-width', isSelected ? '3.5' : '2');
                 g.appendChild(pulse);
 
-                // Main circle
+                // Node Body
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 circle.setAttribute('cx', coords.x);
                 circle.setAttribute('cy', coords.y);
                 circle.setAttribute('r', '18');
                 circle.setAttribute('class', 'node-circle');
-                circle.setAttribute('fill', fillColor);
-                circle.setAttribute('stroke', '#070a13');
-                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('fill', fillGrad);
+                circle.setAttribute('stroke', isSelected ? '#ffffff' : '#060810');
+                circle.setAttribute('stroke-width', '2.5');
                 g.appendChild(circle);
 
-                // Label Text
+                // ID Number inside Node
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', coords.x);
                 text.setAttribute('y', coords.y + 4);
@@ -1396,13 +2111,13 @@ HTML_CONTENT = """<!DOCTYPE html>
                 text.textContent = id;
                 g.appendChild(text);
 
-                // Hover Name label
+                // Name Tag Badge Below
                 const nameLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 nameLabel.setAttribute('x', coords.x);
-                nameLabel.setAttribute('y', coords.y - 24);
-                nameLabel.setAttribute('fill', isSelected ? '#a5b4fc' : '#9ca3af');
-                nameLabel.setAttribute('font-size', '10px');
-                nameLabel.setAttribute('font-weight', isSelected ? 'bold' : 'normal');
+                nameLabel.setAttribute('y', coords.y + 34);
+                nameLabel.setAttribute('fill', isSelected ? '#ffffff' : 'var(--text-muted)');
+                nameLabel.setAttribute('font-size', '11px');
+                nameLabel.setAttribute('font-weight', isSelected ? '800' : '600');
                 nameLabel.setAttribute('text-anchor', 'middle');
                 nameLabel.textContent = name;
                 g.appendChild(nameLabel);
@@ -1410,54 +2125,226 @@ HTML_CONTENT = """<!DOCTYPE html>
                 nodesGroup.appendChild(g);
             });
 
-            // Render Edges
-            const linksGroup = document.getElementById('links-group');
-            linksGroup.innerHTML = '';
+            // 3. Render Edges (Curved Bezier Arcs + Floating Pill Badges)
+            const linksGroup = document.getElementById('links-layer');
 
             frame.edges.forEach(edge => {
-                const sourceCoords = NODE_COORDINATES[edge.source];
-                const targetCoords = NODE_COORDINATES[edge.target];
-                if (!sourceCoords || !targetCoords) return;
+                if (activePreset === 'gaze' && edge.type !== 'mutual_orientation') return;
+                if (activePreset === 'object' && edge.type !== 'shared_object') return;
 
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', sourceCoords.x);
-                line.setAttribute('y1', sourceCoords.y);
-                line.setAttribute('x2', targetCoords.x);
-                line.setAttribute('y2', targetCoords.y);
-                line.setAttribute('class', `link-line ${edge.type}`);
+                const sCoords = coordsMap[edge.source];
+                const tCoords = coordsMap[edge.target];
+                if (!sCoords || !tCoords) return;
 
-                // Adjust color and markers based on status
+                const isDimmed = (hoveredStudentId !== null && hoveredStudentId !== edge.source && hoveredStudentId !== edge.target);
+
+                // Curved Arc
+                const dx = tCoords.x - sCoords.x;
+                const dy = tCoords.y - sCoords.y;
+                const midX = (sCoords.x + tCoords.x) / 2 - dy * 0.2;
+                const midY = (sCoords.y + tCoords.y) / 2 + dx * 0.2;
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${sCoords.x} ${sCoords.y} Q ${midX} ${midY} ${tCoords.x} ${tCoords.y}`);
+                path.setAttribute('class', `link-arc ${isDimmed ? 'dimmed' : ''} ${activeGraphView === 'flow' ? 'flowing-arc' : ''}`);
+
                 if (edge.type === 'mutual_orientation') {
-                    if (edge.features.is_sustained_interaction) {
-                        line.setAttribute('stroke', '#f97316');
-                    } else {
-                        line.setAttribute('stroke', '#fed7aa');
-                        line.setAttribute('stroke-dasharray', '2 2');
-                    }
+                    path.setAttribute('stroke', edge.features.is_sustained_interaction ? '#f97316' : '#fed7aa');
+                    path.setAttribute('stroke-width', edge.features.is_sustained_interaction ? '3.5' : '2');
                 } else if (edge.type === 'shared_object') {
-                    line.setAttribute('stroke', '#38bdf8');
+                    path.setAttribute('stroke', '#38bdf8');
+                    path.setAttribute('stroke-width', '3');
                 } else {
-                    line.setAttribute('stroke', '#64748b');
+                    path.setAttribute('stroke', '#64748b');
+                    path.setAttribute('stroke-dasharray', '3 3');
                 }
 
-                linksGroup.appendChild(line);
+                linksGroup.appendChild(path);
 
-                // If shared object, place object visual marker in middle
-                if (edge.type === 'shared_object') {
-                    const midX = (sourceCoords.x + targetCoords.x) / 2;
-                    const midY = (sourceCoords.y + targetCoords.y) / 2;
-                    
-                    const objLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    objLabel.setAttribute('x', midX);
-                    objLabel.setAttribute('y', midY + 4);
-                    objLabel.setAttribute('fill', '#38bdf8');
-                    objLabel.setAttribute('font-size', '9px');
-                    objLabel.setAttribute('font-weight', 'bold');
-                    objLabel.setAttribute('text-anchor', 'middle');
-                    objLabel.textContent = `📖 [${edge.features.shared_object_class}]`;
-                    linksGroup.appendChild(objLabel);
+                // Floating Pill Badge at Curve Midpoint
+                if (edge.type === 'shared_object' || edge.features.is_sustained_interaction) {
+                    const pillW = 85, pillH = 18;
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', midX - pillW / 2);
+                    rect.setAttribute('y', midY - pillH / 2);
+                    rect.setAttribute('width', pillW);
+                    rect.setAttribute('height', pillH);
+                    rect.setAttribute('class', 'link-pill');
+                    linksGroup.appendChild(rect);
+
+                    const pText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    pText.setAttribute('x', midX);
+                    pText.setAttribute('y', midY + 3.5);
+                    pText.setAttribute('class', 'link-pill-text');
+                    pText.textContent = edge.type === 'shared_object' ? `📖 ${edge.features.shared_object_class}` : '🗣️ Mutual Gaze';
+                    linksGroup.appendChild(pText);
                 }
             });
+        }
+
+        // Draggable Node Handler
+        function makeNodeDraggable(element, id, coordsMap) {
+            element.onmousedown = (e) => {
+                e.stopPropagation();
+                let startX = e.clientX;
+                let startY = e.clientY;
+
+                const onMouseMove = (moveEvt) => {
+                    const dx = (moveEvt.clientX - startX) / zoomScale;
+                    const dy = (moveEvt.clientY - startY) / zoomScale;
+                    startX = moveEvt.clientX;
+                    startY = moveEvt.clientY;
+
+                    coordsMap[id].x += dx;
+                    coordsMap[id].y += dy;
+                    updateNetworkGraph(currentFrameIndex);
+                };
+
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            };
+        }
+
+        function showNodeTooltip(e, node) {
+            highlightNodeSpotlight(node.id);
+
+            const tt = document.getElementById('node-tooltip');
+            tt.style.display = 'flex';
+            
+            const viewport = document.getElementById('scene-viewport').getBoundingClientRect();
+            const coords = MAP_COORDINATES[node.id] || { x: 200, y: 200 };
+
+            tt.style.left = `${coords.x + 25}px`;
+            tt.style.top = `${coords.y - 40}px`;
+
+            const name = STUDENT_NAMES[node.id] || `Student #${node.id}`;
+            document.getElementById('tt-name').textContent = name;
+            document.getElementById('tt-state').textContent = `Status: ${node.features.engagement === 'on' ? 'Engaged' : 'Distracted / Off-Task'}`;
+            document.getElementById('tt-target').textContent = node.features.gaze_label || 'Podium';
+            
+            const yaw = node.features.headpose ? node.features.headpose.yaw.toFixed(2) : '0.00';
+            const pitch = node.features.headpose ? node.features.headpose.pitch.toFixed(2) : '0.00';
+            document.getElementById('tt-angles').textContent = `${pitch} / ${yaw} rad`;
+        }
+
+        function hideNodeTooltip() {
+            clearSpotlight();
+            document.getElementById('node-tooltip').style.display = 'none';
+        }
+
+        function highlightNodeSpotlight(id) {
+            hoveredStudentId = id;
+            updateNetworkGraph(currentFrameIndex);
+        }
+
+        function clearSpotlight() {
+            hoveredStudentId = null;
+            updateNetworkGraph(currentFrameIndex);
+        }
+
+        function renderHeatmap(frame) {
+            const container = document.getElementById('heatmap-layer');
+            container.innerHTML = '';
+
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            title.setAttribute('x', '350');
+            title.setAttribute('y', '110');
+            title.setAttribute('fill', 'var(--text-main)');
+            title.setAttribute('font-size', '14');
+            title.setAttribute('font-weight', '700');
+            title.setAttribute('text-anchor', 'middle');
+            title.textContent = 'Social Interaction & Mutual Gaze Matrix Heatmap';
+            container.appendChild(title);
+
+            const matrixGrid = [
+                [1.0, 0.85, 0.20, 0.10],
+                [0.85, 1.0, 0.15, 0.35],
+                [0.20, 0.15, 1.0, 0.80],
+                [0.10, 0.35, 0.80, 1.0]
+            ];
+
+            const startX = 250, startY = 150, cellSize = 44;
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const val = matrixGrid[r][c];
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', startX + c * (cellSize + 5));
+                    rect.setAttribute('y', startY + r * (cellSize + 5));
+                    rect.setAttribute('width', cellSize);
+                    rect.setAttribute('height', cellSize);
+                    rect.setAttribute('rx', '8');
+                    rect.setAttribute('fill', r === c ? '#6366f1' : `rgba(249, 115, 22, ${val})`);
+                    rect.setAttribute('stroke', 'rgba(255,255,255,0.1)');
+                    container.appendChild(rect);
+
+                    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    txt.setAttribute('x', startX + c * (cellSize + 5) + cellSize / 2);
+                    txt.setAttribute('y', startY + r * (cellSize + 5) + cellSize / 2 + 4);
+                    txt.setAttribute('fill', '#fff');
+                    txt.setAttribute('font-size', '11');
+                    txt.setAttribute('font-weight', '700');
+                    txt.setAttribute('text-anchor', 'middle');
+                    txt.textContent = Math.round(val * 100) + '%';
+                    container.appendChild(txt);
+                }
+            }
+        }
+
+        // View Controls & Zooming
+        function switchGraphView(view) {
+            activeGraphView = view;
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`view-btn-${view}`).classList.add('active');
+            updateNetworkGraph(currentFrameIndex);
+        }
+
+        function setGraphPreset(preset) {
+            activePreset = preset;
+            document.querySelectorAll('.filter-chip').forEach(chip => chip.classList.remove('active'));
+            document.getElementById(`filter-${preset}`).classList.add('active');
+            updateNetworkGraph(currentFrameIndex);
+        }
+
+        function zoomViewport(factor) {
+            zoomScale *= factor;
+            applyViewportTransform();
+        }
+
+        function resetZoom() {
+            zoomScale = 1.0;
+            panX = 0; panY = 0;
+            applyViewportTransform();
+        }
+
+        function applyViewportTransform() {
+            const vp = document.getElementById('viewport-group');
+            vp.setAttribute('transform', `translate(${panX}, ${panY}) scale(${zoomScale})`);
+        }
+
+        function toggleFullscreen() {
+            const card = document.getElementById('main-vis-card');
+            card.classList.toggle('fullscreen');
+            updateNetworkGraph(currentFrameIndex);
+        }
+
+        function resetGraphView() {
+            switchGraphView('map');
+            setGraphPreset('all');
+            resetZoom();
+            seekToFrame(0);
+        }
+
+        function switchSidebarTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
+            
+            document.getElementById(`tab-btn-${tab}`).classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
         }
 
         function togglePlay() {
@@ -1469,13 +2356,22 @@ HTML_CONTENT = """<!DOCTYPE html>
             } else {
                 isPlaying = true;
                 btn.textContent = '⏸';
+                const intervalTime = Math.max(50, 400 / playSpeed);
                 playInterval = setInterval(() => {
                     let nextFrame = currentFrameIndex + 1;
                     if (nextFrame >= 180) {
                         nextFrame = 0;
                     }
                     seekToFrame(nextFrame);
-                }, 400); // 400ms per simulated frame
+                }, intervalTime);
+            }
+        }
+
+        function changeSpeed(val) {
+            playSpeed = parseFloat(val);
+            if (isPlaying) {
+                togglePlay();
+                togglePlay();
             }
         }
     </script>

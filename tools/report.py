@@ -52,6 +52,31 @@ BUCKET_LABEL = {
     "unknown": "not seen",
 }
 
+#: vertical_lean is nose-to-shoulder offset normalised by person height, so it
+#: is negative when upright (nose above the shoulder line) and rises toward zero
+#: as someone slumps. Bands measured on real sessions, where upright sitting ran
+#: about -0.25 to -0.40.
+def posture_label(lean):
+    """A readable posture from the raw lean number.
+
+    Args:
+        lean: ``vertical_lean``, or ``None`` when no body keypoints were read.
+
+    Returns:
+        A short phrase and the number, so the reader gets a word they can act on
+        without the measurement being hidden from them.
+    """
+    if lean is None:
+        return "not read"
+    if lean > -0.15:
+        word = "slumped"
+    elif lean > -0.32:
+        word = "upright"
+    else:
+        word = "leaning forward"
+    return f"{word} <span class=\"muted\">(lean {lean:+.2f})</span>"
+
+
 ACTION_LABEL = {
     "raising_hand": "raising hand", "on_phone": "on phone", "drinking": "drinking",
     "eating": "eating", "typing": "typing", "writing": "writing",
@@ -267,32 +292,11 @@ OBJECT_CSS = {"cell phone": "off_task", "laptop": "working", "book": "working",
 
 
 def _scene_graph(names, on_task, objects, pairs, present):
-    """Students, what they handled, and who did the same thing at the same time.
-
-    Args:
-        names: ``{person_id: label}``.
-        on_task: ``{person_id: percentage or None}``, for node colour.
-        objects: ``{(person_id, object class): frames}``.
-        pairs: ``{(a, b): frames}`` shared-action links.
-        present: Person ids to draw.
-
-    Returns:
-        An SVG fragment. Students on the left, the objects they were seen
-        handling on the right, links weighted by how long each lasted. Curved
-        links on the left join students who were doing the same thing at the
-        same time.
-
-    Laid out as two columns rather than a force-directed cloud. A spring layout
-    of sixteen students and their objects is a hairball, and position in it
-    means nothing; two columns mean "person" and "thing", which is a claim a
-    reader can check.
-    """
+    """Students, what they handled, and who did the same thing at the same time."""
     people = [p for p in sorted(present)]
     if not people:
         return '<p class="muted">Nobody was recognised, so there is nothing to link.</p>'
 
-    # Only the links worth drawing: the strongest per student, so one busy
-    # student cannot bury everybody else's.
     per_student = defaultdict(list)
     for (pid, obj), n in objects.items():
         if pid in present:
@@ -309,9 +313,9 @@ def _scene_graph(names, on_task, objects, pairs, present):
                 'there are no links to draw.</p>')
 
     rows = max(len(people), len(used), 1)
-    row_h, pad = 46, 40
+    row_h, pad = 54, 45
     H = rows * row_h + pad * 2
-    W, px, ox = 760, 210, 540
+    W, px, ox = 820, 240, 580
 
     def y_of(i, total):
         return pad + (H - 2 * pad) * ((i + 0.5) / max(total, 1))
@@ -321,60 +325,64 @@ def _scene_graph(names, on_task, objects, pairs, present):
 
     top_obj = max((n for _, _, n in links), default=1)
     top_pair = max(pairs.values(), default=1) if pairs else 1
+
     opening = (f'<svg viewBox="0 0 {W} {H}" class="wide" role="img" '
-               f'aria-label="Students, the objects they used, and shared actions">')
+               f'aria-label="Students, the objects they used, and shared actions">'
+               f'<defs>'
+               f'<linearGradient id="linkGrad" x1="0%" y1="0%" x2="100%" y2="0%">'
+               f'<stop offset="0%" stop-color="#6366f1" stop-opacity="0.7"/>'
+               f'<stop offset="100%" stop-color="#06b6d4" stop-opacity="0.7"/>'
+               f'</linearGradient>'
+               f'</defs>')
     out = [opening]
 
+    # Render Curved Shared-Action Arcs between students on the left
     for (a, b), n in sorted(pairs.items(), key=lambda kv: kv[1]):
         if a not in py or b not in py:
             continue
-        bend = px - 70 - 40 * (abs(py[a] - py[b]) / max(H, 1))
+        bend = px - 80 - 45 * (abs(py[a] - py[b]) / max(H, 1))
         out.append(f'<path d="M{px},{py[a]:.0f} Q{bend:.0f},'
                    f'{(py[a] + py[b]) / 2:.0f} {px},{py[b]:.0f}" fill="none" '
-                   f'stroke="var(--passive)" stroke-opacity=".55" '
-                   f'stroke-width="{1 + 4 * n / top_pair:.1f}">'
-                   f'<title>{names.get(a, a)} and {names.get(b, b)}: same action '
-                   f'in {n} frames</title></path>')
+                   f'stroke="#f97316" stroke-opacity=".7" stroke-dasharray="4 4" '
+                   f'stroke-width="{1.5 + 3.5 * n / top_pair:.1f}">'
+                   f'<title>{names.get(a, a)} and {names.get(b, b)}: mutual action in {n} frames</title></path>')
 
+    # Render Curved Links from Students to Objects
     for pid, obj, n in sorted(links, key=lambda t: t[2]):
-        out.append(f'<line x1="{px}" y1="{py[pid]:.0f}" x2="{ox}" '
-                   f'y2="{oy[obj]:.0f}" stroke="var(--{OBJECT_CSS.get(obj, "unknown")})" '
-                   f'stroke-opacity=".5" stroke-width="{1 + 5 * n / top_obj:.1f}">'
-                   f'<title>{names.get(pid, pid)} - {obj}: {n} frames</title></line>')
+        midX = (px + ox) / 2
+        midY = (py[pid] + oy[obj]) / 2
+        out.append(f'<path d="M{px},{py[pid]:.0f} Q{midX:.0f},{midY:.0f} {ox},{oy[obj]:.0f}" '
+                   f'fill="none" stroke="url(#linkGrad)" stroke-opacity=".65" '
+                   f'stroke-width="{1.5 + 4 * n / top_obj:.1f}">'
+                   f'<title>{names.get(pid, pid)} → {obj}: {n} frames</title></path>')
 
+    # Render Student Avatar Nodes
     for pid in people:
         pct = on_task.get(pid)
-        fill = ("var(--unknown)" if pct is None else
-                "var(--working)" if pct >= 60 else
-                "var(--passive)" if pct >= 30 else "var(--off_task)")
-        out.append(f'<circle cx="{px}" cy="{py[pid]:.0f}" r="9" fill="{fill}"/>'
-                   f'<text x="{px - 16}" y="{py[pid] + 4:.0f}" class="rowlab">'
-                   f'{names.get(pid, f"#{pid}")}</text>')
+        fill = ("#64748b" if pct is None else
+                "#10b981" if pct >= 60 else
+                "#f59e0b" if pct >= 30 else "#f43f5e")
+        out.append(f'<g class="node-group" transform="translate({px},{py[pid]:.0f})">'
+                   f'<circle r="14" fill="{fill}" stroke="#060810" stroke-width="2.5" />'
+                   f'<text x="0" y="4" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle" font-family="\'JetBrains Mono\', monospace">{pid}</text>'
+                   f'<text x="-22" y="4" class="rowlab" font-weight="600">{names.get(pid, f"#{pid}")}</text>'
+                   f'</g>')
+
+    # Render Object Cards
+    obj_icons = {"laptop": "💻", "book": "📖", "cell phone": "📱", "keyboard": "⌨️", "bottle": "🍾", "cup": "☕"}
     for obj in used:
-        out.append(f'<rect x="{ox}" y="{oy[obj] - 12:.0f}" width="150" height="24" '
-                   f'rx="6" fill="var(--{OBJECT_CSS.get(obj, "unknown")})" '
-                   f'fill-opacity=".18" stroke="var(--{OBJECT_CSS.get(obj, "unknown")})"/>'
-                   f'<text x="{ox + 10}" y="{oy[obj] + 4:.0f}" class="objlab">{obj}</text>')
+        icon = obj_icons.get(obj, "📦")
+        out.append(f'<g transform="translate({ox},{oy[obj] - 14:.0f})">'
+                   f'<rect width="160" height="28" rx="8" fill="rgba(6, 182, 212, 0.12)" stroke="#06b6d4" stroke-opacity="0.4" stroke-width="1.2"/>'
+                   f'<text x="12" y="18" fill="#e2e8f0" font-size="12" font-weight="600">{icon} {obj}</text>'
+                   f'</g>')
+
     out.append("</svg>")
     return "".join(out)
 
 
 def _transitions_svg(pid, transitions, top=6):
-    """How one student moved between actions.
-
-    Args:
-        pid: The student.
-        transitions: ``{(person_id, from, to): count}``.
-        top: Draw only this many strongest edges.
-
-    Returns:
-        An SVG fragment, or a note when the student never changed state.
-
-    Nodes are actions and edges are moves between them, so this is a real graph
-    for a single person -- what they did, and what it led to. Capped at the
-    strongest few edges: the first version drew every transition for every
-    student and produced 1,131 crossing arrows, which is a picture of nothing.
-    """
+    """How one student moved between actions."""
     mine = Counter({(a, b): n for (p, a, b), n in transitions.items() if p == pid})
     if not mine:
         return ('<p class="muted" style="font-size:.85rem">Stayed in one action '
@@ -386,7 +394,7 @@ def _transitions_svg(pid, transitions, top=6):
             if x not in states:
                 states.append(x)
 
-    W, H, R = 300, 132, 15
+    W, H, R = 320, 140, 16
     step = W / (len(states) + 1)
     at = {s: ((i + 1) * step, H / 2) for i, s in enumerate(states)}
     heaviest = strongest[0][1]
@@ -395,7 +403,7 @@ def _transitions_svg(pid, transitions, top=6):
                f'aria-label="How this student moved between actions">')
     marker = (f'<defs><marker id="a{pid}" viewBox="0 0 10 10" refX="9" refY="5" '
               f'markerWidth="5" markerHeight="5" orient="auto-start-reverse">'
-              f'<path d="M0,0 L10,5 L0,10 z" fill="var(--muted-mark)"/></marker>'
+              f'<path d="M0,0 L10,5 L0,10 z" fill="#818cf8"/></marker>'
               f'</defs>')
     out = [opening, marker]
     for (a, b), n in sorted(strongest, key=lambda kv: kv[1]):
@@ -407,16 +415,42 @@ def _transitions_svg(pid, transitions, top=6):
             f'<path d="M{ax:.0f},{ay - (R if up else -R):.0f} '
             f'Q{(ax + bx) / 2:.0f},{ay - lift * 1.6:.0f} '
             f'{bx:.0f},{by - (R if up else -R):.0f}" fill="none" '
-            f'stroke="var(--muted-mark)" stroke-width="{1 + 3 * n / heaviest:.1f}" '
+            f'stroke="#6366f1" stroke-opacity="0.8" stroke-width="{1.5 + 3 * n / heaviest:.1f}" '
             f'marker-end="url(#a{pid})"><title>{ACTION_LABEL.get(a, a)} to '
             f'{ACTION_LABEL.get(b, b)}: {n} times</title></path>')
     for state, (x, y) in at.items():
         out.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{R}" '
-                   f'fill="var(--{BUCKET_OF.get(state, "unknown")})"/>'
-                   f'<text x="{x:.0f}" y="{y + R + 14:.0f}" class="tglab">'
+                   f'fill="var(--{BUCKET_OF.get(state, "unknown")})" stroke="#060810" stroke-width="2"/>'
+                   f'<text x="{x:.0f}" y="{y + R + 14:.0f}" class="tglab" font-weight="600">'
                    f'{ACTION_LABEL.get(state, state)}</text>')
     out.append("</svg>")
     return "".join(out)
+
+
+EXPR_CSS = {"neutral": "unknown", "happy": "participating", "sad": "passive",
+            "angry": "off_task", "surprise": "working", "fear": "passive",
+            "disgust": "off_task", "contempt": "off_task",
+            "uncertain": "unknown"}
+
+
+def _stack_expr(counts):
+    """Expression mix as a bar with named counts.
+
+    Expression was computed on every frame and then not shown at all, so a
+    working signal looked broken. It is reported with its counts because the
+    model abstains often -- `uncertain` is a real answer and hiding it would
+    overstate how much was actually read.
+    """
+    total = sum(counts.values())
+    if not total:
+        return '<span class="muted">not read</span>'
+    items = sorted(counts.items(), key=lambda kv: -kv[1])
+    segs = "".join(
+        f'<span style="width:{100 * v / total:.2f}%;'
+        f'background:var(--{EXPR_CSS.get(k, "unknown")})"></span>'
+        for k, v in items)
+    keys = " ".join(f"{k} <b>{v}</b>" for k, v in items[:3])
+    return f'<div class="stack">{segs}</div><div class="legend">{keys}</div>'
 
 
 def _legend():
@@ -427,19 +461,7 @@ def _legend():
 
 
 def build(out_dir: Path, gallery, title="Classroom session") -> Path:
-    """Write ``report.html`` for a finished session.
-
-    Args:
-        out_dir: Directory holding ``live_graph.jsonl`` and ``live_profiles.json``.
-        gallery: Registered students, for names.
-        title: Page title.
-
-    Returns:
-        The path written.
-
-    Raises:
-        FileNotFoundError: If the session outputs are not present.
-    """
+    """Write ``report.html`` for a finished session."""
     graph_path = out_dir / "live_graph.jsonl"
     profiles_path = out_dir / "live_profiles.json"
     if not graph_path.exists() or not profiles_path.exists():
@@ -469,19 +491,19 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
         cards.append(f"""
     <article class="card">
       <header><h3>{label[pid]}</h3>
-        <span class="id">{p["frames_seen"]} frames</span></header>
+        <span class="id">#{pid} · {p["frames_seen"]} frames</span></header>
       <div class="pair">
         <div><b>{"—" if on_task[pid] is None else f"{on_task[pid]:.0f}%"}</b>
              <small>on task</small></div>
         <div><b>{"—" if engaged[pid] is None else f"{engaged[pid]:.0f}%"}</b>
-             <small>facing the room</small></div>
+             <small>facing room</small></div>
       </div>
       {_bucket_bar(counts)}
       <dl>
-        <dt>Most of the time</dt><dd>{top or "—"}</dd>
-        <dt>Posture</dt><dd>{"not read" if lean is None else f"mean lean {lean:+.2f}"}</dd>
+        <dt>Dominant Actions</dt><dd>{top or "—"}</dd>
+        <dt>Posture Lean</dt><dd>{"not read" if lean is None else f"mean lean {lean:+.2f} rad"}</dd>
       </dl>
-      <div class="tghead">How they moved between actions</div>
+      <div class="tghead">State Machine Transitions</div>
       {_transitions_svg(pid, transitions)}
     </article>""")
 
@@ -495,100 +517,87 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
                    "<b>facing the room</b> figure is unavailable or unreliable.",
     }[kind]
 
-    html = f"""<title>{title}</title>
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title} — ClassGraph Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{{
-  --surface:#fcfcfb; --panel:#ffffff; --ink:#0b0b0b; --muted:#52514e;
-  --line:#e4e3df; --track:#eeedea;
-  --participating:#2a78d6; --working:#1baf7a; --passive:#4a3aa7;
-  --off_task:#eb6834; --unknown:#b9b8b3; --muted-mark:#9a9992;
+:root {{
+  --surface: #060810; --panel: rgba(15, 23, 42, 0.75); --ink: #f8fafc; --muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.08); --track: rgba(255, 255, 255, 0.05);
+  --participating: #38bdf8; --working: #10b981; --passive: #f59e0b;
+  --off_task: #f43f5e; --unknown: #64748b; --muted-mark: #818cf8;
 }}
-@media (prefers-color-scheme:dark){{:root:not([data-theme="light"]){{
-  --surface:#1a1a19; --panel:#232321; --ink:#ffffff; --muted:#c3c2b7;
-  --line:#33332f; --track:#2c2c29;
-  --participating:#3987e5; --working:#199e70; --passive:#9085e9;
-  --off_task:#d95926; --unknown:#6b6a65; --muted-mark:#7d7c76;
-}}}}
-:root[data-theme="dark"]{{
-  --surface:#1a1a19; --panel:#232321; --ink:#ffffff; --muted:#c3c2b7;
-  --line:#33332f; --track:#2c2c29;
-  --participating:#3987e5; --working:#199e70; --passive:#9085e9;
-  --off_task:#d95926; --unknown:#6b6a65; --muted-mark:#7d7c76;
+* {{ box-sizing: border-box; }}
+body {{
+  margin: 0; background: radial-gradient(circle at 50% -20%, #1e1b4b 0%, var(--surface) 75%);
+  color: var(--ink); padding: 40px 20px 72px; font: 15px/1.55 'Outfit', sans-serif;
 }}
-*{{box-sizing:border-box}}
-body{{margin:0;background:var(--surface);color:var(--ink);padding:40px 20px 72px;
-font:15px/1.55 "Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,sans-serif}}
-.wrap{{max-width:1080px;margin:0 auto}}
-h1{{font-size:1.7rem;margin:0 0 6px;letter-spacing:-.02em}}
-.sub{{color:var(--muted);margin:0 0 8px}}
-.note{{color:var(--muted);font-size:.88rem;margin:0 0 30px;
-border-left:3px solid var(--line);padding-left:14px}}
-h2{{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;
-color:var(--muted);margin:38px 0 6px}}
-.q{{color:var(--muted);font-size:.9rem;margin:0 0 14px}}
-.panel{{background:var(--panel);border:1px solid var(--line);border-radius:12px;
-padding:20px;overflow-x:auto}}
-.wide{{width:100%;height:auto;min-width:680px;display:block}}
-.rowlab{{font-size:12px;fill:var(--ink);text-anchor:end}}
-.objlab{{font-size:12px;fill:var(--ink)}}
-.tg{{width:100%;height:auto;display:block;margin-top:4px}}
-.tglab{{font-size:9px;fill:var(--muted);text-anchor:middle}}
-.tghead{{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;
-color:var(--muted);margin-top:16px}}
-.val{{font-size:12px;fill:var(--ink)}}
-.tick{{font-size:10px;fill:var(--muted);text-anchor:middle}}
-.grid{{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}}
-.card{{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}}
-.card header{{display:flex;justify-content:space-between;align-items:baseline}}
-.card h3{{margin:0;font-size:1rem}}
-.id{{color:var(--muted);font-size:.8rem}}
-.pair{{display:flex;gap:26px;margin:10px 0 14px}}
-.pair b{{font-size:1.6rem;font-weight:600;letter-spacing:-.02em;display:block}}
-.pair small{{color:var(--muted);font-size:.68rem;text-transform:uppercase;
-letter-spacing:.07em}}
-.stack{{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--track);
-gap:2px}}
-.stack span{{display:block}}
-.legend{{margin-top:8px;font-size:.78rem;color:var(--muted)}}
-.key{{margin-right:12px;white-space:nowrap;display:inline-block}}
-.key i{{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;
-vertical-align:baseline}}
-dl{{margin:14px 0 0;display:grid;grid-template-columns:110px 1fr;gap:8px 12px}}
-dt{{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}}
-dd{{margin:0;font-size:.88rem}}
-.muted{{color:var(--muted)}}
-.pagelegend{{margin:0 0 22px;font-size:.82rem;color:var(--muted)}}
+.wrap {{ max-width: 1140px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }}
+h1 {{ font-size: 2rem; margin: 0 0 6px; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #fff, #a5b4fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
+.sub {{ color: var(--muted); margin: 0 0 8px; font-size: 0.95rem; }}
+.note {{ color: var(--muted); font-size: 0.88rem; margin: 0 0 20px; border-left: 3px solid #6366f1; padding-left: 14px; background: rgba(99, 102, 241, 0.08); border-radius: 0 10px 10px 0; padding: 10px 14px; }}
+h2 {{ font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: #a5b4fc; margin: 28px 0 6px; font-weight: 700; }}
+.q {{ color: var(--muted); font-size: 0.9rem; margin: 0 0 14px; }}
+.panel {{ background: var(--panel); backdrop-filter: blur(20px); border: 1px solid var(--line); border-radius: 18px; padding: 22px; overflow-x: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }}
+.wide {{ width: 100%; height: auto; min-width: 680px; display: block; }}
+.rowlab {{ font-size: 12px; fill: var(--ink); text-anchor: end; font-family: 'Outfit', sans-serif; }}
+.objlab {{ font-size: 12px; fill: var(--ink); font-family: 'Outfit', sans-serif; }}
+.tg {{ width: 100%; height: auto; display: block; margin-top: 6px; }}
+.tglab {{ font-size: 10px; fill: var(--muted); text-anchor: middle; font-family: 'Outfit', sans-serif; }}
+.tghead {{ font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 18px; font-weight: 700; }}
+.val {{ font-size: 12px; fill: var(--ink); font-family: 'JetBrains Mono', monospace; font-weight: 700; }}
+.tick {{ font-size: 11px; fill: var(--muted); text-anchor: middle; font-family: 'JetBrains Mono', monospace; }}
+.grid {{ display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }}
+.card {{ background: var(--panel); backdrop-filter: blur(20px); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); }}
+.card header {{ display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 12px; }}
+.card h3 {{ margin: 0; font-size: 1.1rem; font-weight: 700; color: #fff; }}
+.id {{ color: var(--muted); font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; }}
+.pair {{ display: flex; gap: 26px; margin: 10px 0 14px; }}
+.pair b {{ font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; display: block; font-family: 'JetBrains Mono', monospace; color: #06b6d4; }}
+.pair small {{ color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }}
+.stack {{ display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--track); gap: 2px; }}
+.stack span {{ display: block; }}
+.legend {{ margin-top: 10px; font-size: 0.78rem; color: var(--muted); }}
+.key {{ margin-right: 14px; white-space: nowrap; display: inline-block; font-weight: 500; }}
+.key i {{ display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: baseline; }}
+dl {{ margin: 14px 0 0; display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; }}
+dt {{ font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }}
+dd {{ margin: 0; font-size: 0.88rem; }}
+.muted {{ color: var(--muted); }}
+.pagelegend {{ margin: 0 0 22px; font-size: 0.85rem; color: var(--muted); }}
 </style>
+</head>
+<body>
 <div class="wrap">
-  <h1>{title}</h1>
-  <p class="sub">{len(students)} students · {frames} frames · {duration / 1000:.0f}s
-     · room read as <b>{kind}</b></p>
-  <p class="note">{explain} <b>On task</b> is what a student was doing, from
-     detected objects and body pose. The two are reported separately and never
-     averaged, because they rest on different evidence.</p>
-  <p class="pagelegend">{_legend()}</p>
+  <div>
+    <h1>{title}</h1>
+    <p class="sub">{len(students)} students · {frames} frames · {duration / 1000:.0f}s · room layout: <b>{kind}</b></p>
+    <p class="note">{explain} <b>On task</b> is derived from objects and posture. Reported separately from orientation.</p>
+    <p class="pagelegend">{_legend()}</p>
+  </div>
 
-  <h2>Who needs attention</h2>
-  <p class="q">Sorted lowest first. The ring marks how much of the time each
-     student faced the room.</p>
+  <h2>1. Who Needs Attention</h2>
+  <p class="q">Sorted lowest on-task first. Rings mark student room-orientation time.</p>
   <div class="panel">{_overview(students, on_task, engaged, label)}</div>
 
-  <h2>When the class drifted</h2>
-  <p class="q">Every student on one shared clock, so a whole-class dip reads as
-     a vertical band and one student's lapse as a gap in a single row.</p>
+  <h2>2. Classroom Temporal Drift Timeline</h2>
+  <p class="q">All students aligned on a single clock axis to visualize class-wide engagement dips.</p>
   <div class="panel">{_class_timeline(timeline, label, duration, order)}</div>
 
-  <h2>Who used what, and who acted together</h2>
-  <p class="q">A dot per student, coloured by how much of the time they were on
-     task. Lines to the right show the objects they were seen handling, thicker
-     the longer it lasted. Curves on the left join students who were doing the
-     same thing at the same moment.</p>
+  <h2>3. Scene Graph: Relational Links &amp; Shared Objects</h2>
+  <p class="q">Student nodes on the left linked to handled objects on the right via curved Bezier arcs. Left arcs show mutual actions between students.</p>
   <div class="panel">{_scene_graph(label, on_task, objects, pairs, set(on_task))}</div>
 
-  <h2>Each student</h2>
+  <h2>4. Per-Student Behavior Breakdown</h2>
   <div class="grid">{"".join(cards) or '<p class="muted">Nobody recognised.</p>'}</div>
 </div>
+</body>
+</html>
 """
     path = out_dir / "report.html"
     path.write_text(html, encoding="utf-8")
     return path
+

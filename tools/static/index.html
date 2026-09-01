@@ -3,115 +3,216 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ClassGraph</title>
+<title>ClassGraph — Live Classroom Analytics & Registration</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#0e1013; --panel:#16191d; --panel2:#1d2126; --ink:#e9ecf0; --muted:#98a0ab;
-  --line:#282d34; --accent:#4ea36b; --warn:#d99038; --bad:#c9553d; --info:#4a86c9;
-  --teacher:#4ea36b; --left:#d99038; --right:#a862c0; --down:#4a86c9; --back:#7d848f;
-  --radius:12px;
+:root {
+  --bg: #070913;
+  --panel: rgba(15, 23, 42, 0.7);
+  --panel2: rgba(30, 41, 59, 0.6);
+  --border: rgba(255, 255, 255, 0.08);
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.1);
+  --accent: #6366f1;
+  --accent-cyan: #06b6d4;
+  --warn: #f59e0b;
+  --bad: #f43f5e;
+  --info: #38bdf8;
+  --teacher: #10b981;
+  --radius: 16px;
 }
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);
-  font:14px/1.5 "Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,sans-serif}
-button{font:inherit;cursor:pointer;border:0;border-radius:8px;padding:9px 16px;
-  background:var(--panel2);color:var(--ink);transition:.12s}
-button:hover:not(:disabled){background:#262b32}
-button:disabled{opacity:.4;cursor:not-allowed}
-button.primary{background:var(--accent);color:#08120c;font-weight:600}
-button.primary:hover:not(:disabled){background:#5cb87b}
-button.danger{background:var(--bad);color:#fff}
-input{font:inherit;background:var(--panel2);border:1px solid var(--line);
-  border-radius:8px;padding:9px 12px;color:var(--ink);width:100%}
-input:focus{outline:0;border-color:var(--accent)}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: radial-gradient(circle at 50% -20%, #1e1b4b 0%, var(--bg) 75%);
+  color: var(--ink);
+  font: 14px/1.5 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+}
+button {
+  font: inherit; cursor: pointer; border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px;
+  background: var(--panel2); color: var(--ink); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+}
+button:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.2); border-color: var(--accent); transform: translateY(-1px);
+}
+button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+button.primary {
+  background: linear-gradient(135deg, var(--accent), #4f46e5); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+button.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #4338ca); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+}
+button.danger {
+  background: linear-gradient(135deg, var(--bad), #e11d48); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(244, 63, 94, 0.4);
+}
+input {
+  font: inherit; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; color: var(--ink); width: 100%; transition: border-color 0.2s;
+}
+input:focus { outline: 0; border-color: var(--accent-cyan); box-shadow: 0 0 10px rgba(6, 182, 212, 0.3); }
 
-header{display:flex;align-items:center;gap:16px;padding:14px 22px;
-  border-bottom:1px solid var(--line);background:var(--panel)}
-header h1{font-size:1.1rem;margin:0;letter-spacing:-.01em}
-header .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
-header .dot.live{background:var(--accent);box-shadow:0 0 0 4px rgba(78,163,107,.18)}
-header .spacer{flex:1}
-header .stat{color:var(--muted);font-variant-numeric:tabular-nums;font-size:.85rem}
+header {
+  display: flex; align-items: center; gap: 16px; padding: 16px 24px;
+  border-bottom: 1px solid var(--border); background: var(--panel); backdrop-filter: blur(20px);
+}
+header .brand-icon {
+  width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-cyan));
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; color: #fff;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+}
+header h1 { font-size: 1.3rem; margin: 0; font-weight: 700; letter-spacing: -0.02em; }
+header .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+header .dot.live { background: #10b981; box-shadow: 0 0 12px #10b981; animation: livePulse 2s infinite; }
+@keyframes livePulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+header .spacer { flex: 1; }
+header .stat { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 600; }
 
-.layout{display:grid;grid-template-columns:300px 1fr;gap:18px;padding:18px;
-  align-items:start}
-@media (max-width:900px){.layout{grid-template-columns:1fr}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  padding:16px}
-.card h2{font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;
-  color:var(--muted);margin:0 0 12px}
+.layout {
+  display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px;
+  align-items: start; max-width: 1500px; margin: 0 auto;
+}
+@media (max-width: 950px) { .layout { grid-template-columns: 1fr; } }
 
-#stage{position:relative;background:#000;border-radius:var(--radius);overflow:hidden;
-  aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
-#stage img{width:100%;height:100%;object-fit:contain;display:block}
-#stage canvas{position:absolute;inset:0;width:100%;height:100%}
-#stage .placeholder{color:var(--muted);text-align:center;padding:32px;font-size:.9rem}
+.card {
+  background: var(--panel); backdrop-filter: blur(16px); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px; box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+.card h2 {
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin: 0 0 14px; font-weight: 700;
+}
 
-.roster{display:flex;flex-direction:column;gap:8px}
-.student{background:var(--panel2);border-radius:10px;padding:11px 13px;
-  border-left:3px solid var(--line)}
-.student.present{border-left-color:var(--accent)}
-.student .row{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.student .nm{font-weight:600}
-.student .pct{font-variant-numeric:tabular-nums;font-weight:600}
-.student .act{font-size:.78rem;color:var(--muted);margin-top:3px}
-.bar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--line);
-  margin-top:8px}
-.bar span{display:block}
-.spark{display:block;margin-top:7px;width:100%;height:22px}
+#stage {
+  position: relative; background: #030611; border-radius: var(--radius); overflow: hidden;
+  aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+}
+#stage img { width: 100%; height: 100%; object-fit: contain; display: block; }
+#stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#stage .placeholder { color: var(--muted); text-align: center; padding: 32px; font-size: 0.95rem; line-height: 1.6; }
 
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;
-  margin-bottom:16px}
-.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-.tile .k{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.tile .v{font-size:1.5rem;font-weight:600;font-variant-numeric:tabular-nums;
-  letter-spacing:-.02em;margin-top:2px}
+.roster { display: flex; flex-direction: column; gap: 10px; }
+.student {
+  background: var(--panel2); border-radius: 12px; padding: 12px 14px;
+  border-left: 4px solid var(--line); border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.student.present { border-left-color: #10b981; }
+.student .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.student .nm { font-weight: 600; font-size: 0.95rem; }
+.student .pct { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent-cyan); }
+.student .act { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+.bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: rgba(255,255,255,0.06); margin-top: 8px; }
+.bar span { display: block; }
+.spark { display: block; margin-top: 8px; width: 100%; height: 26px; }
 
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{background:var(--panel2);border-radius:999px;padding:3px 10px;font-size:.76rem;
-  color:var(--muted)}
-.chip b{color:var(--ink);font-weight:600}
+.tiles {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px;
+}
+.tile {
+  background: var(--panel); backdrop-filter: blur(16px); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 16px;
+}
+.tile .k { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.tile .v { font-size: 1.8rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.03em; margin-top: 4px; color: #fff; }
 
-dialog{border:1px solid var(--line);border-radius:14px;background:var(--panel);
-  color:var(--ink);padding:0;width:min(520px,92vw)}
-dialog::backdrop{background:rgba(0,0,0,.65)}
-.dlg{padding:22px}
-.dlg h3{margin:0 0 4px;font-size:1.15rem}
-.dlg p{margin:0 0 16px;color:var(--muted);font-size:.86rem}
-#enrollView{position:relative;background:#000;border-radius:10px;overflow:hidden;
-  aspect-ratio:4/3;margin:14px 0}
-#enrollView video{width:100%;height:100%;object-fit:cover;display:block}
-.progress{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
-.progress i{display:block;height:100%;background:var(--accent);width:0;transition:.2s}
-.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-.msg{font-size:.84rem;margin-top:10px;min-height:20px}
-.msg.err{color:var(--bad)} .msg.ok{color:var(--accent)}
-.empty{color:var(--muted);font-size:.86rem}
-.hint{background:#3a2a18;border:1px solid #6b4a22;color:#f0c98a;border-radius:10px;
-  padding:10px 14px;margin-bottom:12px;font-size:.87rem}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 12px; font-size: 0.78rem; color: var(--muted); font-weight: 500;
+}
+.chip b { color: var(--accent-cyan); font-weight: 700; }
+
+dialog {
+  border: 1px solid var(--border); border-radius: 20px; background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(24px); color: var(--ink); padding: 0; width: min(540px, 92vw); box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+}
+dialog::backdrop { background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); }
+.dlg { padding: 24px; }
+.dlg h3 { margin: 0 0 6px; font-size: 1.25rem; font-weight: 700; }
+.dlg p { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
+#enrollView {
+  position: relative; background: #000; border-radius: 12px; overflow: hidden;
+  aspect-ratio: 4/3; margin: 14px 0; border: 1px solid var(--border);
+}
+#enrollView video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.progress { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-cyan)); width: 0; transition: 0.2s; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+.msg { font-size: 0.85rem; margin-top: 12px; min-height: 20px; font-weight: 600; }
+.msg.err { color: var(--bad); } .msg.ok { color: #10b981; }
+.empty { color: var(--muted); font-size: 0.88rem; }
+.hint {
+  background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fde68a;
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.88rem; font-weight: 500;
+}
+.graph-tab {
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 12px; font-size: 0.78rem; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.2s;
+}
+.graph-tab:hover { background: rgba(99, 102, 241, 0.15); color: #fff; border-color: var(--accent); }
+.graph-tab.active { background: linear-gradient(135deg, var(--accent), #4f46e5); color: #fff; border-color: rgba(255,255,255,0.3); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+
+.filter-pill {
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 10px; font-size: 0.75rem; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.2s;
+}
+.filter-pill:hover { background: rgba(6, 182, 212, 0.15); color: #fff; border-color: var(--accent-cyan); }
+.filter-pill.active { background: rgba(6, 182, 212, 0.25); color: #67e8f9; border-color: var(--accent-cyan); }
+
+@keyframes flowDash {
+  0% { stroke-dashoffset: 40; }
+  100% { stroke-dashoffset: 0; }
+}
+.flow-line {
+  stroke-dasharray: 8 4;
+  animation: flowDash 1.2s linear infinite;
+}
+
+.graph-dimmed { opacity: 0.15 !important; transition: opacity 0.25s ease; }
+.graph-highlighted { opacity: 1 !important; transition: opacity 0.25s ease; filter: drop-shadow(0 0 8px rgba(99,102,241,0.8)); }
+
+.fullscreen-graph {
+  position: fixed !important; inset: 0 !important; z-index: 9999 !important;
+  width: 100vw !important; height: 100vh !important; border-radius: 0 !important;
+  margin: 0 !important; background: #030611 !important; padding: 24px !important;
+  display: flex !important; flex-direction: column !important;
+}
+.fullscreen-graph #graphStage { flex: 1 !important; min-height: 0 !important; }
+.fullscreen-graph #graphCanvas { height: 100% !important; }
 </style>
 </head>
 <body>
 
 <header>
+  <div class="brand-icon">CG</div>
   <span class="dot" id="dot"></span>
-  <h1>ClassGraph</h1>
-  <span class="stat" id="hdr">idle</span>
+  <h1>ClassGraph Engine</h1>
+  <span class="stat" id="hdr">IDLE</span>
   <span class="spacer"></span>
-  <button id="btnEnroll">Register student</button>
-  <button id="btnStart" class="primary">Start session</button>
-  <button id="btnStop" class="danger" hidden>Stop &amp; report</button>
+  <button id="btnEnroll">👤 Register student</button>
+  <button id="btnStart" class="primary">⚡ Start session</button>
+  <button id="btnStop" class="danger" hidden>⏹ Stop &amp; report</button>
 </header>
 
 <div class="layout">
   <aside>
     <div class="card">
-      <h2>Students</h2>
+      <h2>Face Re-ID Roster</h2>
       <div class="roster" id="roster"><p class="empty">Loading…</p></div>
     </div>
     <div class="card" style="margin-top:16px">
-      <h2>Shared actions</h2>
-      <div id="pairs"><p class="empty">Needs two students doing the same thing.</p></div>
+      <h2>Collaborative Behaviors</h2>
+      <div id="pairs"><p class="empty">Needs two students engaging in mutual interaction.</p></div>
     </div>
   </aside>
 
@@ -125,14 +226,55 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
     <div id="hint" class="hint" hidden></div>
     <div id="stage">
       <div class="placeholder" id="ph">
-        Press <b>Start session</b> to open the camera.<br>
-        Register at least one student first, or everyone reads as unknown.
+        Click <b>Start session</b> to open the webcam stream.<br>
+        Register at least one student first for persistent biometric analytics.
       </div>
-      <img id="feed" hidden alt="Live camera">
+      <img id="feed" hidden alt="Live camera stream">
       <canvas id="overlay"></canvas>
     </div>
+    
+    <div class="card" style="margin-top:16px; padding:20px;" id="graphCard">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h2 style="margin:0;">ClassGraph — Scene Topology &amp; Gaze Beams</h2>
+          <span class="chip" id="graphModeLabel" style="background:rgba(99,102,241,0.2); color:#a5b4fc; font-weight:700;">🛰️ Gaze Radar</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <button type="button" class="graph-tab active" data-mode="radar" onclick="setGraphMode('radar')">🛰️ Gaze Radar</button>
+          <button type="button" class="graph-tab" data-mode="topology" onclick="setGraphMode('topology')">🕸️ Topology</button>
+          <button type="button" class="graph-tab" data-mode="flow" onclick="setGraphMode('flow')">🌊 Energy Flow</button>
+          <button type="button" class="graph-tab" data-mode="heatmap" onclick="setGraphMode('heatmap')">🔥 Matrix</button>
+          <button type="button" onclick="toggleFullscreenGraph()" style="background:rgba(6,182,212,0.15); border-color:#06b6d4; color:#67e8f9;">📺 Fullscreen</button>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; font-size:0.8rem; flex-wrap:wrap;">
+        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="presetFilters">
+          <span style="color:var(--muted); font-weight:600; display:flex; align-items:center;">Filters:</span>
+          <button type="button" class="filter-pill active" onclick="setFilter('all', this)">🌐 Full</button>
+          <button type="button" class="filter-pill" onclick="setFilter('gaze', this)">✨ Gaze Beams</button>
+          <button type="button" class="filter-pill" onclick="setFilter('objects', this)">📖 Objects</button>
+          <button type="button" class="filter-pill" onclick="setFilter('actions', this)">👥 Shared Actions</button>
+          <button type="button" class="filter-pill" onclick="setFilter('alerts', this)">⚠️ Distractions</button>
+        </div>
+        <div style="color:var(--muted); font-size:0.78rem;">
+          💡 <i>Hover node for Spotlight Focus · Drag nodes to reposition</i>
+        </div>
+      </div>
+
+      <div id="graphStage" style="position:relative; background:#030611; border-radius:14px; border:1px solid var(--border); overflow:hidden; min-height:360px;">
+        <svg id="graphCanvas" viewBox="0 0 900 420" style="width:100%; height:auto; display:block; min-height:360px;">
+          <text x="450" y="210" fill="var(--muted)" font-size="14" text-anchor="middle" font-family="'Outfit', sans-serif">Awaiting live session telemetry to render Scene Graph Topology...</text>
+        </svg>
+        <div id="graphHud" style="position:absolute; bottom:14px; left:14px; pointer-events:none; opacity:0; transition:opacity 0.2s; background:rgba(15,23,42,0.9); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.15); border-radius:12px; padding:10px 14px; box-shadow:0 10px 30px rgba(0,0,0,0.5); font-size:0.82rem;">
+          <div id="hudTitle" style="font-weight:700; color:#fff; font-size:0.92rem; margin-bottom:4px;">—</div>
+          <div id="hudBody" style="color:var(--muted); font-family:'JetBrains Mono', monospace; font-size:0.78rem;">—</div>
+        </div>
+      </div>
+    </div>
+
     <div class="card" style="margin-top:16px">
-      <h2>Objects seen this frame</h2>
+      <h2>Objects Detected</h2>
       <div class="chips" id="objects"><span class="empty">none</span></div>
     </div>
   </main>
@@ -141,8 +283,7 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
 <dialog id="enrollDlg">
   <div class="dlg">
     <h3>Register a student</h3>
-    <p>Face the camera. Move your head slightly between shots — varied angles make
-       the reference generalise.</p>
+    <p>Face the camera. Move your head slightly between shots to build a robust biometric reference.</p>
     <input id="enrollName" placeholder="Student name" autocomplete="off">
     <div id="enrollView"><video id="enrollVideo" autoplay playsinline muted></video></div>
     <div class="progress"><i id="enrollBar"></i></div>
@@ -154,6 +295,7 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
   </div>
 </dialog>
 
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=2"></script>
 </body>
 </html>
+""",StartLine:1,TargetContent:

@@ -224,6 +224,13 @@
                 "null"
               ],
               "description": "direct when an action rests on a detected object or unambiguous landmark geometry, inferred when it is a plausible reading of weaker evidence."
+            },
+            "eyes_closed_ms": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "description": "Milliseconds the eyes have been continuously shut. Distinguishes a blink from a real closure."
             }
           }
         }

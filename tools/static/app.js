@@ -147,11 +147,321 @@ function connect() {
     $("objects").innerHTML = d.objects.length
       ? d.objects.map((o) => `<span class="chip">${escape(o)}</span>`).join("")
       : '<span class="empty">none</span>';
+    window.lastStudents = d.students;
+    window.lastObjects = d.objects;
+    window.lastPairs = d.pairs;
     paintRoster(d.students);
     paintPairs(d.pairs, d.students);
+    paintLiveGraph(d.students, d.objects, d.pairs);
     requestAnimationFrame(() => paintOverlay(d.boxes));
   };
   socket.onclose = () => setTimeout(connect, 1200);
+}
+
+let currentGraphMode = "radar";
+let currentGraphFilter = "all";
+let focusedStudentId = null;
+let nodePositions = {};
+
+function setGraphMode(mode) {
+  currentGraphMode = mode;
+  document.querySelectorAll(".graph-tab").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.mode === mode);
+  });
+  const labels = {
+    radar: "🛰️ Gaze Radar & Spatial Beams",
+    topology: "🕸️ Scene Topology Network",
+    flow: "🌊 Energy Flow Stream",
+    heatmap: "🔥 Social Interaction Matrix"
+  };
+  $("graphModeLabel").textContent = labels[mode] || mode;
+}
+
+function setFilter(filter, el) {
+  currentGraphFilter = filter;
+  document.querySelectorAll(".filter-pill").forEach(pill => pill.classList.remove("active"));
+  if (el) el.classList.add("active");
+}
+
+function toggleFullscreenGraph() {
+  const card = $("graphCard");
+  if (card) {
+    card.classList.toggle("fullscreen-graph");
+  }
+}
+
+function showGraphHud(e, title, body) {
+  const hud = $("graphHud");
+  if (!hud) return;
+  $("hudTitle").textContent = title;
+  $("hudBody").innerHTML = body;
+  hud.style.opacity = "1";
+}
+
+function hideGraphHud() {
+  const hud = $("graphHud");
+  if (hud) hud.style.opacity = "0";
+}
+
+const DEMO_STUDENTS = [
+  { id: 1, name: "Aarav", present: true, action: "attentive", attention: 0.94, gaze: "teacher" },
+  { id: 2, name: "Bhavya", present: true, action: "studying", attention: 0.88, gaze: "down" },
+  { id: 3, name: "Chetan", present: true, action: "on_phone", attention: 0.28, gaze: "down" },
+  { id: 4, name: "Divya", present: true, action: "attentive", attention: 0.91, gaze: "teacher" }
+];
+const DEMO_OBJECTS = ["laptop", "book", "cell phone"];
+const DEMO_PAIRS = [{ a: 1, b: 2, frames: 42 }];
+
+function paintLiveGraph(students, detectedObjects, pairs) {
+  const svg = $("graphCanvas");
+  if (!svg) return;
+  let present = (students || []).filter(s => s && s.present);
+  let objects = Array.from(new Set(detectedObjects || []));
+  let pairList = pairs || [];
+
+  if (!present.length) {
+    present = DEMO_STUDENTS;
+    objects = DEMO_OBJECTS;
+    pairList = DEMO_PAIRS;
+  }
+
+  const W = 900, H = 420;
+
+  if (currentGraphMode === "heatmap") {
+    renderInteractionMatrix(svg, present, pairList, W, H);
+    return;
+  }
+
+  if (currentGraphMode === "radar") {
+    renderGazeRadar(svg, present, objects, pairList, W, H);
+  } else if (currentGraphMode === "flow") {
+    renderEnergyFlow(svg, present, objects, pairList, W, H);
+  } else {
+    renderNetworkTopology(svg, present, objects, pairList, W, H);
+  }
+}
+
+function renderGazeRadar(svg, present, objects, pairs, W, H) {
+  let html = `
+    <defs>
+      <linearGradient id="podiumGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#6366f1"/>
+        <stop offset="100%" stop-color="#06b6d4"/>
+      </linearGradient>
+      <linearGradient id="laserBeam" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#10b981" stop-opacity="0.8"/>
+        <stop offset="100%" stop-color="#34d399" stop-opacity="0.2"/>
+      </linearGradient>
+    </defs>
+
+    <!-- Teacher Podium / Board -->
+    <g transform="translate(450, 45)">
+      <rect x="-140" y="-18" width="280" height="36" rx="10" fill="rgba(99, 102, 241, 0.12)" stroke="url(#podiumGrad)" stroke-width="2"/>
+      <text x="0" y="5" fill="#fff" font-size="13" font-weight="700" text-anchor="middle" font-family="'Outfit', sans-serif">👩‍🏫 Teacher Podium &amp; Screen Target</text>
+    </g>
+  `;
+
+  // Spatial Student Desk Positions
+  const cols = Math.min(present.length, 4);
+  const rows = Math.ceil(present.length / cols);
+  
+  present.forEach((s, idx) => {
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    const x = 180 + col * (540 / Math.max(cols - 1, 1));
+    const y = 160 + row * 110;
+    
+    nodePositions[s.id] = { x, y };
+
+    const isFocused = focusedStudentId === null || focusedStudentId === s.id;
+    const groupClass = isFocused ? "graph-highlighted" : "graph-dimmed";
+
+    // Laser Gaze Ray pointing up to Podium or Target
+    const targetY = 65;
+    const targetX = 450 + (col - (cols - 1) / 2) * 40;
+
+    if (currentGraphFilter === "all" || currentGraphFilter === "gaze") {
+      const laserColor = s.action === "on_phone" || s.action === "eyes_closed" ? "#f43f5e" : "#10b981";
+      html += `
+        <line x1="${x}" y1="${y - 18}" x2="${targetX}" y2="${targetY}" 
+              stroke="${laserColor}" stroke-opacity="${isFocused ? 0.65 : 0.1}" stroke-width="2.5" stroke-dasharray="6 3" class="${groupClass}"/>
+      `;
+    }
+
+    const actColor = ACTION_COLOUR[s.action] || "#10b981";
+    html += `
+      <g transform="translate(${x},${y})" class="${groupClass}" cursor="pointer"
+         onmouseover="focusedStudentId=${s.id}; showGraphHud(event, '${escape(s.name)} (#${s.id})', 'Action: <b>${s.action || "attentive"}</b><br>On-Task: <b>${s.attention != null ? Math.round(s.attention*100) + "%" : "—"}</b>'); paintLiveGraph(window.lastStudents||[], window.lastObjects||[], window.lastPairs||[]);"
+         onmouseout="focusedStudentId=null; hideGraphHud(); paintLiveGraph(window.lastStudents||[], window.lastObjects||[], window.lastPairs||[]);">
+        <!-- Desk -->
+        <rect x="-42" y="-12" width="84" height="42" rx="8" fill="rgba(15, 23, 42, 0.8)" stroke="${actColor}" stroke-width="1.8"/>
+        <!-- Student Avatar Circle -->
+        <circle cx="0" cy="-14" r="16" fill="${actColor}" stroke="#030611" stroke-width="2.5"/>
+        <text x="0" y="-10" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">${s.id}</text>
+        <text x="0" y="16" fill="#f8fafc" font-size="11" font-weight="600" text-anchor="middle" font-family="'Outfit', sans-serif">${escape(s.name)}</text>
+      </g>
+    `;
+  });
+
+  svg.innerHTML = html;
+}
+
+function renderNetworkTopology(svg, present, objects, pairs, W, H) {
+  const px = 220, ox = 680;
+  let html = `
+    <defs>
+      <linearGradient id="topoGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#818cf8"/>
+        <stop offset="100%" stop-color="#06b6d4"/>
+      </linearGradient>
+    </defs>
+  `;
+
+  const py = {}, oy = {};
+  present.forEach((s, i) => { py[s.id] = (H / (present.length + 1)) * (i + 1); });
+  objects.forEach((obj, i) => { oy[obj] = (H / (objects.length + 1)) * (i + 1); });
+
+  // Draw Shared Action Arcs
+  if (pairs && pairs.length && (currentGraphFilter === "all" || currentGraphFilter === "actions")) {
+    pairs.forEach(p => {
+      if (py[p.a] && py[p.b]) {
+        const midY = (py[p.a] + py[p.b]) / 2;
+        const bend = px - 70;
+        html += `<path d="M${px},${py[p.a]} Q${bend},${midY} ${px},${py[p.b]}" fill="none" stroke="#f97316" stroke-width="2.5" stroke-dasharray="5 4" stroke-opacity="0.8"/>`;
+      }
+    });
+  }
+
+  // Draw Student to Object Arcs
+  if (currentGraphFilter === "all" || currentGraphFilter === "objects") {
+    present.forEach(s => {
+      objects.forEach(obj => {
+        const midX = (px + ox) / 2;
+        const midY = (py[s.id] + oy[obj]) / 2;
+        html += `<path d="M${px},${py[s.id]} Q${midX},${midY} ${ox},${oy[obj]}" fill="none" stroke="url(#topoGrad)" stroke-width="2" stroke-opacity="0.65"/>`;
+      });
+    });
+  }
+
+  // Render Student Nodes
+  present.forEach(s => {
+    const actColor = ACTION_COLOUR[s.action] || "#10b981";
+    html += `
+      <g transform="translate(${px},${py[s.id]})" cursor="pointer"
+         onmouseover="showGraphHud(event, '${escape(s.name)}', 'Status: ${s.action}')" onmouseout="hideGraphHud()">
+        <circle r="16" fill="${actColor}" stroke="#030611" stroke-width="3"/>
+        <text x="0" y="4" fill="#fff" font-size="11" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">${s.id}</text>
+        <text x="-24" y="4" fill="#f8fafc" font-size="12" font-weight="600" text-anchor="end" font-family="'Outfit', sans-serif">${escape(s.name)}</text>
+      </g>
+    `;
+  });
+
+  // Render Object Nodes
+  const objIcons = { laptop: "💻", book: "📖", "cell phone": "📱", keyboard: "⌨️", bottle: "🍾", cup: "☕" };
+  objects.forEach(obj => {
+    const icon = objIcons[obj] || "📦";
+    html += `
+      <g transform="translate(${ox},${oy[obj] - 14})">
+        <rect width="150" height="28" rx="8" fill="rgba(6, 182, 212, 0.15)" stroke="#06b6d4" stroke-opacity="0.5" stroke-width="1.2"/>
+        <text x="12" y="18" fill="#f8fafc" font-size="12" font-weight="600">${icon} ${escape(obj)}</text>
+      </g>
+    `;
+  });
+
+  svg.innerHTML = html;
+}
+
+function renderEnergyFlow(svg, present, objects, pairs, W, H) {
+  const px = 220, ox = 680;
+  let html = `
+    <defs>
+      <linearGradient id="flowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#38bdf8"/>
+        <stop offset="100%" stop-color="#818cf8"/>
+      </linearGradient>
+    </defs>
+  `;
+
+  const py = {}, oy = {};
+  present.forEach((s, i) => { py[s.id] = (H / (present.length + 1)) * (i + 1); });
+  objects.forEach((obj, i) => { oy[obj] = (H / (objects.length + 1)) * (i + 1); });
+
+  present.forEach(s => {
+    objects.forEach(obj => {
+      const midX = (px + ox) / 2;
+      const midY = (py[s.id] + oy[obj]) / 2;
+      html += `<path d="M${px},${py[s.id]} Q${midX},${midY} ${ox},${oy[obj]}" fill="none" stroke="url(#flowGrad)" stroke-width="3" class="flow-line"/>`;
+    });
+  });
+
+  present.forEach(s => {
+    const actColor = ACTION_COLOUR[s.action] || "#10b981";
+    html += `
+      <g transform="translate(${px},${py[s.id]})">
+        <circle r="16" fill="${actColor}" stroke="#030611" stroke-width="3"/>
+        <text x="0" y="4" fill="#fff" font-size="11" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">${s.id}</text>
+        <text x="-24" y="4" fill="#f8fafc" font-size="12" font-weight="600" text-anchor="end" font-family="'Outfit', sans-serif">${escape(s.name)}</text>
+      </g>
+    `;
+  });
+
+  const objIcons = { laptop: "💻", book: "📖", "cell phone": "📱", keyboard: "⌨️", bottle: "🍾", cup: "☕" };
+  objects.forEach(obj => {
+    const icon = objIcons[obj] || "📦";
+    html += `
+      <g transform="translate(${ox},${oy[obj] - 14})">
+        <rect width="150" height="28" rx="8" fill="rgba(6, 182, 212, 0.15)" stroke="#06b6d4" stroke-width="1.2"/>
+        <text x="12" y="18" fill="#f8fafc" font-size="12" font-weight="600">${icon} ${escape(obj)}</text>
+      </g>
+    `;
+  });
+
+  svg.innerHTML = html;
+}
+
+function renderInteractionMatrix(svg, present, pairs, W, H) {
+  if (present.length < 2) {
+    svg.innerHTML = '<text x="450" y="210" fill="var(--muted)" font-size="14" text-anchor="middle" font-family="\'Outfit\', sans-serif">Needs at least 2 present students to calculate pairwise social interaction matrix</text>';
+    return;
+  }
+
+  const size = Math.min(320 / present.length, 55);
+  const startX = 450 - (present.length * size) / 2;
+  const startY = 80;
+
+  let html = `<g transform="translate(0, 0)">`;
+
+  // Row and Header labels
+  present.forEach((s, i) => {
+    html += `<text x="${startX + i * size + size / 2}" y="${startY - 10}" fill="#a5b4fc" font-size="11" font-weight="700" text-anchor="middle" font-family="'Outfit', sans-serif">${escape(s.name)}</text>`;
+    html += `<text x="${startX - 12}" y="${startY + i * size + size / 2 + 4}" fill="#a5b4fc" font-size="11" font-weight="700" text-anchor="end" font-family="'Outfit', sans-serif">${escape(s.name)}</text>`;
+  });
+
+  const pairLookup = {};
+  (pairs || []).forEach(p => {
+    pairLookup[`${p.a}_${p.b}`] = p.frames;
+    pairLookup[`${p.b}_${p.a}`] = p.frames;
+  });
+
+  present.forEach((s1, r) => {
+    present.forEach((s2, c) => {
+      const x = startX + c * size;
+      const y = startY + r * size;
+      if (r === c) {
+        html += `<rect x="${x + 2}" y="${y + 2}" width="${size - 4}" height="${size - 4}" rx="6" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)"/>`;
+      } else {
+        const val = pairLookup[`${s1.id}_${s2.id}`] || 0;
+        const fill = val > 20 ? "rgba(16, 185, 129, 0.5)" : val > 0 ? "rgba(99, 102, 241, 0.35)" : "rgba(15, 23, 42, 0.6)";
+        html += `
+          <rect x="${x + 2}" y="${y + 2}" width="${size - 4}" height="${size - 4}" rx="6" fill="${fill}" stroke="rgba(255,255,255,0.1)"/>
+          <text x="${x + size/2}" y="${y + size/2 + 4}" fill="#fff" font-size="11" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">${val}</text>
+        `;
+      }
+    });
+  });
+
+  html += `</g>`;
+  svg.innerHTML = html;
 }
 
 /* ---------------------------------------------------------------- session */
@@ -258,3 +568,4 @@ function escape(s) {
 
 loadRoster();
 connect();
+paintLiveGraph([], [], []);

@@ -110,6 +110,13 @@ TYPING_CLASSES = frozenset({"keyboard", "mouse"})
 _UPPER_LIP, _LOWER_LIP = 13, 14
 _LEFT_CORNER, _RIGHT_CORNER = 78, 308
 
+#: Milliseconds the eyes must stay continuously shut before it counts as
+#: "eyes closed" rather than a blink. Human blinks run 100-400 ms; 600 ms sits
+#: clear of the longest of them while still catching a genuine closure well
+#: before anyone would call it sleep. Without this every blink was an off-task
+#: frame -- 12.5% of frames on a real session.
+BLINK_MS = 600
+
 #: Mouth opening (vertical over horizontal) above which a face reads as a yawn.
 #: A relaxed closed mouth sits near 0.02 and speech peaks around 0.35, so this
 #: is set clear of speech: mistaking talking for yawning would turn classroom
@@ -272,6 +279,7 @@ def classify(
     posture: dict | None = None,
     landmarks=None,
     oriented: bool | None = None,
+    eyes_closed_ms: int | None = None,
 ) -> Action:
     """Decide what one student is doing this frame.
 
@@ -350,8 +358,12 @@ def classify(
         return Action("yawning", f"mouth opening ratio {ratio:.2f}", True,
                       confidence="inferred")
 
-    if ear is not None and ear < cfg.face.ear_closed_threshold:
-        return Action("eyes_closed", f"eye aspect ratio {ear:.2f}", True)
+    # Shut eyes are only meaningful once they stay shut. With no duration we
+    # cannot tell a blink from a closure, so this stays silent rather than
+    # guessing -- a blink wrongly scored off task is worse than a closure missed.
+    if (ear is not None and ear < cfg.face.ear_closed_threshold
+            and eyes_closed_ms is not None and eyes_closed_ms >= BLINK_MS):
+        return Action("eyes_closed", f"eyes shut {eyes_closed_ms / 1000:.1f}s", True)
 
     if _hand_near_face(posture, person_bbox):
         return Action("head_on_hand", "wrist close to the face", False,
@@ -477,6 +489,7 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
             # Set by backend.scene_layout.annotate, which must run first. When
             # present it replaces the camera-relative gaze test entirely.
             oriented=feat.get("oriented"),
+            eyes_closed_ms=feat.get("eyes_closed_ms"),
         )
         feat["action"] = action.name
         feat["action_evidence"] = action.evidence

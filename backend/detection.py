@@ -363,8 +363,38 @@ class Detector:
                 threshold = self._class_conf.get(name, self.config.object_conf)
                 if confidence >= threshold:
                     objects.append(Obj(cls=name, bbox=bbox, confidence=confidence))
+                elif confidence >= self.config.object_conf_near_person and _touches_any(
+                    bbox, persons
+                ):
+                    # Held, and above the relaxed floor: an object on somebody's
+                    # hands is a stronger proposition than the same box in empty
+                    # space, and it is the only kind the action layer can use.
+                    objects.append(Obj(cls=name, bbox=bbox, confidence=confidence))
 
         return persons, objects
+
+
+def _touches_any(obj_bbox, persons) -> bool:
+    """Whether an object box overlaps any detected person.
+
+    Args:
+        obj_bbox: ``(x, y, w, h)`` of the object.
+        persons: This frame's detected people.
+
+    Returns:
+        ``True`` when any part of the object falls inside a person box. Judged
+        against the object's own area, not IoU: a phone or a pen is tiny beside
+        a person and IoU would never fire for either.
+    """
+    ox, oy, ow, oh = obj_bbox
+    area = max(ow * oh, 1e-6)
+    for person in persons:
+        px, py, pw, ph = person.bbox
+        ix = max(0.0, min(px + pw, ox + ow) - max(px, ox))
+        iy = max(0.0, min(py + ph, oy + oh) - max(py, oy))
+        if (ix * iy) / area > 0.0:
+            return True
+    return False
 
 
 def _frame_record(

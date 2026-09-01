@@ -62,10 +62,28 @@ class TestRules:
         assert classify(PERSON, [_obj("laptop", (110, 200, 60, 40))], "teacher",
                         0.0, 0.3).name == "on_laptop"
 
-    def test_closed_eyes(self):
+    def test_closed_eyes_need_to_stay_closed(self):
+        """A blink is not a closure.
+
+        Human blinks run 100-400 ms. Scoring any low-EAR frame as eyes closed
+        made 12.5% of a real session off task purely from blinking, so the
+        closure has to persist past BLINK_MS.
+        """
+        from backend.actions import BLINK_MS
+
+        shut = classify(PERSON, [], "teacher", 0.0, 0.05,
+                        eyes_closed_ms=BLINK_MS + 100)
+        assert shut.name == "eyes_closed"
+        assert shut.off_task is True
+
+        blink = classify(PERSON, [], "teacher", 0.0, 0.05, eyes_closed_ms=200)
+        assert blink.name != "eyes_closed"
+
+    def test_closed_eyes_without_a_duration_are_not_claimed(self):
+        """With no duration we cannot tell a blink from a closure, and a blink
+        wrongly scored off task is worse than a closure missed."""
         a = classify(PERSON, [], "teacher", 0.0, 0.05)
-        assert a.name == "eyes_closed"
-        assert a.off_task is True
+        assert a.name != "eyes_closed"
 
     @pytest.mark.parametrize("gaze", ["left", "right", "back"])
     def test_gaze_away_is_off_task(self, gaze):

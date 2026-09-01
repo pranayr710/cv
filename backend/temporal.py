@@ -28,6 +28,11 @@ class _StudentState:
         self.calibration_graded: int = 0
         self.calibration_baseline: float | None = None
 
+        # How long the eyes have been continuously shut. A blink lasts 100-400
+        # ms, so without this every blink reads as "eyes closed" -- measured at
+        # 12.5% of frames on a real session from somebody simply blinking.
+        self.eyes_closed_since_ms: int | None = None
+
         # Streak tracking for sustained distraction
         self.streak_start_ms: int | None = None
         self.was_sustained_distracted: bool = False
@@ -145,6 +150,21 @@ class TemporalTracker:
             if is_sustained_distracted and not state.was_sustained_distracted:
                 state.distraction_event_count += 1
             state.was_sustained_distracted = is_sustained_distracted
+
+            # Continuous eye closure, in milliseconds. Distinct from the
+            # majority-of-window measure below: that one answers "is this
+            # student drowsy", this one answers "are their eyes shut right now,
+            # for longer than a blink".
+            eyes_closed_now = features.get("eyes_closed")
+            if eyes_closed_now is True:
+                if state.eyes_closed_since_ms is None:
+                    state.eyes_closed_since_ms = timestamp_ms
+            else:
+                state.eyes_closed_since_ms = None
+            features["eyes_closed_ms"] = (
+                None if state.eyes_closed_since_ms is None
+                else timestamp_ms - state.eyes_closed_since_ms
+            )
 
             # Compute sustained eye closure (majority eyes closed in window)
             eyes_closed_count = sum(1 for _, _, ec in state.history if ec is True)

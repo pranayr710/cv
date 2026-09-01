@@ -93,6 +93,9 @@ class Session:
         self.recent = defaultdict(lambda: deque(maxlen=120))
         self.last_seen: dict[int, int] = {}
         self.pairs: Counter = Counter()
+        #: track_id -> the person that track was last recognised as. A face is
+        #: needed to LEARN who a track is, but not to keep knowing it.
+        self.track_identity: dict[int, int] = {}
 
     def start(self):
         """Open the camera and begin processing in a background thread."""
@@ -120,6 +123,7 @@ class Session:
             _build_detector,
             _build_expression_recognizer,
             _build_headpose_estimator,
+            _build_person_tracker,
             _build_posture_analyzer,
         )
         from backend.scene_graph import generate_scene_graph
@@ -138,6 +142,12 @@ class Session:
         headpose = _build_headpose_estimator(self.config)
         posture = _build_posture_analyzer(self.config)
         expression = _build_expression_recognizer(self.config)
+        # Motion tracking carries identity across frames where the face cannot
+        # be read -- a student turning to a neighbour, or away from the camera.
+        # Without it every frame is judged alone and a known student becomes a
+        # stranger the moment they look away, which is exactly when the system
+        # most needs to keep following them.
+        tracker = _build_person_tracker(self.config)
         temporal = TemporalTracker(self.config)
         names = {p.person_id: p.name for p in self.gallery.people}
         floor = self.config.identity.min_face_score_for_identity
@@ -161,13 +171,24 @@ class Session:
                     boxes = [p.bbox for p in persons]
                     faces = analyzer.analyze(frame, boxes)
 
+                    track_ids = tracker.update(persons, frame)
                     person_ids = []
-                    for face in faces:
+                    for face, track in zip(faces, track_ids):
                         usable = face.embedding is not None and (face.score or 0) >= floor
                         hit = self.gallery.identify(face.embedding) if usable else None
-                        person_ids.append(
-                            hit[0].person_id if hit else (UNKNOWN if face.face_bbox else None)
-                        )
+                        if hit is not None:
+                            # A readable face teaches the track who it is.
+                            if track is not None:
+                                self.track_identity[track] = hit[0].person_id
+                            person_ids.append(hit[0].person_id)
+                            continue
+                        # No usable face this frame: fall back to whoever this
+                        # track was last recognised as.
+                        remembered = self.track_identity.get(track) if track is not None else None
+                        if remembered is not None:
+                            person_ids.append(remembered)
+                        else:
+                            person_ids.append(UNKNOWN if face.face_bbox else None)
 
                     face_boxes = [f.face_bbox for f in faces]
                     if index % self.stride == 0 or held.get("n") != len(persons):
@@ -183,7 +204,7 @@ class Session:
                     record = _assemble_frame(
                         index, int(elapsed * 1000), persons, faces,
                         held["pose"], held["posture"], held["expr"],
-                        [None] * len(persons), [None] * len(persons),
+                        [None] * len(persons), track_ids,
                         person_ids, objects,
                     )
                     # Layout first: actions read `oriented` from it.

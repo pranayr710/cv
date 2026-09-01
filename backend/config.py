@@ -84,6 +84,23 @@ class DetectionConfig:
     # rather than a proxy object, and is the real fix.
     object_conf_per_class: tuple[tuple[str, float], ...] = (("book", 0.25),)
 
+    # Confidence required of an object that OVERLAPS a detected person.
+    #
+    # A held object is a different proposition from one across the room. The
+    # prior is much stronger -- a faint box on somebody's hands is far more
+    # likely to be a real bottle than the same box in empty space -- and it is
+    # also the only case the action layer can use, since an object nobody is
+    # touching says nothing about what anyone is doing.
+    #
+    # This is what makes "detect what a person is holding, ignore the rest"
+    # achievable: the general threshold can stay strict, keeping the room quiet,
+    # while a student's own desk is read more sensitively.
+    #
+    # It cannot conjure classes that do not exist. COCO has no pen, pencil,
+    # eraser, ruler, notebook or paper, so no threshold reaches them; that needs
+    # a detector trained on stationery.
+    object_conf_near_person: float = 0.15
+
     # NMS IoU
     iou: float = 0.50
 
