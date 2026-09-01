@@ -810,65 +810,61 @@ def s12_architecture(prs, page):
 def s14_results(prs, page):
     s, y = chrome(prs, "Criterion 5 — Results",
                   "Measured improvements, before and after",
-                  "Every figure below is from a real run on real classroom images in this "
-                  "repository — not an estimate.", page)
+                  "Every figure below is from a real run in this repository — not an "
+                  "estimate. The strip at the bottom is the last row, made visible.", page)
     data = [
         ["Metric", "Before", "After", "Change"],
-        ["Persons detected — busiest classroom image", "17", "19", "+2"],
         ["Faces detected on real footage — 12 images", "0", "95", "0 → usable"],
-        ["Persons on a 640×480 webcam frame", "0", "1", "demo unblocked"],
+        ["Signal coverage per student — worst-case room", "33%", "67%", "+34 pts"],
         ["Gaze label “down” reachable at all", "No (bug)", "Yes", "fixed"],
         ["Automated tests passing", "10 (9 skipped)", "423 (0 skipped)", "+413"],
         ["Throughput, 4K video on RTX 4050", "11.0 FPS", "7.8 FPS", "cost of posture"],
+        ["Persons on a 640×480 webcam frame", "0", "1", "demo unblocked"],
     ]
-    tw = 8.20
-    tbl = table(s, ML, y, tw, [4.40, 1.25, 1.25, 1.30], data,
-                row_h=0.42, head_h=0.38, size=9.5, head_size=9.5, col_bold={0})
+    tw = CW
+    tbl = table(s, ML, y, tw, [5.60, 2.00, 2.10, 2.27], data,
+                row_h=0.34, head_h=0.34, size=10, head_size=10, col_bold={0})
     for r in range(1, len(data)):
         for c in (1, 2, 3):
             run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
             run.font.name = MONO
-            run.font.size = Pt(9)
+            run.font.size = Pt(9.5)
             if c == 3:
-                # last row is a cost, not a win -- colour it honestly
-                run.font.color.rgb = AMBER if r == len(data) - 1 else GREEN
+                # the throughput row is a cost, not a win -- colour it honestly
+                run.font.color.rgb = AMBER if r == 5 else GREEN
                 run.font.bold = True
             elif c == 1:
                 run.font.color.rgb = MUTE
 
-    yy = y + 0.38 + 5 * 0.42 + 0.26
-    card(s, ML, yy, tw, 1.06,
-         heading="Why the throughput row is on this slide",
-         lines=["Adding the body-pose fallback took us from 11.0 to 7.8 FPS. We are reporting "
-                "the cost next to the benefit rather than quoting only the coverage gain — "
-                "the trade is worth it for offline analysis, and it is the number a reviewer "
-                "should be able to challenge us on."],
-         accent=AMBER, heading_size=11.5, body_size=9.5, fill=PANEL)
-
-    img_w = 2.05   # assets are square (dataset is 640x640); two stacked must fit
-    img_x = SW - MR - img_w
-    a = ASSETS / "annot_baseline_960_c40.jpg"
-    b = ASSETS / "annot_candidate_1536_c30.jpg"
-    if a.exists() and b.exists():
-        # Measure the rendered asset rather than assuming its shape: the images
-        # are regenerated from the dataset, whose aspect ratio is not fixed.
+    yy = y + 0.34 + 6 * 0.34 + 0.18
+    strip = ASSETS / "imgsz_collapse.jpg"
+    if strip.exists():
         from PIL import Image
-        with Image.open(a) as _im:
-            ih = img_w * _im.height / _im.width
-        add_text(s, img_x, y, img_w, 0.24,
-                 [P("BEFORE — 960 px, conf 0.40 → 17 found", 9, True, RED, FONT_SB)])
-        s.shapes.add_picture(str(a), Inches(img_x), Inches(y + 0.28),
-                             width=Inches(img_w))
-        y2 = y + 0.28 + ih + 0.20
-        add_text(s, img_x, y2, img_w, 0.24,
-                 [P("AFTER — 1536 px, conf 0.30 → 19 found", 9, True, GREEN, FONT_SB)])
-        s.shapes.add_picture(str(b), Inches(img_x), Inches(y2 + 0.28),
-                             width=Inches(img_w))
-        add_text(s, img_x, y2 + 0.28 + ih + 0.10, img_w, 0.54,
-                 [P("Both panels are the same frame, rendered by tools/make_ppt_assets.py "
-                    "from the current code — so the count under each picture is the count "
-                    "the shipped pipeline produces, not a figure typed in by hand.",
-                    8, False, MUTE, line=1.16)])
+        with Image.open(strip) as _im:
+            ratio = _im.height / _im.width
+        sw = 8.60
+        sx = ML + (CW - sw) / 2
+        add_text(s, sx, yy, sw, 0.26,
+                 [PR([R("THE LAST ROW, MADE VISIBLE   ", 9, True, MUTE, FONT_SB),
+                      R("one webcam frame, three inference sizes", 9, False, MUTE)])])
+        s.shapes.add_picture(str(strip), Inches(sx), Inches(yy + 0.30),
+                             width=Inches(sw))
+        cap_y = yy + 0.30 + sw * ratio + 0.12
+        add_text(s, sx, cap_y, sw, 0.60,
+                 [P("imgsz 1920 was tuned for classroom shots, where students are small "
+                    "and enlarging the frame helps. On a 640×480 webcam it enlarges 3× "
+                    "instead, the box shrinks onto part of the person, and then the "
+                    "person is gone. Rendered by tools/make_ppt_assets.py from the "
+                    "current code, with the fix bypassed so the failure is visible.",
+                    9, False, MUTE, line=1.18)])
+    else:
+        card(s, ML, yy, CW, 1.06,
+             heading="Why the throughput row is on this slide",
+             lines=["Adding the body-pose fallback took us from 11.0 to 7.8 FPS. We "
+                    "report the cost next to the benefit rather than quoting only the "
+                    "coverage gain — it is the number a reviewer should be able to "
+                    "challenge us on."],
+             accent=AMBER, heading_size=11.5, body_size=9.5, fill=PANEL)
     return s
 
 
@@ -913,43 +909,23 @@ def s15_problems_perception(prs, page):
                  [PR([R("Solution:  ", 10, True, GREEN, FONT_SB),
                       R(fix, 10, False, TEAL_D)], line=1.20)])
 
-    # The posture fallback is the answer to Problem 1 -- show it working.
-    pose = ASSETS / "t1_pose.jpg"
-    if pose.exists():
-        px = ML + LB + 0.30
-        add_text(s, px, y, img_w, 0.24,
-                 [P("THE FALLBACK, WORKING", 8.5, True, GREEN, FONT_SB)])
+    # Problem 1 is the occlusion ceiling -- show what actually reaches a student.
+    cov = ASSETS / "fallback_coverage.jpg"
+    if cov.exists():
         from PIL import Image
-        with Image.open(pose) as _im:
+        px = ML + LB + 0.30
+        with Image.open(cov) as _im:
             ih = img_w * _im.height / _im.width
-        s.shapes.add_picture(str(pose), Inches(px), Inches(y + 0.28),
+        add_text(s, px, y, img_w, 0.24,
+                 [P("WHAT REACHES EACH STUDENT", 8.5, True, GREEN, FONT_SB)])
+        s.shapes.add_picture(str(cov), Inches(px), Inches(y + 0.28),
                              width=Inches(img_w))
-        add_text(s, px, y + 0.28 + ih + 0.10, img_w, 0.90,
-                 [P("Body pose recovered for students with no detectable face. The single "
-                    "upright skeleton is the standing teacher — correctly distinguished "
-                    "from every seated student, which is a real check that the signal "
-                    "means something.", 8.5, False, MUTE, line=1.18)])
-
-    yy = y + 3.54
-    small = [("PROBLEM 3", "Back-row students missed entirely",
-              "Inference resolution 960 px shrank a 60 px student to ~30 px.",
-              "imgsz 1280 + conf 0.30 → 139 to 236 persons."),
-             ("PROBLEM 4", "Low-resolution input collapses face detection",
-              "Measured 7% face rate below 480 px vs 44% at 720–1080 px.",
-              "Set a minimum capture resolution as a deployment requirement.")]
-    cwid2 = (CW - 0.28) / 2
-    for i, (tag, title, cause, fix) in enumerate(small):
-        x = ML + i * (cwid2 + 0.28)
-        rect(s, x, yy, cwid2, 1.42, fill=PANEL, line=BORDER)
-        add_text(s, x + 0.22, yy + 0.16, cwid2 - 0.44, 0.22,
-                 [P(tag, 8.5, True, AMBER, FONT_SB)])
-        add_text(s, x + 0.22, yy + 0.40, cwid2 - 0.44, 0.30,
-                 [P(title, 10.5, True, INK, FONT_SB, line=1.10)])
-        add_text(s, x + 0.22, yy + 0.74, cwid2 - 0.44, 0.34,
-                 [P(cause, 9, False, BODY, line=1.16)])
-        add_text(s, x + 0.22, yy + 1.10, cwid2 - 0.44, 0.26,
-                 [PR([R("→ ", 9, True, GREEN), R(fix, 9, False, TEAL_D)], line=1.16)])
-
+        add_text(s, px, y + 0.28 + ih + 0.10, img_w, 1.10,
+                 [P("The hardest room in the set. Two students with their heads on the "
+                    "desk show the camera nothing usable and are reported as unknown "
+                    "rather than scored — the ceiling, visible. Body pose recovers three "
+                    "more that the face pipeline could not reach, taking coverage from "
+                    "33% to 67%.", 8.5, False, MUTE, line=1.18)])
     return s
 
 
