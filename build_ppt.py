@@ -814,11 +814,11 @@ def s14_results(prs, page):
                   "repository — not an estimate.", page)
     data = [
         ["Metric", "Before", "After", "Change"],
-        ["Persons detected — 12-image classroom set", "139", "236", "+70%"],
-        ["Persons detected — img01.jpg (~42 visible, counted by eye)", "20 (48%)", "30 (71%)", "recall +23 pts"],
-        ["Faces detected on real footage — same 12 images", "0", "95", "0 → usable"],
+        ["Persons detected — busiest classroom image", "17", "19", "+2"],
+        ["Faces detected on real footage — 12 images", "0", "95", "0 → usable"],
+        ["Persons on a 640×480 webcam frame", "0", "1", "demo unblocked"],
         ["Gaze label “down” reachable at all", "No (bug)", "Yes", "fixed"],
-        ["Automated tests passing", "10 (9 skipped)", "109 (0 skipped)", "+99"],
+        ["Automated tests passing", "10 (9 skipped)", "423 (0 skipped)", "+413"],
         ["Throughput, 4K video on RTX 4050", "11.0 FPS", "7.8 FPS", "cost of posture"],
     ]
     tw = 8.20
@@ -845,31 +845,35 @@ def s14_results(prs, page):
                 "should be able to challenge us on."],
          accent=AMBER, heading_size=11.5, body_size=9.5, fill=PANEL)
 
-    img_w = 3.40
+    img_w = 2.05   # assets are square (dataset is 640x640); two stacked must fit
     img_x = SW - MR - img_w
     a = ASSETS / "annot_baseline_960_c40.jpg"
     b = ASSETS / "annot_candidate_1536_c30.jpg"
     if a.exists() and b.exists():
-        ih = img_w * 1088 / 1920
+        # Measure the rendered asset rather than assuming its shape: the images
+        # are regenerated from the dataset, whose aspect ratio is not fixed.
+        from PIL import Image
+        with Image.open(a) as _im:
+            ih = img_w * _im.height / _im.width
         add_text(s, img_x, y, img_w, 0.24,
-                 [P("BEFORE — 960 px, conf 0.40 → 20 found", 9, True, RED, FONT_SB)])
+                 [P("BEFORE — 960 px, conf 0.40 → 17 found", 9, True, RED, FONT_SB)])
         s.shapes.add_picture(str(a), Inches(img_x), Inches(y + 0.28),
                              width=Inches(img_w))
         y2 = y + 0.28 + ih + 0.20
         add_text(s, img_x, y2, img_w, 0.24,
-                 [P("AFTER — 1536 px, conf 0.30 → 35 found", 9, True, GREEN, FONT_SB)])
+                 [P("AFTER — 1536 px, conf 0.30 → 19 found", 9, True, GREEN, FONT_SB)])
         s.shapes.add_picture(str(b), Inches(img_x), Inches(y2 + 0.28),
                              width=Inches(img_w))
         add_text(s, img_x, y2 + 0.28 + ih + 0.10, img_w, 0.54,
-                 [P("Rendered at 1536 px so the extra boxes are easy to see. The shipped "
-                    "default is 1280 px (30 found, the number in the table) — 1536 finds a "
-                    "few more still, at 1.5× the compute cost.",
+                 [P("Both panels are the same frame, rendered by tools/make_ppt_assets.py "
+                    "from the current code — so the count under each picture is the count "
+                    "the shipped pipeline produces, not a figure typed in by hand.",
                     8, False, MUTE, line=1.16)])
     return s
 
 
 def s15_problems_perception(prs, page):
-    s, y = chrome(prs, "Criterion 5 — Problems Faced (1 / 2)",
+    s, y = chrome(prs, "Criterion 5 — Problems Faced (1 / 3)",
                   "Perception problems, root causes, and what we did",
                   "These were found by running the pipeline on real footage — none of them "
                   "were visible in synthetic tests.", page)
@@ -915,9 +919,11 @@ def s15_problems_perception(prs, page):
         px = ML + LB + 0.30
         add_text(s, px, y, img_w, 0.24,
                  [P("THE FALLBACK, WORKING", 8.5, True, GREEN, FONT_SB)])
+        from PIL import Image
+        with Image.open(pose) as _im:
+            ih = img_w * _im.height / _im.width
         s.shapes.add_picture(str(pose), Inches(px), Inches(y + 0.28),
                              width=Inches(img_w))
-        ih = img_w * 450 / 800
         add_text(s, px, y + 0.28 + ih + 0.10, img_w, 0.90,
                  [P("Body pose recovered for students with no detectable face. The single "
                     "upright skeleton is the standing teacher — correctly distinguished "
@@ -948,7 +954,7 @@ def s15_problems_perception(prs, page):
 
 
 def s16_problems_interpretation(prs, page):
-    s, y = chrome(prs, "Criterion 5 — Problems Faced (2 / 2)",
+    s, y = chrome(prs, "Criterion 5 — Problems Faced (2 / 3)",
                   "Interpretation problems — and where we say “we cannot tell”",
                   None, page)
 
@@ -1020,23 +1026,24 @@ def s16_problems_interpretation(prs, page):
 
 def s18_novelty(prs, page):
     s, y = chrome(prs, "Originality",
-                  "Three things we can do that no single pillar can do alone",
-                  "Each needs identity AND relations AND time together — that is the "
-                  "argument for why all three pillars must coexist in one system.", page)
+                  "Deriving what attention means, instead of assuming it",
+                  "Everything else in this deck is engineering. This slide is the one "
+                  "claim we make that the literature does not.", page)
     items = [
-        ("01", "See a student's attention as a trend, not a snapshot",
-         "Because we know it's the same student for the whole class, we can draw one "
-         "line per student across the entire lecture and point to exactly when it "
-         "dropped — instead of a pile of disconnected per-frame guesses."),
-        ("02", "Notice when distraction spreads between neighbours",
-         "By connecting students who are near and facing each other, we can ask whether "
-         "one student losing focus is followed by the student next to them doing the "
-         "same — a pattern invisible if every student is analysed alone."),
+        ("01", "Measure the room before judging the student",
+         "Published engagement work assumes students face a teacher, so “facing away” "
+         "means distracted. We fit each student's shoulder rays and find where they "
+         "converge. If the focus lands among the students it is group work, and facing "
+         "away from the front is now correct behaviour, not disengagement."),
+        ("02", "The correction is large and has the sign reversed",
+         "Replacing camera-relative gaze with room-relative orientation moved the "
+         "attentive count from 83 to 1,364 and looking-away from 3,013 to 1,427 on the "
+         "same footage. A system without this does not get the number slightly wrong — "
+         "it calls an engaged group-work class disengaged."),
         ("03", "Say “we don't know” instead of guessing",
-         "When a student's face is hidden, or two students could be discussing the "
-         "lesson or just chatting, we report exactly that — instead of forcing a "
-         "confident answer we can't actually back up. That's what makes the output "
-         "safe to hand to a teacher."),
+         "The rays need three people to fit; with fewer, the layout reads unknown and "
+         "the second score stays blank rather than being invented. 14 of 42 identities "
+         "were refused for the same reason, each with the count behind the refusal."),
     ]
     cwid = (CW - 2 * 0.26) / 3
     for i, (num, title, body) in enumerate(items):
@@ -1053,10 +1060,145 @@ def s18_novelty(prs, page):
     rect(s, ML, yy, CW, 1.02, fill=PANEL2, line=TEAL, line_w=1.25)
     add_text(s, ML + 0.28, yy + 0.18, CW - 0.56, 0.70,
              [PR([R("Framed honestly:  ", 11, True, TEAL_D, FONT_SB),
-                  R("novel in combination and in this domain — not a claim to have "
-                    "invented a better Re-ID, scene-graph or group-activity method on "
-                    "its own. That's a defensible position for a course project and an "
-                    "honest one for a paper.", 11, False, INK)], line=1.24)])
+                  R("the geometry is elementary — a least-squares intersection of rays. "
+                    "What is new is applying it to decide what the engagement score is "
+                    "allowed to mean, rather than fixing that in advance. On the 60-clip "
+                    "external recording it found 16 group-work and 12 lecture students in "
+                    "footage we did not produce.", 11, False, INK)], line=1.24)])
+    return s
+
+
+
+
+def s19_scale_bug(prs, page):
+    """One wrong constant, found by measuring instead of arguing with labels."""
+    s, y = chrome(prs, "Criterion 5 — Problems Faced (3 / 3)",
+                  "One constant, tuned for one camera, silently broke every other one",
+                  "Found by printing the numbers the labels were derived from, instead "
+                  "of arguing with the labels.", page)
+
+    data = [
+        ["Inference size", "Persons found", "Box size", "What it means"],
+        ["640 px  (1.0x)", "1  (conf 0.92)", "460 x 270", "correct"],
+        ["1280 px (2.0x)", "1  (conf 0.61)", "365 x 270", "box shrinking"],
+        ["1600 px (2.5x)", "1  (conf 0.46)", "286 x 260", "part of a person"],
+        ["1920 px (3.0x)", "0", "-", "person gone"],
+    ]
+    tw = 7.30
+    tbl = table(s, ML, y, tw, [1.85, 1.75, 1.45, 2.25], data,
+                row_h=0.40, head_h=0.38, size=9.5, head_size=9.5, col_bold={0})
+    for r in range(1, len(data)):
+        for c in (0, 1, 2):
+            run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
+            run.font.name = MONO
+            run.font.size = Pt(9)
+        last = tbl.cell(r, 3).text_frame.paragraphs[0].runs[0]
+        last.font.bold = True
+        last.font.color.rgb = GREEN if r == 1 else (AMBER if r < 4 else RED)
+
+    yy = y + 0.38 + 4 * 0.40 + 0.26
+    card(s, ML, yy, tw, 1.66,
+         heading="Why one number broke five different things",
+         lines=["imgsz 1920 was tuned on classroom images, where students are small and "
+                "enlarging the frame brings them into range. A 640x480 webcam gets "
+                "enlarged 3x instead, and a person filling the shot stops looking like "
+                "one.",
+                "Pose, Face Mesh and head pose all key off the person box. With no box "
+                "there is no lean, no eye ratio, no mouth opening, no pitch - those "
+                "signals were not wrong, they were never computed. Where the box "
+                "survived it had shrunk onto a part of the person, which is what put a "
+                "bare hand and a held-up sheet of paper in their own boxes."],
+         accent=RED, heading_size=11.5, body_size=9.5, fill=PANEL)
+
+    x2 = ML + tw + 0.30
+    w2 = SW - MR - x2
+    card(s, x2, y, w2, 2.15,
+         heading="The fix, and why it costs nothing",
+         lines=["The earlier note argued no rule on frame size could reconcile the two "
+                "cases. That was right - the rule is on the size of the upscale, not "
+                "the frame. Every classroom gain was already reached at 1.5x or less "
+                "(1280x720 x 1.5 is exactly 1920), while every close-up failure sits "
+                "above it."],
+         accent=TEAL, heading_size=11.5, body_size=9.5, fill=PANEL2)
+
+    yy2 = y + 2.30
+    rect(s, x2, yy2, w2, 1.48, fill=WHITE, line=BORDER)
+    add_text(s, x2 + 0.22, yy2 + 0.16, w2 - 0.44, 1.25,
+             [P("MEASURED BOTH WAYS", 8.5, True, MUTE, FONT_SB),
+              PR([R("63 classroom images   ", 10, False, BODY, MONO),
+                  R("962 -> 964", 10, True, GREEN, MONO)], space_before=8),
+              PR([R("640x480 webcam        ", 10, False, BODY, MONO),
+                  R("0 -> 1", 10, True, GREEN, MONO)], space_before=4),
+              P("The cap keeps the setting that serves the target domain and refuses "
+                "only the upscale that erases a close-up.", 9, False, MUTE,
+                line=1.18, space_before=8)])
+
+    yy3 = yy2 + 1.62
+    rect(s, x2, yy3, w2, 1.20, fill=PANEL2, line=TEAL, line_w=1.25)
+    add_text(s, x2 + 0.22, yy3 + 0.14, w2 - 0.44, 1.02,
+             [P("THE LESSON WE WOULD DEFEND", 8.5, True, TEAL_D, FONT_SB),
+              P("Every complaint about a wrong label was really a question about a "
+                "number - and the numbers were computed and thrown away, leaving only "
+                "the label to argue with. tools/probe_signals.py now prints them.",
+                9.5, False, INK, line=1.20, space_before=6)])
+    return s
+
+
+def s20_demo(prs, page):
+    """What the audience is about to watch, and what to watch for."""
+    s, y = chrome(prs, "Live Demonstration",
+                  "The room verdict changing, in real time",
+                  "Register, capture, graph. The part worth watching is the banner and "
+                  "the crosshair, not the boxes.", page)
+
+    steps = [
+        ("1", "Register", "Each student is enrolled once and keeps a fixed ID. "
+                          "Everything measured afterwards is stored under that ID."),
+        ("2", "Capture", "Live webcam. Per person: identity, action, expression, "
+                         "orientation - and the room-level layout verdict."),
+        ("3", "Graph", "Per-student action transitions and a students-to-objects scene "
+                       "graph, with the two scores reported separately."),
+    ]
+    cwid = (CW - 2 * 0.26) / 3
+    for i, (num, title, body) in enumerate(steps):
+        x = ML + i * (cwid + 0.26)
+        rect(s, x, y, cwid, 1.55, fill=WHITE, line=BORDER)
+        add_text(s, x + 0.22, y + 0.18, cwid - 0.44, 0.34,
+                 [PR([R(num + "   ", 15, True, TEAL, FONT_SB),
+                      R(title, 13, True, INK, FONT_SB)])])
+        add_text(s, x + 0.22, y + 0.66, cwid - 0.44, 0.80,
+                 [P(body, 9.5, False, BODY, line=1.20)])
+
+    yy = y + 1.78
+    rect(s, ML, yy, CW, 1.72, fill=PANEL2, line=TEAL, line_w=1.25)
+    add_text(s, ML + 0.28, yy + 0.16, CW - 0.56, 1.40,
+             [P("WHAT TO WATCH FOR", 9, True, TEAL_D, FONT_SB),
+              P("Three of us sit facing the front - the banner reads Lecture and the "
+                "focus crosshair sits out ahead of us. We turn to face each other, the "
+                "crosshair slides into the middle of the group, the banner flips to "
+                "Group work, and the text changes to say that facing away from the "
+                "front is now correct behaviour.",
+                11, False, INK, line=1.24, space_before=6),
+              P("Nothing is reconfigured between those two states. The system re-derives "
+                "what attention means from where the shoulders point.",
+                11, True, INK, line=1.24, space_before=6)])
+
+    yy2 = yy + 1.92
+    half = (CW - 0.30) / 2
+    card(s, ML, yy2, half, 1.32,
+         heading="Honest limits, stated up front",
+         lines=["The rays need three people. With fewer, the banner says so and the "
+                "second score stays blank - we would rather show that than a guess.",
+                "A frontal camera cannot tell lying down from sitting upright: both "
+                "project to almost the same image geometry."],
+         accent=AMBER, heading_size=11, body_size=9.5, fill=PANEL)
+    card(s, ML + half + 0.30, yy2, half, 1.32,
+         heading="If the live demo fails",
+         lines=["outputs/final2 holds a complete 60-clip run on external footage we did "
+                "not record: 42 identities, 28 accepted as students, 16 group-work and "
+                "12 lecture, 12,789 action classifications.",
+                "The report is a static HTML file - no camera, no network, no GPU."],
+         accent=GREEN, heading_size=11, body_size=9.5, fill=PANEL)
     return s
 
 
@@ -1082,7 +1224,9 @@ def main():
     s14_results(prs, 12)
     s15_problems_perception(prs, 13)
     s16_problems_interpretation(prs, 14)
-    s18_novelty(prs, 15)
+    s19_scale_bug(prs, 15)
+    s18_novelty(prs, 16)
+    s20_demo(prs, 17)
 
     prs.save(str(OUT))
     print(f"wrote {OUT}  ({len(prs.slides.__iter__.__self__._sldIdLst)} slides)")
