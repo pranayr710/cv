@@ -156,12 +156,57 @@ Students after face seeding   379              **398**
 ============================  ==============  =================
 
 Upscaling *helps* crowded classroom shots, because there the objects are small
-and upscaling brings them into range — the opposite of the portrait case. The
-two cannot be reconciled by a single rule on frame size (an 800x450 classroom
-shot gains 20 -> 30 persons from the same 2.4x upscale that breaks the 802 px
-portrait), so the honest handling is to keep the setting that serves the target
-domain and warn loudly on inputs where it is likely wrong.
+and upscaling brings them into range — the opposite of the portrait case.
+
+What reconciles the two is not frame size but the size of the *upscale*. Every
+classroom gain above was already reached at 1.5x or less (1280x720 x1.5 is
+exactly 1920), while the portrait failures all sit above it. Capping the factor
+at :data:`MAX_UPSCALE` therefore keeps the classroom setting untouched and
+still refuses the upscale that erases a close-up. Measured both ways:
+
+===========================  ==============  ==============
+                             imgsz 1920      1.5x cap
+===========================  ==============  ==============
+63 classroom images          962 persons     **964**
+640x480 webcam, one person   **0** persons   1
+===========================  ==============  ==============
+
+The warning below is kept for the residual cases the cap does not reach.
 """
+
+
+MAX_UPSCALE: float = 1.5
+"""Most a frame may be enlarged to reach ``imgsz``.
+
+Detection is scale-sensitive: a person enlarged far past the sizes COCO trained
+on stops looking like one. Above this factor the model begins finding *parts* of
+a close-up person instead of the person -- on a 640x480 webcam frame the box
+shrank from 460x270 at imgsz 640 to 286x260 at 1600 and vanished at 1920, which
+is what puts a lone hand or a held-up sheet of paper in its own box.
+
+1.5 is the largest factor with no measured cost, per the table in
+:data:`_UPSCALE_WARN_FACTOR`.
+"""
+
+
+def effective_imgsz(frame_long_side: int, configured: int) -> int:
+    """The inference size to actually use for a frame this size.
+
+    Args:
+        frame_long_side: The frame's longer dimension in pixels.
+        configured: ``DetectionConfig.imgsz``, the size tuned for the target
+            domain.
+
+    Returns:
+        ``configured``, reduced so the frame is enlarged by no more than
+        :data:`MAX_UPSCALE`, rounded to the multiple of 32 the model strides on
+        and never below 640 (small frames lose more from a tiny input than from
+        a modest upscale).
+    """
+    if frame_long_side <= 0:
+        return configured
+    allowed = round(frame_long_side * MAX_UPSCALE / 32) * 32
+    return max(640, min(configured, allowed))
 
 
 def _xyxy_to_xywh(
@@ -329,7 +374,7 @@ class Detector:
         self._warn_if_heavily_upscaled(frame)
         results = self._model.predict(
             frame,
-            imgsz=self.config.imgsz,
+            imgsz=effective_imgsz(max(frame.shape[:2]), self.config.imgsz),
             conf=min_conf,
             iou=self.config.iou,
             device=self.device,

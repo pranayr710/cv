@@ -317,3 +317,29 @@ def test_detect_rejects_bad_input(detector: Detector) -> None:
         detector.detect(np.zeros((0, 0, 3), dtype=np.uint8))
     with pytest.raises(ValueError):
         detector.detect(np.zeros((10, 10), dtype=np.uint8))  # missing channels
+
+
+def test_effective_imgsz_never_upscales_past_the_measured_limit():
+    """A close-up frame must not be enlarged into the range that erases it.
+
+    On a 640x480 webcam frame, imgsz 1920 found zero people while one was
+    plainly in shot -- the failure that put a bare hand and a held-up sheet of
+    paper in their own person boxes.
+    """
+    from backend.detection import MAX_UPSCALE, effective_imgsz
+
+    for native in (240, 480, 640, 720, 802, 1080):
+        chosen = effective_imgsz(native, 1920)
+        assert chosen <= max(640, native * MAX_UPSCALE) + 32
+
+
+def test_effective_imgsz_leaves_the_classroom_setting_alone():
+    """The cap must cost nothing on the footage imgsz 1920 was tuned for.
+
+    The dataset images are 1280x720 and 1920-wide; both already sit at or below
+    a 1.5x upscale, so the tuned value has to survive unchanged.
+    """
+    from backend.detection import effective_imgsz
+
+    assert effective_imgsz(1280, 1920) == 1920
+    assert effective_imgsz(1920, 1920) == 1920
