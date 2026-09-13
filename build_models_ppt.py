@@ -729,155 +729,103 @@ def lane(slide, x, y, w, h, label, fill=PANEL, accent=TEAL):
 
 # --------------------------------------------------------------------------- #
 
+def _band(slide, path, x, y, w):
+    """Place a wide diagram band and return the y just below it.
+
+    The Mermaid renders are 6:1 to 12:1 strips, so they are always placed at a
+    known width and allowed to set their own height -- assuming an aspect ratio
+    is how the first version of this deck pushed captions off the slide.
+    """
+    from PIL import Image
+
+    if not path.exists():
+        return y
+    with Image.open(path) as im:
+        h = w * im.height / im.width
+    slide.shapes.add_picture(str(path), Inches(x), Inches(y), width=Inches(w))
+    return y + h
+
+
 def s_architecture(prs, page):
     """Every model, what feeds it, and what it feeds."""
     s, y = chrome(prs, "Architecture",
                   "The whole system, and what each stage hands the next",
-                  "Read left to right. Nothing in a later stage can recover what an "
-                  "earlier stage missed, which is why the detector's settings matter "
-                  "more than any threshold downstream.", page)
+                  "Read left to right. The arrows carry the payload, because that is "
+                  "the part a reader cannot infer -- YOLO hands down a person crop, "
+                  "SCRFD hands down an aligned face.", page)
 
-    col_w, gap = 2.15, 0.30
-    xs = [ML + i * (col_w + gap) for i in range(5)]
-    top = y + 0.30
+    bottom = _band(s, ASSETS / "architecture.png", ML, y, CW)
+    if bottom == y:
+        add_text(s, ML, y, CW, 0.4,
+                 [P("architecture.png missing - run: python tools/render_diagrams.py",
+                    12, True, RED, FONT_SB)])
+        bottom = y + 0.5
 
-    # Stage headers
-    heads = ["INPUT", "DETECT", "PER-PERSON MODELS", "DERIVE", "OUTPUT"]
-    for i, htxt in enumerate(heads):
-        add_text(s, xs[i], y, col_w, 0.24,
-                 [P(htxt, 8.5, True, TEAL, FONT_SB, align=PP_ALIGN.CENTER)])
+    yy = bottom + 0.46
+    third = (CW - 2 * 0.28) / 3
+    notes = [
+        ("Nothing recovers a missed detection", TEAL,
+         "Every per-person model runs on a crop YOLO produced. A student the "
+         "detector misses is not a student with weaker signals -- they are absent "
+         "from the record entirely, which is why the detector's inference size "
+         "turned out to be the most consequential setting in the system."),
+        ("Enrolment does not change detection", GREEN,
+         "The dashed line from the gallery is the point most readers miss. A "
+         "registered student is found exactly like anyone else; the gallery only "
+         "supplies a name once a face clears the quality floor, and stays silent "
+         "when it does not."),
+        ("Geometry decides, models advise", AMBER,
+         "The fine-tuned behaviour model enters the action rules on a dashed line, "
+         "as a second opinion. Object overlap and wrist position are checked first, "
+         "because they are auditable and need no training data."),
+    ]
+    for i, (title, accent, body) in enumerate(notes):
+        x = ML + i * (third + 0.28)
+        rect(s, x, yy, third, 2.08, fill=PANEL, line=BORDER)
+        bar(s, x, yy, 0.045, 2.08, accent)
+        add_text(s, x + 0.24, yy + 0.20, third - 0.44, 1.72,
+                 [P(title, 12, True, INK, FONT_SB, line=1.10),
+                  P(body, 10.5, False, BODY, line=1.24, space_before=7)])
 
-    # Column 1 - input
-    node(s, xs[0], top, col_w, 0.86, "Frame",
-         "webcam 640x480, or\nvideo at 1080p", PANEL2, TEAL)
-    node(s, xs[0], top + 1.06, col_w, 0.86, "Enrolled gallery",
-         "name -> 512-d vector\nregistered once", PANEL2, GREEN)
-
-    # Column 2 - detection
-    node(s, xs[1], top, col_w, 1.20, "YOLO11m",
-         "20.1 M params\nboxes + 80 COCO classes", WHITE, TEAL)
-    node(s, xs[1], top + 1.40, col_w, 1.00, "ByteTrack",
-         "track_id across frames", WHITE, TEAL)
-
-    # Column 3 - per-person models
-    per = [("SCRFD det_10g", "4.2 M - face box + 5 kps"),
-           ("ArcFace w600k_r50", "43.6 M - 512-d embedding"),
-           ("MediaPipe Pose", "33 keypoints, facing ray"),
-           ("MediaPipe Face Mesh", "468 landmarks, EAR"),
-           ("SixDRepNet", "39.3 M - yaw/pitch/roll"),
-           ("EfficientNet-B0", "4.0 M - 8 emotions")]
-    ph = 0.60
-    for i, (nm, sub) in enumerate(per):
-        node(s, xs[2], top + i * (ph + 0.09), col_w, ph, nm, sub, WHITE, AMBER,
-             title_size=9.5, sub_size=7.5)
-
-    # Column 4 - derivation
-    node(s, xs[3], top, col_w, 0.92, "Identity resolver",
-         "clustering + cannot-link\n-> stable person_id", WHITE, GREEN)
-    node(s, xs[3], top + 1.06, col_w, 0.92, "Scene layout",
-         "facing rays -> focus\ngroup vs lecture", PANEL2, GREEN)
-    node(s, xs[3], top + 2.12, col_w, 0.92, "Action rules",
-         "geometry first,\n17 actions + evidence", WHITE, GREEN)
-    node(s, xs[3], top + 3.18, col_w, 0.92, "Temporal tracker",
-         "blink vs closure,\nrolling engagement", WHITE, GREEN)
-
-    # Column 5 - outputs
-    node(s, xs[4], top, col_w, 1.00, "raw.jsonl",
-         "one record per frame\nevery model's output", PANEL2, TEAL)
-    node(s, xs[4], top + 1.16, col_w, 1.00, "live_graph.jsonl",
-         "nodes = students\nedges = relations", PANEL2, TEAL)
-    node(s, xs[4], top + 2.32, col_w, 1.00, "profiles + report",
-         "per-student history,\ntwo scores, graphs", PANEL2, TEAL)
-
-    # Flow arrows between columns
-    mid = top + 0.60
-    arrow(s, xs[0] + col_w, mid, xs[1], mid)
-    arrow(s, xs[1] + col_w, mid, xs[2], mid)
-    arrow(s, xs[2] + col_w, top + 1.80, xs[3], top + 1.06)
-    arrow(s, xs[3] + col_w, top + 1.80, xs[4], top + 1.16)
-    # The gallery feeds identity directly, not the detector.
-    arrow(s, xs[0] + col_w, top + 1.50, xs[3], top + 0.46, GREEN, 1.25, True)
-
-    yy = SH - 1.02
-    rect(s, ML, yy, CW, 0.80, fill=PANEL2, line=TEAL, line_w=1.25)
-    add_text(s, ML + 0.24, yy + 0.13, CW - 0.48, 0.58,
-             [PR([R("The dashed line is the point people miss:  ", 10, True,
-                    TEAL_D, FONT_SB),
-                  R("enrolment does not change detection. A registered student is "
-                    "found the same way as anyone else; the gallery only supplies the "
-                    "name once a face is good enough to match, and stays silent when "
-                    "it is not.", 10, False, INK)], line=1.20)])
+    add_text(s, ML, SH - 0.44, CW, 0.22,
+             [P("Rendered from docs/diagrams/architecture.mmd - edit the Mermaid "
+                "source, not the picture.", 8.5, False, MUTE)])
     return s
 
 
 def s_workflow(prs, page):
-    """The pipeline as it runs, including what happens when a stage says nothing."""
+    """The pipeline as it runs, split at the boundary that matters."""
     s, y = chrome(prs, "Workflow",
-                  "One frame, end to end - including every branch that gives up",
-                  "The branches matter as much as the path. Most of this system is "
-                  "decisions about what to do when a model cannot answer.", page)
+                  "One frame, end to end - and every branch that gives up",
+                  "Split where the system's own boundary falls: steps 1-6 are "
+                  "measurements a model makes, steps 7-12 are decisions we make about "
+                  "them.", page)
 
-    bw, bh, gap = 1.78, 0.72, 0.30
-    row1 = y + 0.34
-    steps = [
-        ("1  Capture", "frame + timestamp"),
-        ("2  Detect", "persons, objects"),
-        ("3  Track", "track_id"),
-        ("4  Face", "SCRFD box + kps"),
-        ("5  Identify", "ArcFace -> person_id"),
-        ("6  Measure", "pose, mesh, head"),
-    ]
-    for i, (t, sub) in enumerate(steps):
-        x = ML + i * (bw + gap)
-        node(s, x, row1, bw, bh, t, sub, WHITE, TEAL, 10, 8)
-        if i:
-            arrow(s, x - gap, row1 + bh / 2, x, row1 + bh / 2)
+    add_text(s, ML, y, CW, 0.24,
+             [PR([R("PERCEPTION   ", 9, True, TEAL, FONT_SB),
+                  R("steps 1-6 - what the models measure", 9, False, MUTE)])])
+    b1 = _band(s, ASSETS / "workflow_1_perception.png", ML, y + 0.28, CW)
 
-    row2 = row1 + bh + 0.92
-    steps2 = [
-        ("7  Layout", "rays -> group / lecture"),
-        ("8  Classify", "17 actions + evidence"),
-        ("9  Expression", "8 classes -> 3"),
-        ("10  Temporal", "blink vs closure"),
-        ("11  Graph", "nodes + 4 edge types"),
-        ("12  Report", "profiles, scores, HTML"),
-    ]
-    for i, (t, sub) in enumerate(steps2):
-        x = ML + i * (bw + gap)
-        node(s, x, row2, bw, bh, t, sub, WHITE, GREEN, 10, 8)
-        if i:
-            arrow(s, x - gap, row2 + bh / 2, x, row2 + bh / 2, GREEN)
-    # wrap from step 6 to step 7
-    arrow(s, ML + 5 * (bw + gap) + bw / 2, row1 + bh,
-          ML + bw / 2, row2, TEAL, 1.25, True)
+    y2 = (b1 if b1 > y + 0.28 else y + 0.8) + 0.26
+    add_text(s, ML, y2, CW, 0.24,
+             [PR([R("INTERPRETATION   ", 9, True, GREEN, FONT_SB),
+                  R("steps 7-12 - what we decide about them", 9, False, MUTE)])])
+    b2 = _band(s, ASSETS / "workflow_2_interpretation.png", ML, y2 + 0.28, CW)
 
-    # The give-up branches, called out beneath the stage they belong to.
-    row3 = row2 + bh + 0.46
-    outs = [
-        ("no person box", "nothing downstream runs", 1),
-        ("no readable face", "body pose carries the student", 3),
-        ("no identity match", "reported unidentified, not guessed", 4),
-        ("fewer than 3 people", "layout unknown, second score blank", 6),
-        ("no evidence at all", "action is unknown, never attentive", 7),
-    ]
-    ow = (CW - 4 * 0.22) / 5
-    for i, (cond, act, _) in enumerate(outs):
-        x = ML + i * (ow + 0.22)
-        rect(s, x, row3, ow, 0.92, fill=PANEL, line=BORDER)
-        bar(s, x, row3, 0.045, 0.92, AMBER)
-        add_text(s, x + 0.18, row3 + 0.14, ow - 0.32, 0.68,
-                 [P(cond, 9, True, AMBER, FONT_SB, line=1.10),
-                  P(act, 8.5, False, BODY, line=1.16, space_before=4)])
+    yy = (b2 if b2 > y2 + 0.28 else y2 + 0.8) + 0.24
+    rect(s, ML, yy, CW, 1.04, fill=PANEL2, line=TEAL, line_w=1.25)
+    add_text(s, ML + 0.26, yy + 0.14, CW - 0.52, 0.80,
+             [P("THE AMBER BOXES ARE NOT ERROR STATES", 9, True, TEAL_D, FONT_SB),
+              P("Each is a considered refusal, and together they are why a low number "
+                "here can be trusted rather than explained away. A student with no "
+                "readable face keeps a body-pose reading; one with no gallery match is "
+                "reported unidentified rather than given to the nearest neighbour; a "
+                "room with fewer than three students reports no layout at all.",
+                10.5, False, INK, line=1.22, space_before=5)])
 
-    yy = row3 + 1.10
-    rect(s, ML, yy, CW, 0.72, fill=PANEL2, line=TEAL, line_w=1.25)
-    add_text(s, ML + 0.24, yy + 0.12, CW - 0.48, 0.50,
-             [PR([R("Steps 1-6 are perception, 7-12 are interpretation.  ", 10,
-                    True, TEAL_D, FONT_SB),
-                  R("Everything in the top row is a measurement some model makes; "
-                    "everything in the bottom row is a decision we make about those "
-                    "measurements, and is the part we can defend line by line.",
-                    10, False, INK)], line=1.20)])
+    add_text(s, ML, SH - 0.44, CW, 0.22,
+             [P("Rendered from docs/diagrams/workflow_1_perception.mmd and "
+                "workflow_2_interpretation.mmd", 8.5, False, MUTE)])
     return s
 
 

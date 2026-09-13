@@ -1,0 +1,30 @@
+%% ClassGraph workflow, part 1 of 2 - perception (steps 1-6)
+%% Everything here is a measurement some model makes.
+flowchart LR
+  classDef percept fill:#FFFFFF,stroke:#0E7C86,stroke-width:2px,color:#10273F
+  classDef giveup  fill:#FFF6E6,stroke:#B47A14,stroke-width:2px,color:#8A5D10
+  classDef gate    fill:#E9F1F4,stroke:#0E7C86,stroke-width:2px,color:#10273F
+
+  S1["1 - Capture frame"]:::percept
+  S2["2 - YOLO11m detect<br/>persons + objects"]:::percept
+  G1{"any person<br/>box?"}:::gate
+  X1["Nothing downstream runs<br/>frame recorded as empty"]:::giveup
+  S3["3 - Track<br/>track_id across frames"]:::percept
+  S4["4 - SCRFD face detect<br/>inside the person box"]:::percept
+  G2{"face<br/>readable?"}:::gate
+  X2["Body pose carries the student<br/>no expression, no head pose"]:::giveup
+  S5["5 - ArcFace embed<br/>512-d vector"]:::percept
+  G3{"matches<br/>gallery?"}:::gate
+  X3["Reported unidentified<br/>never given to nearest match"]:::giveup
+  S6["6 - Measure<br/>Pose, Face Mesh, SixDRepNet"]:::percept
+  NEXT["to step 7"]:::gate
+
+  S1 --> S2 --> G1
+  G1 -- no --> X1
+  G1 -- yes --> S3 --> S4 --> G2
+  G2 -- no --> X2
+  G2 -- yes --> S5 --> G3
+  G3 -- no --> X3
+  G3 -- yes --> S6 --> NEXT
+  X2 -.-> S6
+  X3 -.-> S6

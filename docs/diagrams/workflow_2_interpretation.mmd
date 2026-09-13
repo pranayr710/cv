@@ -1,0 +1,28 @@
+%% ClassGraph workflow, part 2 of 2 - interpretation (steps 7-12)
+%% Everything here is a decision about those measurements.
+flowchart LR
+  classDef interp fill:#FFFFFF,stroke:#1F6F50,stroke-width:2px,color:#10273F
+  classDef giveup fill:#FFF6E6,stroke:#B47A14,stroke-width:2px,color:#8A5D10
+  classDef gate   fill:#E9F1F4,stroke:#0E7C86,stroke-width:2px,color:#10273F
+
+  PREV["from step 6"]:::gate
+  S7["7 - Scene layout<br/>intersect the facing rays"]:::interp
+  G4{"3 or more<br/>students?"}:::gate
+  X4["Layout unknown<br/>second score stays blank"]:::giveup
+  S8["8 - Action rules<br/>geometry first, 17 actions"]:::interp
+  G5{"any<br/>evidence?"}:::gate
+  X5["Action is unknown<br/>never defaults to attentive"]:::giveup
+  S9["9 - Expression<br/>8 classes mapped to 3"]:::interp
+  S10["10 - Temporal tracker<br/>blink vs closure, rolling %"]:::interp
+  S11["11 - Scene graph<br/>nodes + 4 edge types"]:::interp
+  S12["12 - Profiles and report<br/>on-task % and engagement %<br/>reported separately"]:::interp
+
+  PREV --> S7 --> G4
+  G4 -- no --> X4
+  G4 -- yes --> S8
+  X4 -.-> S8
+  S8 --> G5
+  G5 -- no --> X5
+  G5 -- yes --> S9 --> S10
+  X5 -.-> S10
+  S10 --> S11 --> S12
