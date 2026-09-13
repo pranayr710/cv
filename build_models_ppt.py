@@ -232,7 +232,7 @@ def s01_title(prs):
 
 def s02_overview(prs, page):
     s, y = chrome(prs, "The stack at a glance",
-                  "Eight models, 131 million parameters in the pipeline, one of them ours",
+                  "Eight models, 131 M parameters, one of them ours",
                   "131.3 M is the six models whose parameters are countable; MediaPipe "
                   "ships TFLite graphs that do not expose a count. Each model does one "
                   "narrow job it was built for.", page)
@@ -679,6 +679,425 @@ def s10_summary(prs, page):
     return s
 
 
+
+# --------------------------------------------------------------------------- #
+# Diagram primitives
+# --------------------------------------------------------------------------- #
+
+def node(slide, x, y, w, h, title, sub=None, fill=WHITE, accent=TEAL,
+         title_size=10.5, sub_size=8.5):
+    """One labelled box in a diagram."""
+    rect(slide, x, y, w, h, fill=fill, line=BORDER)
+    bar(slide, x, y, w, 0.045, accent)
+    blocks = [P(title, title_size, True, INK, FONT_SB, line=1.08,
+                align=PP_ALIGN.CENTER)]
+    # A newline inside a single run lands in the XML as a raw newline, which
+    # PowerPoint renders as a space -- so each line has to be its own paragraph.
+    for i, part in enumerate((sub or "").splitlines()):
+        if part:
+            blocks.append(P(part, sub_size, False, MUTE, line=1.14,
+                            align=PP_ALIGN.CENTER,
+                            space_before=3 if i == 0 else 0))
+    add_text(slide, x + 0.08, y + 0.14, w - 0.16, h - 0.22, blocks,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+
+def arrow(slide, x1, y1, x2, y2, colour=TEAL, width=1.5, dashed=False):
+    """A straight connector between two points, in inches."""
+    from pptx.enum.shapes import MSO_CONNECTOR
+    from pptx.oxml.ns import qn
+    cx = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(x1),
+                                    Inches(y1), Inches(x2), Inches(y2))
+    cx.line.color.rgb = colour
+    cx.line.width = Pt(width)
+    ln = cx.line._get_or_add_ln()
+    tail = ln.makeelement(qn("a:tailEnd"), {"type": "triangle",
+                                            "w": "med", "len": "med"})
+    ln.append(tail)
+    if dashed:
+        dash = ln.makeelement(qn("a:prstDash"), {"val": "dash"})
+        ln.insert(0, dash)
+    return cx
+
+
+def lane(slide, x, y, w, h, label, fill=PANEL, accent=TEAL):
+    """A titled band grouping several nodes."""
+    rect(slide, x, y, w, h, fill=fill, line=BORDER)
+    add_text(slide, x + 0.14, y + 0.10, 2.6, 0.22,
+             [P(label.upper(), 8.5, True, accent, FONT_SB)])
+
+
+# --------------------------------------------------------------------------- #
+
+def s_architecture(prs, page):
+    """Every model, what feeds it, and what it feeds."""
+    s, y = chrome(prs, "Architecture",
+                  "The whole system, and what each stage hands the next",
+                  "Read left to right. Nothing in a later stage can recover what an "
+                  "earlier stage missed, which is why the detector's settings matter "
+                  "more than any threshold downstream.", page)
+
+    col_w, gap = 2.15, 0.30
+    xs = [ML + i * (col_w + gap) for i in range(5)]
+    top = y + 0.30
+
+    # Stage headers
+    heads = ["INPUT", "DETECT", "PER-PERSON MODELS", "DERIVE", "OUTPUT"]
+    for i, htxt in enumerate(heads):
+        add_text(s, xs[i], y, col_w, 0.24,
+                 [P(htxt, 8.5, True, TEAL, FONT_SB, align=PP_ALIGN.CENTER)])
+
+    # Column 1 - input
+    node(s, xs[0], top, col_w, 0.86, "Frame",
+         "webcam 640x480, or\nvideo at 1080p", PANEL2, TEAL)
+    node(s, xs[0], top + 1.06, col_w, 0.86, "Enrolled gallery",
+         "name -> 512-d vector\nregistered once", PANEL2, GREEN)
+
+    # Column 2 - detection
+    node(s, xs[1], top, col_w, 1.20, "YOLO11m",
+         "20.1 M params\nboxes + 80 COCO classes", WHITE, TEAL)
+    node(s, xs[1], top + 1.40, col_w, 1.00, "ByteTrack",
+         "track_id across frames", WHITE, TEAL)
+
+    # Column 3 - per-person models
+    per = [("SCRFD det_10g", "4.2 M - face box + 5 kps"),
+           ("ArcFace w600k_r50", "43.6 M - 512-d embedding"),
+           ("MediaPipe Pose", "33 keypoints, facing ray"),
+           ("MediaPipe Face Mesh", "468 landmarks, EAR"),
+           ("SixDRepNet", "39.3 M - yaw/pitch/roll"),
+           ("EfficientNet-B0", "4.0 M - 8 emotions")]
+    ph = 0.60
+    for i, (nm, sub) in enumerate(per):
+        node(s, xs[2], top + i * (ph + 0.09), col_w, ph, nm, sub, WHITE, AMBER,
+             title_size=9.5, sub_size=7.5)
+
+    # Column 4 - derivation
+    node(s, xs[3], top, col_w, 0.92, "Identity resolver",
+         "clustering + cannot-link\n-> stable person_id", WHITE, GREEN)
+    node(s, xs[3], top + 1.06, col_w, 0.92, "Scene layout",
+         "facing rays -> focus\ngroup vs lecture", PANEL2, GREEN)
+    node(s, xs[3], top + 2.12, col_w, 0.92, "Action rules",
+         "geometry first,\n17 actions + evidence", WHITE, GREEN)
+    node(s, xs[3], top + 3.18, col_w, 0.92, "Temporal tracker",
+         "blink vs closure,\nrolling engagement", WHITE, GREEN)
+
+    # Column 5 - outputs
+    node(s, xs[4], top, col_w, 1.00, "raw.jsonl",
+         "one record per frame\nevery model's output", PANEL2, TEAL)
+    node(s, xs[4], top + 1.16, col_w, 1.00, "live_graph.jsonl",
+         "nodes = students\nedges = relations", PANEL2, TEAL)
+    node(s, xs[4], top + 2.32, col_w, 1.00, "profiles + report",
+         "per-student history,\ntwo scores, graphs", PANEL2, TEAL)
+
+    # Flow arrows between columns
+    mid = top + 0.60
+    arrow(s, xs[0] + col_w, mid, xs[1], mid)
+    arrow(s, xs[1] + col_w, mid, xs[2], mid)
+    arrow(s, xs[2] + col_w, top + 1.80, xs[3], top + 1.06)
+    arrow(s, xs[3] + col_w, top + 1.80, xs[4], top + 1.16)
+    # The gallery feeds identity directly, not the detector.
+    arrow(s, xs[0] + col_w, top + 1.50, xs[3], top + 0.46, GREEN, 1.25, True)
+
+    yy = SH - 1.02
+    rect(s, ML, yy, CW, 0.80, fill=PANEL2, line=TEAL, line_w=1.25)
+    add_text(s, ML + 0.24, yy + 0.13, CW - 0.48, 0.58,
+             [PR([R("The dashed line is the point people miss:  ", 10, True,
+                    TEAL_D, FONT_SB),
+                  R("enrolment does not change detection. A registered student is "
+                    "found the same way as anyone else; the gallery only supplies the "
+                    "name once a face is good enough to match, and stays silent when "
+                    "it is not.", 10, False, INK)], line=1.20)])
+    return s
+
+
+def s_workflow(prs, page):
+    """The pipeline as it runs, including what happens when a stage says nothing."""
+    s, y = chrome(prs, "Workflow",
+                  "One frame, end to end - including every branch that gives up",
+                  "The branches matter as much as the path. Most of this system is "
+                  "decisions about what to do when a model cannot answer.", page)
+
+    bw, bh, gap = 1.78, 0.72, 0.30
+    row1 = y + 0.34
+    steps = [
+        ("1  Capture", "frame + timestamp"),
+        ("2  Detect", "persons, objects"),
+        ("3  Track", "track_id"),
+        ("4  Face", "SCRFD box + kps"),
+        ("5  Identify", "ArcFace -> person_id"),
+        ("6  Measure", "pose, mesh, head"),
+    ]
+    for i, (t, sub) in enumerate(steps):
+        x = ML + i * (bw + gap)
+        node(s, x, row1, bw, bh, t, sub, WHITE, TEAL, 10, 8)
+        if i:
+            arrow(s, x - gap, row1 + bh / 2, x, row1 + bh / 2)
+
+    row2 = row1 + bh + 0.92
+    steps2 = [
+        ("7  Layout", "rays -> group / lecture"),
+        ("8  Classify", "17 actions + evidence"),
+        ("9  Expression", "8 classes -> 3"),
+        ("10  Temporal", "blink vs closure"),
+        ("11  Graph", "nodes + 4 edge types"),
+        ("12  Report", "profiles, scores, HTML"),
+    ]
+    for i, (t, sub) in enumerate(steps2):
+        x = ML + i * (bw + gap)
+        node(s, x, row2, bw, bh, t, sub, WHITE, GREEN, 10, 8)
+        if i:
+            arrow(s, x - gap, row2 + bh / 2, x, row2 + bh / 2, GREEN)
+    # wrap from step 6 to step 7
+    arrow(s, ML + 5 * (bw + gap) + bw / 2, row1 + bh,
+          ML + bw / 2, row2, TEAL, 1.25, True)
+
+    # The give-up branches, called out beneath the stage they belong to.
+    row3 = row2 + bh + 0.46
+    outs = [
+        ("no person box", "nothing downstream runs", 1),
+        ("no readable face", "body pose carries the student", 3),
+        ("no identity match", "reported unidentified, not guessed", 4),
+        ("fewer than 3 people", "layout unknown, second score blank", 6),
+        ("no evidence at all", "action is unknown, never attentive", 7),
+    ]
+    ow = (CW - 4 * 0.22) / 5
+    for i, (cond, act, _) in enumerate(outs):
+        x = ML + i * (ow + 0.22)
+        rect(s, x, row3, ow, 0.92, fill=PANEL, line=BORDER)
+        bar(s, x, row3, 0.045, 0.92, AMBER)
+        add_text(s, x + 0.18, row3 + 0.14, ow - 0.32, 0.68,
+                 [P(cond, 9, True, AMBER, FONT_SB, line=1.10),
+                  P(act, 8.5, False, BODY, line=1.16, space_before=4)])
+
+    yy = row3 + 1.10
+    rect(s, ML, yy, CW, 0.72, fill=PANEL2, line=TEAL, line_w=1.25)
+    add_text(s, ML + 0.24, yy + 0.12, CW - 0.48, 0.50,
+             [PR([R("Steps 1-6 are perception, 7-12 are interpretation.  ", 10,
+                    True, TEAL_D, FONT_SB),
+                  R("Everything in the top row is a measurement some model makes; "
+                    "everything in the bottom row is a decision we make about those "
+                    "measurements, and is the part we can defend line by line.",
+                    10, False, INK)], line=1.20)])
+    return s
+
+
+def s_io_overview(prs, page):
+    """The same frame, drawn by four models."""
+    s, y = chrome(prs, "Model outputs",
+                  "One frame, four models, four different kinds of answer",
+                  "All four panels are the same classroom frame, produced by "
+                  "tools/make_model_assets.py from the current code.", page)
+    img = ASSETS / "model_io_grid.jpg"
+    if img.exists():
+        from PIL import Image
+        with Image.open(img) as im:
+            ratio = im.height / im.width
+        w = 4.55
+        s.shapes.add_picture(str(img), Inches(ML), Inches(y), width=Inches(w))
+        h = w * ratio
+    else:
+        w, h = 4.55, 4.55
+
+    x2 = ML + w + 0.34
+    w2 = SW - MR - x2
+    card(s, x2, y, w2, 1.62,
+         heading="Why they are on one frame, not four demo images",
+         lines=["The pipeline is a chain. SCRFD only searches inside YOLO's person "
+                "boxes; Face Mesh runs on SCRFD's crop; SixDRepNet runs on the same "
+                "crop. Four separate images would hide the dependency that makes the "
+                "detector's settings the most consequential in the system."],
+         accent=TEAL, heading_size=11.5, body_size=9.5, fill=PANEL2)
+
+    card(s, x2, y + 1.80, w2, 1.62,
+         heading="Read the counts across the panels",
+         lines=["13 persons found, 12 faces, 12 head poses, but only 8 skeletons. "
+                "Pose needs both shoulders visible, and in a packed room the back row "
+                "is occluded.",
+                "That gap is not hidden: a student with no pose simply has no lean and "
+                "no facing ray, and the layout measurement uses the ones it has."],
+         accent=AMBER, heading_size=11.5, body_size=9.5, fill=PANEL)
+
+    card(s, x2, y + 3.60, w2, 1.30,
+         heading="Different kinds of answer",
+         lines=["YOLO and SCRFD answer where. Pose and Face Mesh answer how, as "
+                "continuous numbers. SixDRepNet answers which way. Only the behaviour "
+                "model and the expression model emit a label you must simply trust — "
+                "which is why both are kept subordinate to geometry."],
+         accent=GREEN, heading_size=11.5, body_size=9.5, fill=PANEL2)
+    return s
+
+
+def s_io_yolo(prs, page):
+    """YOLO in, YOLO out - picture and JSON, side by side."""
+    s, y = chrome(prs, "Input and output - YOLO11m",
+                  "Give it an image; get boxes, classes and scores",
+                  "The JSON on the right is copied from outputs/final2/raw.jsonl, a "
+                  "real 60-clip run - not an illustration.", page)
+
+    img = ASSETS / "model_io_yolo.jpg"
+    w = 3.85
+    if img.exists():
+        s.shapes.add_picture(str(img), Inches(ML), Inches(y), width=Inches(w))
+
+    x2 = ML + w + 0.32
+    w2 = SW - MR - x2
+    rect(s, x2, y, w2, 2.54, fill=RGBColor(0x0E, 0x1A, 0x26), line=None)
+    add_text(s, x2 + 0.20, y + 0.12, w2 - 0.40, 2.30,
+             [P("WHAT IT WRITES TO JSON", 8.5, True, TEAL, FONT_SB),
+              P('"persons": [{', 9, False, WHITE, MONO, space_before=6),
+              P('    "bbox": [765, 612, 301, 443],', 9, False, GREEN, MONO),
+              P('    "confidence": 0.8949,', 9, False, GREEN, MONO),
+              P('    "source": "yolo",  "track_id": 5', 9, False, GREEN, MONO),
+              P('}],', 9, False, WHITE, MONO),
+              P('"objects": [{', 9, False, WHITE, MONO, space_before=4),
+              P('    "cls": "laptop",', 9, False, AMBER, MONO),
+              P('    "bbox": [632, 475, 194, 235],', 9, False, AMBER, MONO),
+              P('    "confidence": 0.9084', 9, False, AMBER, MONO),
+              P('}]', 9, False, WHITE, MONO)])
+
+    yy = y + 2.70
+    card(s, x2, yy, w2, 1.10,
+         heading="What the output image contains",
+         lines=["A rectangle per detection with its class and score. Green boxes are "
+                "people, amber are objects. Nothing is identified yet — at this stage "
+                "every person is anonymous, and the box is all we have."],
+         accent=TEAL, heading_size=11, body_size=9.5, fill=PANEL)
+
+    card(s, x2, yy + 1.24, w2, 1.48,
+         heading="How it is useful overall",
+         lines=["The bbox is the crop every other model runs on, so it decides what the "
+                "rest of the system can even see.",
+                "Object boxes become evidence for an action: a phone overlapping a "
+                "student is on_phone with confidence 'direct'. Each object is assigned "
+                "to exactly one student by largest overlap share — without that rule, "
+                "35% of phones were credited to more than one person."],
+         accent=GREEN, heading_size=11, body_size=9.5, fill=PANEL2)
+    return s
+
+
+def s_io_rest(prs, page):
+    """Every remaining model: output field, and what it unlocks."""
+    s, y = chrome(prs, "Input and output - the other seven",
+                  "What each one writes, and which decision depends on it",
+                  "Field names are the real keys in raw.jsonl and live_graph.jsonl, so "
+                  "a reviewer can open the file and find them.", page)
+
+    data = [
+        ["Model", "JSON it writes", "Example value", "What that makes possible"],
+        ["SCRFD", 'face.bbox, kps',
+         "[1099,231,63,82]", "crop + alignment for the next two models"],
+        ["ArcFace", "512-d vector (internal)",
+         "cosine 0.41 -> match", "person_id that survives the whole lecture"],
+        ["MediaPipe Pose", "posture.facing_direction",
+         "[-0.076, 0.997]", "room layout: group work or lecture"],
+        ["MediaPipe Pose", "posture.vertical_lean",
+         "-0.191", "slouching, leaning forward, head down"],
+        ["MediaPipe Pose", "posture.left_wrist",
+         "[1105.6, 458.0]", "raised hand, head-on-hand, writing"],
+        ["Face Mesh", "face.ear",
+         "0.2746", "eyes closed, once it lasts over 600 ms"],
+        ["Face Mesh", "468 landmarks",
+         "mouth ratio 0.04", "yawning (threshold still uncalibrated)"],
+        ["SixDRepNet", "head_pose.pitch",
+         "-3.74 deg", "bowed head vs raised head"],
+        ["EfficientNet-B0", "expression.distribution",
+         "8 probabilities", "happy / sad / neutral, rest kept for audit"],
+        ["YOLO11m tuned", "behaviour.label",
+         "using_device 0.72", "second opinion where geometry is silent"],
+    ]
+    tbl = table(s, ML, y, CW, [2.05, 2.55, 2.35, 5.02], data,
+                row_h=0.335, head_h=0.35, size=9.5, head_size=9.5, col_bold={0})
+    for r in range(1, len(data)):
+        for c in (1, 2):
+            run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
+            run.font.name = MONO
+            run.font.size = Pt(9)
+            run.font.color.rgb = TEAL_D if c == 1 else INK
+
+    yy = y + 0.35 + (len(data) - 1) * 0.335 + 0.24
+    half = (CW - 0.30) / 2
+    card(s, ML, yy, half, 1.24,
+         heading="The one output that is not a number",
+         lines=["ArcFace's 512-d vector never reaches the JSON. It is consumed by the "
+                "identity resolver and discarded, because a face embedding is "
+                "biometric data and the files are meant to be shareable. What survives "
+                "is an integer person_id."],
+         accent=GREEN, heading_size=11, body_size=9.5, fill=PANEL2)
+    card(s, ML + half + 0.30, yy, half, 1.24,
+         heading="Why every row ends in a decision, not a label",
+         lines=["A panel will ask what the models are for. The honest answer is that "
+                "none of them decides anything: they produce measurements, and the "
+                "action rules in backend/actions.py turn those into one of 17 actions "
+                "with the evidence string that produced it."],
+         accent=TEAL, heading_size=11, body_size=9.5, fill=PANEL)
+    return s
+
+
+def s_io_json(prs, page):
+    """The full record for one student, annotated by which model wrote each part."""
+    s, y = chrome(prs, "The record for one student, one frame",
+                  "Every model's contribution, in the file a reviewer can open",
+                  "Real values from outputs/final2. Colour shows which model wrote "
+                  "each field.", page)
+
+    x2 = ML
+    w2 = CW * 0.545
+    rect(s, x2, y, w2, 4.35, fill=RGBColor(0x0E, 0x1A, 0x26), line=None)
+    rows = [
+        ('{', WHITE), ('  "track_id": 5,  "person_id": 18,', GREEN),
+        ('  "bbox": [765, 612, 301, 443],', GREEN),
+        ('  "confidence": 0.8949,  "source": "yolo",', GREEN),
+        ('  "face": {', WHITE),
+        ('      "bbox": [817, 652, 67, 72],', CYAN_J := RGBColor(0x3C, 0xB8, 0xC8)),
+        ('      "ear": 0.2746, "landmarks": [...468]', CYAN_J),
+        ('  },', WHITE),
+        ('  "head_pose": {', WHITE),
+        ('      "yaw": 64.71, "pitch": -3.74,', AMBER),
+        ('      "roll": 15.62, "gaze_label": "right"', AMBER),
+        ('  },', WHITE),
+        ('  "posture": {', WHITE),
+        ('      "vertical_lean": -0.191,', MAGENTA_J := RGBColor(0xC8, 0x8C, 0xD8)),
+        ('      "facing_direction": [-0.076, 0.997],', MAGENTA_J),
+        ('      "left_wrist": [1105.6, 458.0], ...', MAGENTA_J),
+        ('  },', WHITE),
+        ('  "expression": {', WHITE),
+        ('      "label": "sad", "confidence": 0.557,', RGBColor(0xE8, 0xB4, 0x5C)),
+        ('      "distribution": { ...8 classes }', RGBColor(0xE8, 0xB4, 0x5C)),
+        ('  },', WHITE),
+        ('  "behaviour": null', MUTE), ('}', WHITE),
+    ]
+    add_text(s, x2 + 0.22, y + 0.14, w2 - 0.44, 4.07,
+             [P("raw.jsonl - one person, one frame", 8.5, True, TEAL, FONT_SB)]
+             + [P(t, 9, False, c, MONO, line=1.24) for t, c in rows])
+
+    x3 = ML + w2 + 0.32
+    w3 = SW - MR - x3
+    rect(s, x3, y, w3, 2.30, fill=RGBColor(0x0E, 0x1A, 0x26), line=None)
+    add_text(s, x3 + 0.22, y + 0.14, w3 - 0.44, 2.02,
+             [P("live_graph.jsonl - what we derive from it", 8.5, True, GREEN,
+                FONT_SB),
+              P('"action": "on_phone",', 9.5, False, GREEN, MONO, space_before=6),
+              P('"action_evidence": "cell phone overlap",', 9.5, False, GREEN, MONO),
+              P('"action_confidence": "direct",', 9.5, False, GREEN, MONO),
+              P('"object": "cell phone",', 9.5, False, GREEN, MONO),
+              P('"layout": "unknown",  "oriented": false,', 9.5, False, WHITE, MONO),
+              P('"focus_offset_deg": 129.8,', 9.5, False, WHITE, MONO),
+              P('"engagement": "off",', 9.5, False, WHITE, MONO),
+              P('"rolling_engagement_pct": 0.0', 9.5, False, WHITE, MONO)])
+
+    card(s, x3, y + 2.48, w3, 1.87,
+         heading="This is the slide to leave on screen during questions",
+         lines=["Every field traces to a model on the left and a decision on the right. "
+                "action_evidence is the field worth pointing at: it records the reason "
+                "in words, so a wrong label can be argued with rather than merely "
+                "disbelieved.",
+                "behaviour is null here because the fine-tuned model had nothing to add "
+                "once the phone overlap already settled it — geometry wins, and the "
+                "record shows that it did."],
+         accent=TEAL, heading_size=11.5, body_size=9.5, fill=PANEL2)
+    return s
+
+
 def main():
     prs = Presentation()
     prs.slide_width = Inches(SW)
@@ -693,7 +1112,13 @@ def main():
     s07_identity(prs, 7)
     s08_geometry(prs, 8)
     s09_expression(prs, 9)
-    s10_summary(prs, 10)
+    s_architecture(prs, 10)
+    s_workflow(prs, 11)
+    s_io_overview(prs, 12)
+    s_io_yolo(prs, 13)
+    s_io_rest(prs, 14)
+    s_io_json(prs, 15)
+    s10_summary(prs, 16)
 
     prs.save(str(OUT))
     print(f"wrote {OUT}  ({len(prs.slides.__iter__.__self__._sldIdLst)} slides)")
