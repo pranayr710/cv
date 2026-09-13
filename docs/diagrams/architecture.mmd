@@ -1,0 +1,75 @@
+%% ClassGraph - system architecture
+%% Paste into https://mermaid.live to render and export as PNG or SVG.
+flowchart LR
+  classDef input   fill:#E9F1F4,stroke:#0E7C86,stroke-width:2px,color:#10273F
+  classDef model   fill:#FFFFFF,stroke:#B47A14,stroke-width:2px,color:#10273F
+  classDef derive  fill:#FFFFFF,stroke:#1F6F50,stroke-width:2px,color:#10273F
+  classDef out     fill:#E9F1F4,stroke:#0E7C86,stroke-width:2px,color:#10273F
+
+  subgraph IN [" INPUT "]
+    direction TB
+    FRAME["Frame<br/><small>webcam 640x480<br/>or video 1080p</small>"]
+    GAL["Enrolled gallery<br/><small>name to 512-d vector<br/>registered once</small>"]
+  end
+
+  subgraph DET [" DETECT "]
+    direction TB
+    YOLO["YOLO11m<br/><small>20.1 M params<br/>boxes + 80 COCO classes</small>"]
+    TRK["ByteTrack<br/><small>track_id across frames</small>"]
+  end
+
+  subgraph PER [" PER-PERSON MODELS "]
+    direction TB
+    SCRFD["SCRFD det_10g<br/><small>4.2 M - face box + 5 kps</small>"]
+    ARC["ArcFace w600k_r50<br/><small>43.6 M - 512-d embedding</small>"]
+    POSE["MediaPipe Pose<br/><small>33 keypoints, facing ray</small>"]
+    MESH["MediaPipe Face Mesh<br/><small>468 landmarks, EAR</small>"]
+    SIXD["SixDRepNet<br/><small>39.3 M - yaw/pitch/roll</small>"]
+    EMO["EfficientNet-B0<br/><small>4.0 M - 8 emotions</small>"]
+    BEH["YOLO11m fine-tuned<br/><small>20.1 M - 4 behaviours</small>"]
+  end
+
+  subgraph DER [" DERIVE "]
+    direction TB
+    ID["Identity resolver<br/><small>clustering + cannot-link<br/>stable person_id</small>"]
+    LAY["Scene layout<br/><small>facing rays to focus<br/>group vs lecture</small>"]
+    ACT["Action rules<br/><small>geometry first<br/>17 actions + evidence</small>"]
+    TEMP["Temporal tracker<br/><small>blink vs closure<br/>rolling engagement</small>"]
+  end
+
+  subgraph OUT [" OUTPUT "]
+    direction TB
+    RAW["raw.jsonl<br/><small>one record per frame</small>"]
+    GRAPH["live_graph.jsonl<br/><small>nodes = students<br/>edges = relations</small>"]
+    REP["profiles + report<br/><small>per-student history<br/>two scores, graphs</small>"]
+  end
+
+  FRAME --> YOLO --> TRK
+  YOLO -- "person crop" --> SCRFD
+  YOLO -- "person crop" --> POSE
+  YOLO -- "person crop" --> BEH
+  SCRFD -- "aligned face" --> ARC
+  SCRFD -- "face crop" --> MESH
+  SCRFD -- "face crop" --> SIXD
+  SCRFD -- "aligned face" --> EMO
+
+  ARC --> ID
+  TRK -- "cannot-link" --> ID
+  GAL -. "supplies the name only<br/>when a face is good enough" .-> ID
+  POSE -- "facing_direction" --> LAY
+  LAY -- "oriented?" --> ACT
+  POSE --> ACT
+  MESH --> ACT
+  SIXD --> ACT
+  BEH -. "second opinion" .-> ACT
+  ACT --> TEMP
+  EMO --> TEMP
+
+  ID --> RAW
+  TEMP --> GRAPH
+  RAW --> GRAPH --> REP
+
+  class FRAME,GAL input
+  class YOLO,TRK,SCRFD,ARC,POSE,MESH,SIXD,EMO,BEH model
+  class ID,LAY,ACT,TEMP derive
+  class RAW,GRAPH,REP out

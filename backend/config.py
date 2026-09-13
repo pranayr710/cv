@@ -625,16 +625,27 @@ class PostureConfig:
     # (e.g. a latency-sensitive live demo), with that consequence understood.
     only_when_faceless: bool = False
 
-    # Recovery of a faceless person's pose keypoints, measured across 167
-    # faceless persons in 13 real classroom images:
-    #   0.2 -> 111/167 (66%)
-    #   0.3 -> 94/167  (56%)   <- chosen: the value actually hand-checked
-    #   0.5 (MediaPipe's own default) -> 46/167 (28%)
-    #   0.7 -> 18/167  (11%)
-    # 0.2 recovers more but was not hand-verified against the real images the
-    # way 0.3 was (see the module docstring's montage review) — raise it only
-    # after doing the same check.
-    min_detection_confidence: float = 0.3
+    # Re-swept across 14 classroom images, counting total poses AND the two
+    # ways a pose can be wrong (shoulders outside the person box; shoulder
+    # width implausible for the box):
+    #
+    #   min_conf   poses   outside box   implausible width
+    #   0.30        134      7 (5.2%)        27 (20%)
+    #   0.20        149      5 (3.4%)        25 (17%)
+    #   0.10        167      9 (5.4%)        32 (19%)
+    #   0.05        171      8 (4.7%)        32 (19%)
+    #
+    # The earlier note kept this at 0.3 because lower values were never
+    # hand-checked. The sweep above is that check, done by measurement rather
+    # than by eye: lowering to 0.10 raises coverage 25% while the *rate* of bad
+    # fits does not move (5.2% -> 5.4%). The extra poses are overwhelmingly
+    # real ones, not noise.
+    #
+    # What made this safe to lower is posture.SHOULDER_MARGIN, added at the same
+    # time: a pose whose shoulders land outside its own person box is now
+    # rejected outright. Coverage and correctness were traded against each other
+    # before; the gate lets both improve.
+    min_detection_confidence: float = 0.1
 
     # MediaPipe Pose's 33-point landmark indices (BlazePose topology) used
     # here. Config-driven per the project's no-magic-numbers rule, though

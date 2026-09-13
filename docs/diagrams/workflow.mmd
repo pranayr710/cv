@@ -1,0 +1,50 @@
+%% ClassGraph - runtime workflow for one frame, including every give-up branch
+%% Paste into https://mermaid.live to render and export as PNG or SVG.
+flowchart TD
+  classDef percept fill:#FFFFFF,stroke:#0E7C86,stroke-width:2px,color:#10273F
+  classDef interp  fill:#FFFFFF,stroke:#1F6F50,stroke-width:2px,color:#10273F
+  classDef giveup  fill:#FFF6E6,stroke:#B47A14,stroke-width:2px,color:#8A5D10
+  classDef gate    fill:#E9F1F4,stroke:#0E7C86,stroke-width:2px,color:#10273F
+
+  S1["1 - Capture frame"]:::percept
+  S2["2 - YOLO11m detect<br/><small>persons + objects</small>"]:::percept
+  G1{"any person<br/>box?"}:::gate
+  X1["Nothing downstream runs.<br/>Frame recorded as empty."]:::giveup
+
+  S3["3 - Track<br/><small>track_id across frames</small>"]:::percept
+  S4["4 - SCRFD face detect<br/><small>inside the person box</small>"]:::percept
+  G2{"face<br/>readable?"}:::gate
+  X2["Body pose carries the student.<br/>No expression, no head pose."]:::giveup
+
+  S5["5 - ArcFace embed<br/><small>512-d vector</small>"]:::percept
+  G3{"matches<br/>the gallery?"}:::gate
+  X3["Reported unidentified.<br/>Never attributed to the nearest match."]:::giveup
+
+  S6["6 - Measure<br/><small>Pose, Face Mesh, SixDRepNet</small>"]:::percept
+  S7["7 - Scene layout<br/><small>intersect the facing rays</small>"]:::interp
+  G4{"3 or more<br/>students?"}:::gate
+  X4["Layout unknown.<br/>Second score stays blank."]:::giveup
+
+  S8["8 - Action rules<br/><small>geometry first, 17 actions</small>"]:::interp
+  G5{"any<br/>evidence?"}:::gate
+  X5["Action is unknown.<br/>Never defaults to attentive."]:::giveup
+
+  S9["9 - Expression<br/><small>8 classes mapped to 3</small>"]:::interp
+  S10["10 - Temporal tracker<br/><small>blink vs closure, rolling %</small>"]:::interp
+  S11["11 - Scene graph<br/><small>nodes + 4 edge types</small>"]:::interp
+  S12["12 - Profiles and report<br/><small>on-task % and engagement %,<br/>reported separately</small>"]:::interp
+
+  S1 --> S2 --> G1
+  G1 -- no --> X1
+  G1 -- yes --> S3 --> S4 --> G2
+  G2 -- no --> X2 --> S6
+  G2 -- yes --> S5 --> G3
+  G3 -- no --> X3 --> S6
+  G3 -- yes --> S6
+  S6 --> S7 --> G4
+  G4 -- no --> X4 --> S8
+  G4 -- yes --> S8
+  S8 --> G5
+  G5 -- no --> X5 --> S10
+  G5 -- yes --> S9 --> S10
+  S10 --> S11 --> S12

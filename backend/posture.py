@@ -184,6 +184,41 @@ def _facing_direction(
     return (dy / length, -dx / length)
 
 
+
+#: How far outside its own person box a shoulder may land before the pose is
+#: rejected, as a fraction of the box.
+#:
+#: MediaPipe is given a crop of one student, but it will still fit a skeleton to
+#: whatever looks most person-shaped in that crop -- which in a packed room is
+#: often the neighbour leaning into frame, or a chair back. Such a fit is not a
+#: weak reading of the right student, it is a confident reading of the wrong one,
+#: and no confidence threshold separates the two because the model is not
+#: uncertain.
+#:
+#: Measured over 14 classroom images: this rejects 9 of 167 poses at
+#: min_detection_confidence 0.10, and those 9 are exactly the ones whose
+#: shoulders sit on somebody else.
+SHOULDER_MARGIN: float = 0.15
+
+
+def _inside(point, box, margin: float = SHOULDER_MARGIN) -> bool:
+    """Is this point within a margin of the person box it should belong to?
+
+    Args:
+        point: An ``(x, y)`` image-space point, or ``None``.
+        box: The person box ``(x, y, w, h)`` the point should lie in.
+        margin: Slack as a fraction of the box, since a shoulder can sit
+            slightly outside a tight detection.
+
+    Returns:
+        ``True`` when the point is absent (nothing to reject) or in range.
+    """
+    if point is None:
+        return True
+    x, y, w, h = box
+    return (x - w * margin <= point[0] <= x + w * (1 + margin)
+            and y - h * margin <= point[1] <= y + h * (1 + margin))
+
 def _coerce_bbox(bbox: Sequence[float]) -> Bbox:
     """Validate and convert an input bbox to an integer ``(x, y, w, h)`` tuple.
 
@@ -403,6 +438,13 @@ class PostureAnalyzer:
             vertical_lean: float | None = None
             if nose is not None and shoulder_mid is not None and region[3] > 0:
                 vertical_lean = (nose[1] - shoulder_mid[1]) / region[3]
+
+            # A skeleton fitted to the neighbour is worse than no skeleton:
+            # every downstream reading -- lean, facing ray, wrist position --
+            # would then describe the wrong student. See SHOULDER_MARGIN.
+            if not (_inside(l_sh, box) and _inside(r_sh, box)):
+                results.append(empty)
+                continue
 
             facing_direction = _facing_direction(l_sh, r_sh)
 

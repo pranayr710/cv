@@ -884,45 +884,47 @@ def s_workflow(prs, page):
 def s_io_overview(prs, page):
     """The same frame, drawn by four models."""
     s, y = chrome(prs, "Model outputs",
-                  "One frame, four models, four different kinds of answer",
-                  "All four panels are the same classroom frame, produced by "
-                  "tools/make_model_assets.py from the current code.", page)
+                  "All eight models, on one frame",
+                  "Seven panels are the same classroom frame. Expression is the exception, and the caption says why.", page)
     img = ASSETS / "model_io_grid.jpg"
     if img.exists():
         from PIL import Image
         with Image.open(img) as im:
             ratio = im.height / im.width
-        w = 4.55
+        w = 6.30
         s.shapes.add_picture(str(img), Inches(ML), Inches(y), width=Inches(w))
         h = w * ratio
     else:
-        w, h = 4.55, 4.55
+        w, h = 6.30, 3.15
 
     x2 = ML + w + 0.34
     w2 = SW - MR - x2
     card(s, x2, y, w2, 1.62,
-         heading="Why they are on one frame, not four demo images",
+         heading="Why one frame, not eight demo images",
          lines=["The pipeline is a chain. SCRFD only searches inside YOLO's person "
-                "boxes; Face Mesh runs on SCRFD's crop; SixDRepNet runs on the same "
-                "crop. Four separate images would hide the dependency that makes the "
-                "detector's settings the most consequential in the system."],
+                "boxes; Face Mesh, SixDRepNet and the expression model all run on "
+                "SCRFD's crop. Separate demo images would hide the dependency that "
+                "makes the detector's settings the most consequential in the system."],
          accent=TEAL, heading_size=11.5, body_size=9.5, fill=PANEL2)
 
     card(s, x2, y + 1.80, w2, 1.62,
          heading="Read the counts across the panels",
-         lines=["13 persons found, 12 faces, 12 head poses, but only 8 skeletons. "
-                "Pose needs both shoulders visible, and in a packed room the back row "
-                "is occluded.",
-                "That gap is not hidden: a student with no pose simply has no lean and "
-                "no facing ray, and the layout measurement uses the ones it has."],
+         lines=["13 persons, 12 faces, 12 head poses, 10 skeletons, 11 behaviour "
+                "detections. Pose needs both shoulders in view, so the three it misses "
+                "are the students whose torsos are behind a desk or a neighbour — not "
+                "the smallest ones, which it gets.",
+                "Expression ran on a different frame on purpose: on this one every face "
+                "is 9-23 px against a 25 px minimum, so the model declined all twelve. "
+                "That is the correct answer, and a blank panel would not have shown it."],
          accent=AMBER, heading_size=11.5, body_size=9.5, fill=PANEL)
 
     card(s, x2, y + 3.60, w2, 1.30,
-         heading="Different kinds of answer",
-         lines=["YOLO and SCRFD answer where. Pose and Face Mesh answer how, as "
-                "continuous numbers. SixDRepNet answers which way. Only the behaviour "
-                "model and the expression model emit a label you must simply trust — "
-                "which is why both are kept subordinate to geometry."],
+         heading="Four kinds of answer",
+         lines=["YOLO and SCRFD answer WHERE. Pose and Face Mesh answer HOW, as "
+                "continuous numbers you can argue with. SixDRepNet answers WHICH WAY. "
+                "ArcFace answers WHO. Only the behaviour and expression models emit a "
+                "label you must simply trust — which is why both stay subordinate to "
+                "geometry."],
          accent=GREEN, heading_size=11.5, body_size=9.5, fill=PANEL2)
     return s
 

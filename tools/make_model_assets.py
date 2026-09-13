@@ -170,7 +170,7 @@ def main() -> int:
                 for lx, ly in f.landmarks:
                     cv2.circle(crop, (int((lx - x0) * scale), int((ly - y0) * scale)),
                                1, CYAN, -1)
-                crop = banner(crop, "MediaPipe Face Mesh  -  468 landmarks",
+                crop = banner(crop, "Face Mesh  -  468 landmarks",
                               f"EAR {f.ear:.3f}" if f.ear is not None
                               else "EAR unavailable", CYAN)
                 break
@@ -206,16 +206,130 @@ def main() -> int:
         img, "SixDRepNet  -  head pose",
         f"{n_hp} heads; red/green/blue are the three rotation axes", RED)
 
+    # --- 6. ArcFace: the identity step, shown as the crops it compares -----
+    crops = []
+    for f in faces:
+        if f.face_bbox is None:
+            continue
+        x, y, w, h = f.face_bbox
+        pad = int(max(w, h) * 0.3)
+        H, W = frame.shape[:2]
+        c = frame[max(0, y - pad):min(H, y + h + pad),
+                  max(0, x - pad):min(W, x + w + pad)]
+        if c.size:
+            crops.append(cv2.resize(c, (118, 118)))
+        if len(crops) == 5:
+            break
+    if crops:
+        strip = cv2.hconcat(crops)
+        board = np.full((strip.shape[0] + 150, max(strip.shape[1], 620), 3),
+                        24, np.uint8)
+        board[150:150 + strip.shape[0], :strip.shape[1]] = strip
+        for i in range(len(crops)):
+            cv2.putText(board, f"id {i + 1}", (i * 118 + 30, 146), FONT, 0.52,
+                        MAGENTA, 1, cv2.LINE_AA)
+        banner(board, "ArcFace w600k_r50  -  identity",
+               "each crop -> a 512-d vector; cosine decides who",
+               MAGENTA)
+        panels["arcface"] = board
+
+    # --- 7. Expression: the label, on the face it came from ---------------
+    from backend.expression import ExpressionRecognizer
+
+    # Expression needs a face of at least ExpressionConfig.min_face_px. On the
+    # shared frame every face is 9-23 px, so the model correctly declines all of
+    # them -- an honest result, but a blank panel. This picks the frame with the
+    # largest faces instead, and the caption carries the size requirement.
+    e_frame, e_faces = frame, faces
+    with FaceAnalyzer(CONFIG.face) as fa2:
+        biggest = 0
+        for path in sorted(IMAGES.glob("*.jpg"))[:25]:
+            cand = cv2.imread(str(path))
+            if cand is None:
+                continue
+            cand_boxes = [q.bbox for q in det.detect(cand)[0]]
+            if not cand_boxes:
+                continue
+            cf = fa2.analyze(cand, cand_boxes)
+            sizes = [min(x.face_bbox[2], x.face_bbox[3]) for x in cf if x.face_bbox]
+            if sizes and max(sizes) > biggest:
+                biggest, e_frame, e_faces = max(sizes), cand, cf
+        print(f"  expression frame: largest face {biggest}px "
+              f"(minimum {CONFIG.expression.min_face_px}px)")
+
+    img = e_frame.copy()
+    faces_for_expr = e_faces
+    n_expr = 0
+    try:
+        er = ExpressionRecognizer(CONFIG.expression)
+        exprs = er.classify(e_frame, [f.face_bbox for f in faces_for_expr],
+                            [f.kps for f in faces_for_expr])
+        for f, e in zip(faces_for_expr, exprs):
+            if f.face_bbox is None or e is None:
+                continue
+            n_expr += 1
+            x, y, w, h = f.face_bbox
+            lab = getattr(e, "label", "?")
+            colour = RED if lab == "uncertain" else CYAN
+            cv2.rectangle(img, (x, y), (x + w, y + h), colour, 2)
+            cv2.putText(img, f"{lab} {getattr(e, 'confidence', 0):.2f}",
+                        (x, max(80, y - 6)), FONT, 0.40, colour, 1, cv2.LINE_AA)
+    except Exception as exc:  # noqa: BLE001 - a missing panel beats a crash
+        print(f"  expression panel skipped: {exc}")
+    if n_expr:
+        panels["expression"] = banner(
+            img, "EfficientNet-B0  -  expression",
+            f"{n_expr} faces labelled; needs a face over "
+            f"{CONFIG.expression.min_face_px}px", CYAN)
+
+    # --- 8. The fine-tuned detector: behaviour classes --------------------
+    from backend.config import CONFIG as _C
+
+    try:
+        from ultralytics import YOLO
+
+        bh = YOLO(_C.behaviour.weights)
+        res = bh.predict(frame, imgsz=640, conf=0.25, verbose=False)[0]
+        img = frame.copy()
+        n_b = 0
+        for b in res.boxes:
+            n_b += 1
+            x1, y1, x2, y2 = (int(v) for v in b.xyxy[0])
+            cv2.rectangle(img, (x1, y1), (x2, y2), AMBER, 2)
+            cv2.putText(img, f"{res.names[int(b.cls)]} {float(b.conf):.2f}",
+                        (x1, max(80, y1 - 6)), FONT, 0.42, AMBER, 1, cv2.LINE_AA)
+        panels["behaviour"] = banner(
+            img, "YOLO11m fine-tuned  -  behaviour",
+            f"{n_b} detections from 4 classes we trained", AMBER)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  behaviour panel skipped: {exc}")
+
     for name, im in panels.items():
         cv2.imwrite(str(OUT / f"model_io_{name}.jpg"), im)
         print(f"  -> model_io_{name}.jpg  {im.shape[1]}x{im.shape[0]}")
 
-    # Combined 2x2 of the full-frame panels, for a single overview slide.
-    order = [panels[k] for k in ("yolo", "scrfd", "pose", "headpose") if k in panels]
-    if len(order) == 4:
-        h = min(im.shape[0] for im in order)
-        row = [cv2.resize(im, (int(im.shape[1] * h / im.shape[0]), h)) for im in order]
-        grid = cv2.vconcat([cv2.hconcat(row[:2]), cv2.hconcat(row[2:])])
+    # One tile per model, 4 across. Every model in the stack appears, because a
+    # grid showing half of them invites exactly the question it should answer.
+    order = ["yolo", "behaviour", "scrfd", "arcface",
+             "pose", "facemesh", "headpose", "expression"]
+    tiles = [panels[k] for k in order if k in panels]
+    print(f"\n{len(tiles)} of 8 panels rendered: "
+          f"{', '.join(k for k in order if k in panels)}")
+    if len(tiles) >= 4:
+        side = 560
+        square = []
+        for im in tiles:
+            h, w = im.shape[:2]
+            scale = side / max(h, w)
+            r = cv2.resize(im, (int(w * scale), int(h * scale)))
+            pad = np.full((side, side, 3), 18, np.uint8)
+            y0, x0 = (side - r.shape[0]) // 2, (side - r.shape[1]) // 2
+            pad[y0:y0 + r.shape[0], x0:x0 + r.shape[1]] = r
+            square.append(pad)
+        while len(square) % 4:
+            square.append(np.full((side, side, 3), 18, np.uint8))
+        rows = [cv2.hconcat(square[i:i + 4]) for i in range(0, len(square), 4)]
+        grid = cv2.vconcat(rows)
         cv2.imwrite(str(OUT / "model_io_grid.jpg"), grid)
         print(f"  -> model_io_grid.jpg  {grid.shape[1]}x{grid.shape[0]}")
     return 0
