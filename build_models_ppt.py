@@ -855,7 +855,7 @@ def s_io_overview(prs, page):
                 "makes the detector's settings the most consequential in the system."],
          accent=TEAL, heading_size=11.5, body_size=9.5, fill=PANEL2)
 
-    card(s, x2, y + 1.80, w2, 1.62,
+    card(s, x2, y + 1.80, w2, 1.82,
          heading="Read the counts across the panels",
          lines=["13 persons, 12 faces, 12 head poses, 10 skeletons, 11 behaviour "
                 "detections. Pose needs both shoulders in view, so the three it misses "
@@ -866,7 +866,7 @@ def s_io_overview(prs, page):
                 "That is the correct answer, and a blank panel would not have shown it."],
          accent=AMBER, heading_size=11.5, body_size=9.5, fill=PANEL)
 
-    card(s, x2, y + 3.60, w2, 1.30,
+    card(s, x2, y + 3.80, w2, 1.30,
          heading="Four kinds of answer",
          lines=["YOLO and SCRFD answer WHERE. Pose and Face Mesh answer HOW, as "
                 "continuous numbers you can argue with. SixDRepNet answers WHICH WAY. "
