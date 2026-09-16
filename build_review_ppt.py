@@ -230,457 +230,634 @@ def tile(slide, x, y, w, value, label, colour=TEAL, h=1.18):
              [P(label, 9.5, False, BODY, line=1.16)])
 
 
+def heading(slide, y, text):
+    """A declarative section heading inside the slide body."""
+    add_text(slide, ML, y, CW, 0.30, [P(text, 13, True, INK, FONT_SB, line=1.12)])
+    return y + 0.38
+
+
+def caption(slide, x, y, w, number, text):
+    """A numbered figure or table caption, set below the object it labels."""
+    add_text(slide, x, y, w, 0.44,
+             [PR([R(number + "  ", 9, True, INK, FONT_SB),
+                  R(text, 9, False, MUTE)], line=1.20)])
+    return y + 0.48
+
+
+def note(slide, x, y, w, h, label, lines, accent=TEAL, fill=PANEL):
+    """A labelled block: Note, Limitation, Rationale."""
+    rect(slide, x, y, w, h, fill=fill, line=BORDER)
+    bar(slide, x, y, 0.045, h, accent)
+    blocks = [P(label.upper(), 8.5, True, accent, FONT_SB)]
+    for i, ln in enumerate(lines):
+        blocks.append(P(ln, 9.5, False, BODY, line=1.24, space_before=6 if i else 5))
+    add_text(slide, x + 0.24, y + 0.16, w - 0.44, h - 0.30, blocks)
+
+
+def stat(slide, x, y, w, value, label, h=1.05):
+    """A single figure with its definition beneath."""
+    rect(slide, x, y, w, h, fill=PANEL, line=BORDER)
+    add_text(slide, x + 0.18, y + 0.15, w - 0.32, 0.46,
+             [P(value, 21, True, INK, FONT_SB, line=1.0)])
+    add_text(slide, x + 0.18, y + 0.66, w - 0.32, 0.32,
+             [P(label, 9, False, MUTE, line=1.16)])
+
+
+def heading(slide, y, text):
+    """A declarative section heading inside the slide body."""
+    add_text(slide, ML, y, CW, 0.30, [P(text, 13, True, INK, FONT_SB, line=1.12)])
+    return y + 0.38
+
+
+def caption(slide, x, y, w, number, text):
+    """A numbered figure or table caption, set below the object it labels."""
+    add_text(slide, x, y, w, 0.44,
+             [PR([R(number + "  ", 9, True, INK, FONT_SB),
+                  R(text, 9, False, MUTE)], line=1.20)])
+    return y + 0.48
+
+
+def note(slide, x, y, w, h, label, lines, accent=TEAL, fill=PANEL):
+    """A labelled block: Note, Limitation, Rationale."""
+    rect(slide, x, y, w, h, fill=fill, line=BORDER)
+    bar(slide, x, y, 0.045, h, accent)
+    blocks = [P(label.upper(), 8.5, True, accent, FONT_SB)]
+    for i, ln in enumerate(lines):
+        blocks.append(P(ln, 9.5, False, BODY, line=1.24, space_before=6 if i else 5))
+    add_text(slide, x + 0.24, y + 0.16, w - 0.44, h - 0.30, blocks)
+
+
+def stat(slide, x, y, w, value, label, h=1.05):
+    """A single figure with its definition beneath."""
+    rect(slide, x, y, w, h, fill=PANEL, line=BORDER)
+    add_text(slide, x + 0.18, y + 0.15, w - 0.32, 0.46,
+             [P(value, 21, True, INK, FONT_SB, line=1.0)])
+    add_text(slide, x + 0.18, y + 0.66, w - 0.32, 0.32,
+             [P(label, 9, False, MUTE, line=1.16)])
+
+
+def heading(slide, y, text):
+    """A declarative section heading inside the slide body."""
+    add_text(slide, ML, y, CW, 0.30, [P(text, 13, True, INK, FONT_SB, line=1.12)])
+    return y + 0.38
+
+
+def caption(slide, x, y, w, number, text):
+    """A numbered figure or table caption, set below the object it labels."""
+    add_text(slide, x, y, w, 0.44,
+             [PR([R(number + "  ", 9, True, INK, FONT_SB),
+                  R(text, 9, False, MUTE)], line=1.20)])
+    return y + 0.48
+
+
+def note(slide, x, y, w, h, label, lines, accent=TEAL, fill=PANEL):
+    """A labelled block: Note, Limitation, Rationale."""
+    rect(slide, x, y, w, h, fill=fill, line=BORDER)
+    bar(slide, x, y, 0.045, h, accent)
+    blocks = [P(label.upper(), 8.5, True, accent, FONT_SB)]
+    for i, ln in enumerate(lines):
+        blocks.append(P(ln, 9.5, False, BODY, line=1.24, space_before=6 if i else 5))
+    add_text(slide, x + 0.24, y + 0.16, w - 0.44, h - 0.30, blocks)
+
+
+def stat(slide, x, y, w, value, label, h=1.05):
+    """A single figure with its definition beneath."""
+    rect(slide, x, y, w, h, fill=PANEL, line=BORDER)
+    add_text(slide, x + 0.18, y + 0.15, w - 0.32, 0.46,
+             [P(value, 21, True, INK, FONT_SB, line=1.0)])
+    add_text(slide, x + 0.18, y + 0.66, w - 0.32, 0.32,
+             [P(label, 9, False, MUTE, line=1.16)])
+
+
+def heading(slide, y, text):
+    """A declarative section heading inside the slide body."""
+    add_text(slide, ML, y, CW, 0.30, [P(text, 13, True, INK, FONT_SB, line=1.12)])
+    return y + 0.38
+
+
+def caption(slide, x, y, w, number, text):
+    """A numbered figure or table caption, set below the object it labels."""
+    add_text(slide, x, y, w, 0.44,
+             [PR([R(number + "  ", 9, True, INK, FONT_SB),
+                  R(text, 9, False, MUTE)], line=1.20)])
+    return y + 0.48
+
+
+def note(slide, x, y, w, h, label, lines, accent=TEAL, fill=PANEL):
+    """A labelled block: Note, Limitation, Rationale."""
+    rect(slide, x, y, w, h, fill=fill, line=BORDER)
+    bar(slide, x, y, 0.045, h, accent)
+    blocks = [P(label.upper(), 8.5, True, accent, FONT_SB)]
+    for i, ln in enumerate(lines):
+        blocks.append(P(ln, 9.5, False, BODY, line=1.24, space_before=6 if i else 5))
+    add_text(slide, x + 0.24, y + 0.16, w - 0.44, h - 0.30, blocks)
+
+
+def stat(slide, x, y, w, value, label, h=1.05):
+    """A single figure with its definition beneath."""
+    rect(slide, x, y, w, h, fill=PANEL, line=BORDER)
+    add_text(slide, x + 0.18, y + 0.15, w - 0.32, 0.46,
+             [P(value, 21, True, INK, FONT_SB, line=1.0)])
+    add_text(slide, x + 0.18, y + 0.66, w - 0.32, 0.32,
+             [P(label, 9, False, MUTE, line=1.16)])
+
+
 def s01_title(prs):
     s = new_slide(prs)
     bar(s, 0, 0, SW, 0.09, TEAL)
-    add_text(s, ML, 1.95, CW, 0.3, [P("PROJECT REVIEW", 11, True, TEAL, FONT_SB)])
-    add_text(s, ML, 2.33, CW, 1.15,
-             [P("ClassGraph \u2014 classroom engagement from video",
-                38, True, INK, FONT_SB, line=1.03)])
-    add_text(s, ML, 3.72, CW * 0.76, 0.6,
-             [P("What we built, what we measured, and what we are not claiming.",
-                15, False, BODY, line=1.30)])
-    bar(s, ML, 4.62, 1.5, 0.03, TEAL)
+    add_text(s, ML, 2.10, CW, 0.28,
+             [P("PROJECT REVIEW", 10.5, True, TEAL, FONT_SB)])
+    add_text(s, ML, 2.50, CW, 1.05,
+             [P("ClassGraph: Classroom Engagement Estimation from Video",
+                33, True, INK, FONT_SB, line=1.08)])
+    bar(s, ML, 3.86, 1.4, 0.03, TEAL)
+    add_text(s, ML, 4.08, CW * 0.74, 0.80,
+             [P("A multi-model perception pipeline for per-student engagement "
+                "analysis, evaluated against four review criteria.",
+                13.5, False, BODY, line=1.34)])
 
-    rows = [("1", "Base paper", "One architecture replicated,\ntwo methods adopted"),
-            ("2", "Dataset", "8 classes \u2192 4 doubled the data\nand raised mAP 46%"),
-            ("3", "Training", "42 epochs, mAP@50 0.607,\nhonest per-class numbers"),
-            ("4", "Comparison", "One real comparison,\nand why the others cannot be")]
+    items = [("I", "Base Paper Implementation"),
+             ("II", "Dataset Preparation and Preprocessing"),
+             ("III", "Model Training and Evaluation"),
+             ("IV", "Comparison with Base Paper")]
     cw = (CW - 3 * 0.24) / 4
-    for i, (num, title, sub) in enumerate(rows):
+    for i, (num, title) in enumerate(items):
         x = ML + i * (cw + 0.24)
-        rect(s, x, 4.92, cw, 1.42, fill=PANEL, line=BORDER)
-        bar(s, x, 4.92, cw, 0.05, TEAL)
-        add_text(s, x + 0.20, 5.12, cw - 0.36, 1.10,
-                 [PR([R(num + "   ", 16, True, TEAL, FONT_SB),
-                      R(title, 13, True, INK, FONT_SB)]),
-                  P(sub, 10, False, MUTE, line=1.20, space_before=6)])
+        rect(s, x, 5.30, cw, 0.92, fill=PANEL, line=BORDER)
+        add_text(s, x + 0.20, 5.48, cw - 0.36, 0.58,
+                 [PR([R(num + "   ", 12, True, TEAL, FONT_SB),
+                      R(title, 10.5, True, INK, FONT_SB)], line=1.16)])
     return s
 
 
-# --------------------------------------------------------------- criterion 1
+def s02_scope(prs, page):
+    s, y = chrome(prs, "Overview", "Scope and Summary of Findings",
+                  "Each criterion is addressed in turn. Findings and their "
+                  "limitations are stated together.", page)
 
-def s02_papers(prs, page):
-    s, y = chrome(prs, "Criterion 1 \u2014 Base Paper Implementation",
-                  "Three papers, two different kinds of borrowing", None, page)
-    y = claim(s, y, "We replicated one architecture. The other two papers gave us "
-                    "methods, not networks \u2014 and we say which is which.")
-
-    items = [
-        ("ARG", "Wu et al., CVPR 2019", GREEN,
-         "Learning Actor Relation Graphs for Group Activity Recognition",
-         "ARCHITECTURE REPLICATED",
-         "People as graph nodes, two typed relations, a 2-layer GCN, one label for "
-         "the whole group. Built stage for stage in backend/group_activity.py."),
-        ("FER-1", "Liu, Wang & Shen, 2025", TEAL,
-         "Robust Dynamic Facial Expression Recognition",
-         "METHOD ADOPTED",
-         "Their idea: separate a momentary signal from a sustained state. Ours: a "
-         "15-second rolling window, so one glance away is not distraction."),
-        ("FER-2", "Wen et al., IEEE TMM 2020", TEAL,
-         "Dynamic Objectives Learning for Facial Expression Recognition",
-         "METHOD ADOPTED",
-         "Their idea: keep easily-confused categories apart instead of forcing a "
-         "class. Ours: \u201chead down, no device\u201d stays its own category "
-         "rather than being guessed as engaged or distracted."),
+    data = [
+        ["Criterion", "Principal finding", "Stated limitation"],
+        ["I · Base paper implementation",
+         "ARG architecture replicated in full; two FER papers adopted at the level "
+         "of method",
+         "GCN weights untrained — no labelled dataset available"],
+        ["II · Dataset preparation",
+         "Class consolidation from 8 to 4 raised mAP@50 from 0.415 to 0.607",
+         "Image size and batch also varied between runs"],
+        ["III · Training and evaluation",
+         "42 epochs, early stopping at epoch 27, per-class validation reported",
+         "Validation split of 58 images is small"],
+        ["IV · Comparison with base paper",
+         "One quantitative comparison; three cases where comparison is not "
+         "admissible",
+         "Differing metrics permit comparison of ordering only"],
     ]
-    third = (CW - 2 * 0.28) / 3
-    for i, (tag, cite, accent, title, status, body) in enumerate(items):
-        x = ML + i * (third + 0.28)
-        rect(s, x, y, third, 3.05, fill=WHITE, line=BORDER)
-        bar(s, x, y, third, 0.05, accent)
-        add_text(s, x + 0.24, y + 0.22, third - 0.48, 0.28,
-                 [PR([R(tag + "   ", 12, True, accent, FONT_SB),
-                      R(cite, 9, False, MUTE)])])
-        add_text(s, x + 0.24, y + 0.60, third - 0.48, 0.62,
-                 [P(title, 11.5, True, INK, FONT_SB, line=1.12)])
-        add_text(s, x + 0.24, y + 1.30, third - 0.48, 0.24,
-                 [P(status, 9, True, accent, FONT_SB)])
-        add_text(s, x + 0.24, y + 1.64, third - 0.48, 1.24,
-                 [P(body, 10, False, BODY, line=1.24)])
+    tbl = table(s, ML, y, CW, [3.05, 5.20, 3.72], data,
+                row_h=0.74, head_h=0.40, size=10, head_size=10, col_bold={0})
+    for r in range(1, len(data)):
+        tbl.cell(r, 2).text_frame.paragraphs[0].runs[0].font.color.rgb = BODY
 
-    banner(s, y + 3.26,
-           [R("Why facial-expression papers for a system that never classifies "
-              "emotion:  ", 11, True, TEAL_D, FONT_SB),
-            R("we took their method, not their task. Both solve the problem we "
-              "actually have \u2014 a per-frame signal is noisy, and a confident "
-              "label on a hard sample is worse than no label.", 11, False, INK)],
-           h=0.88)
+    caption(s, ML, y + 0.40 + 4 * 0.74 + 0.16, CW, "Table 1.",
+            "Summary of findings against the four review criteria.")
+
+    note(s, ML, y + 0.40 + 4 * 0.74 + 0.72, CW, 0.96, "Note",
+         ["All quantitative results in this deck are reproducible from the "
+          "repository: training configuration from args.yaml, convergence curves "
+          "from results.csv, and per-class metrics re-validated from the trained "
+          "weights. Where a quantity could not be measured, it is reported as "
+          "unmeasured rather than estimated."])
     return s
 
 
-def s03_arg(prs, page):
-    s, y = chrome(prs, "Criterion 1 \u2014 Base Paper Implementation",
-                  "ARG, in three stages", None, page, GREEN)
-    y = claim(s, y, "The architecture is built exactly as the paper specifies. "
-                    "The weights were never trained \u2014 and that is a data gap, "
-                    "not an engineering one.", GREEN)
+def s03_papers(prs, page):
+    s, y = chrome(prs, "Criterion I — Base Paper Implementation",
+                  "Base Papers and Their Role in the System",
+                  "One paper contributes an architecture; two contribute methods. "
+                  "The distinction is stated explicitly for each.", page)
 
-    stages = [
-        ("1", "Build the relation graph",
-         "Each student is a node. Two typed relations, as ARG specifies:\n"
-         "\u2022  appearance \u2014 cosine similarity, top-k neighbours only\n"
-         "\u2022  position \u2014 centre distance, normalised by group spread"),
-        ("2", "Pass messages over it",
-         "Adjacencies summed, then renormalised with the exact Kipf & Welling "
-         "rule D^-1/2 (A+I) D^-1/2.\nEach relation gets its own learned weight; "
-         "two rounds of tanh(A \u00b7 H)."),
-        ("3", "Read out one label",
-         "Node features mean-pooled, then a linear layer to the label set.\n"
-         "Our labels are ordinal engagement (high / medium / low) rather than "
-         "ARG's activity classes."),
+    data = [
+        ["Paper", "Venue", "Contribution to this work", "Level of adoption"],
+        ["Learning Actor Relation Graphs for\nGroup Activity Recognition (Wu et al.)",
+         "CVPR 2019",
+         "Relation graph over detected people, with a\nGCN readout to a single group label",
+         "Architecture,\nreplicated in full"],
+        ["Robust Dynamic Facial Expression\nRecognition (Liu, Wang and Shen)",
+         "IEEE T-BIOM\n2025",
+         "Separation of a momentary signal from a\nsustained state",
+         "Method, realised as a\n15-second rolling window"],
+        ["Dynamic Objectives Learning for Facial\nExpression Recognition (Wen et al.)",
+         "IEEE TMM\n2020",
+         "Retention of easily-confused categories\nrather than forced assignment",
+         "Method, realised as an\nabstaining category"],
     ]
-    third = (CW - 2 * 0.28) / 3
-    for i, (num, title, body) in enumerate(stages):
-        x = ML + i * (third + 0.28)
-        rect(s, x, y, third, 1.98, fill=WHITE, line=BORDER)
-        add_text(s, x + 0.24, y + 0.20, third - 0.48, 0.34,
-                 [PR([R(num + "   ", 16, True, GREEN, FONT_SB),
-                      R(title, 12.5, True, INK, FONT_SB)])])
-        add_text(s, x + 0.24, y + 0.68, third - 0.48, 1.16,
-                 [P(ln, 9.5, False, BODY, line=1.24) for ln in body.split("\n")])
+    tbl = table(s, ML, y, CW, [4.10, 1.42, 4.20, 2.25], data,
+                row_h=0.76, head_h=0.40, size=9.5, head_size=9.5, col_bold={0})
+    for r in range(1, len(data)):
+        run = tbl.cell(r, 3).text_frame.paragraphs[0].runs[0]
+        run.font.bold = True
+        run.font.color.rgb = TEAL_D
 
-    yy = y + 2.20
+    yy = caption(s, ML, y + 0.40 + 3 * 0.76 + 0.16, CW, "Table 2.",
+                 "Base papers and the level at which each is adopted.")
+
     half = (CW - 0.30) / 2
-    card(s, ML, yy, half, 1.62,
-         heading="What is real: everything except the weights",
-         lines=["Graph construction, the renormalisation, the abstention rule and "
-                "the degenerate-input handling are all implemented and covered by "
-                "14 passing tests.",
-                "Below 4 students, or with too many missing features, it returns "
-                "\u201cno answer\u201d with a reason instead of a guess."],
-         accent=GREEN, heading_size=11.5, body_size=9.5, fill=PANEL2)
-    card(s, ML + half + 0.30, yy, half, 1.62,
-         heading="What is missing: a labelled dataset",
-         lines=["torch.nn.Linear initialises randomly. Nothing ever trained those "
-                "weights, because training needs ~3,000 clips labelled high / "
-                "medium / low by agreeing human raters.",
-                "No such set exists publicly for classrooms, and we could not build "
-                "one. So no number from this model appears anywhere in this deck."],
-         accent=RED, heading_size=11.5, body_size=9.5, fill=PANEL)
+    note(s, ML, yy + 0.10, half, 1.62, "Rationale",
+         ["Two of the three base papers address facial expression recognition, "
+          "which this system does not perform. They were selected for their "
+          "treatment of a problem common to both domains: a per-frame signal is "
+          "noisy, and a confident label assigned to an ambiguous sample is less "
+          "useful than an explicit abstention."])
+    note(s, ML + half + 0.30, yy + 0.10, half, 1.62, "Scope",
+         ["Adoption at the level of method is reported as such throughout. No "
+          "expression-recognition benchmark was reproduced, and no accuracy figure "
+          "from either FER paper is claimed as a result of this work."])
     return s
 
 
-# --------------------------------------------------------------- criterion 2
+def s04_arg(prs, page):
+    s, y = chrome(prs, "Criterion I — Base Paper Implementation",
+                  "ARG Architecture: Stage-by-Stage Implementation",
+                  "Implemented in backend/group_activity.py and covered by 14 unit "
+                  "tests.", page)
 
-def s04_dataset(prs, page):
-    s, y = chrome(prs, "Criterion 2 \u2014 Dataset Preparation",
-                  "Eight classes became four", None, page, GREEN)
-    y = claim(s, y, "Four of the eight classes were too sparse to learn. "
-                    "Dropping them to the rule layer doubled the data behind every "
-                    "class that remained.", GREEN)
+    data = [
+        ["Stage", "Specification (Wu et al., 2019)", "Implementation", "Correspondence"],
+        ["1", "Nodes are detected actors",
+         "Nodes are students detected by YOLO11m", "Equivalent"],
+        ["2", "Typed relations: appearance and position",
+         "Cosine similarity over node features (top-k);\n"
+         "centre distance normalised by group spread", "Equivalent"],
+        ["3", "Relation-weighted adjacency, renormalised",
+         "Kipf–Welling renormalisation, D^-1/2 (A+I) D^-1/2", "Equivalent"],
+        ["4", "GCN message passing",
+         "Two layers of tanh(A · H); one learned weight per\nrelation type", "Equivalent"],
+        ["5", "Pooled readout to a graph-level label",
+         "Mean pooling followed by a linear layer", "Equivalent"],
+        ["6", "Predicts an activity class",
+         "Predicts ordinal engagement: high, medium, low", "Deviation"],
+        ["7", "Assumes complete actor detection",
+         "Abstains below four students or above the missing-\nfeature threshold",
+         "Deviation"],
+    ]
+    tbl = table(s, ML, y, CW, [0.72, 3.95, 5.20, 2.10], data,
+                row_h=0.44, head_h=0.38, size=9.5, head_size=9.5, col_bold={0})
+    for r in range(1, len(data)):
+        run = tbl.cell(r, 3).text_frame.paragraphs[0].runs[0]
+        run.font.bold = True
+        run.font.color.rgb = TEAL_D if data[r][3] == "Equivalent" else AMBER
 
-    tiles = [("8 \u2192 4", "classes, after merging", GREEN),
-             ("423 \u2192 877", "training images", GREEN),
-             ("6,091", "labelled boxes across 4 classes", TEAL),
-             ("58", "validation images, held fixed", AMBER)]
+    yy = caption(s, ML, y + 0.38 + 7 * 0.44 + 0.14, CW, "Table 3.",
+                 "Correspondence between the ARG specification and this "
+                 "implementation. Deviations are consequences of the differing "
+                 "prediction target and of incomplete detection in classroom "
+                 "footage.")
+
+    note(s, ML, yy + 0.06, CW, 1.12, "Limitation",
+         ["The network is implemented but untrained. Layer weights remain at their "
+          "random initialisation, as training requires a labelled group-engagement "
+          "corpus of approximately 3,000 clips with ordinal labels agreed between "
+          "raters. No such corpus is publicly available for classroom footage and "
+          "none could be constructed within this project. Accordingly, no output of "
+          "this model is reported anywhere in this deck."],
+         accent=RED, fill=RGBColor(0xFC, 0xF4, 0xF3))
+    return s
+
+
+def s05_dataset(prs, page):
+    s, y = chrome(prs, "Criterion II — Dataset Preparation",
+                  "Dataset Composition and Class Consolidation",
+                  "Two annotated sources were merged and the label set reduced from "
+                  "eight classes to four.", page)
+
+    stats = [("8 → 4", "classes after consolidation"),
+             ("423 → 877", "training images after merging"),
+             ("6,091", "annotated boxes, four classes"),
+             ("58", "validation images, held constant")]
     tw = (CW - 3 * 0.24) / 4
-    for i, (v, lab, c) in enumerate(tiles):
-        tile(s, ML + i * (tw + 0.24), y, tw, v, lab, c)
+    for i, (v, lab) in enumerate(stats):
+        stat(s, ML + i * (tw + 0.24), y, tw, v, lab)
 
-    yy = y + 1.40
+    yy = y + 1.22
+    data = [
+        ["Retained class", "Train boxes", "Val boxes", "Removed class", "Disposition"],
+        ["using_device", "2,204", "90", "handrise", "Moved to rule layer"],
+        ["sleep", "1,512", "41", "look_forward", "Moved to rule layer"],
+        ["read", "1,254", "49", "turn_head", "Moved to rule layer"],
+        ["write", "1,121", "91", "stand", "Withdrawn — insufficient data"],
+        ["Total", "6,091", "271", "—", "—"],
+    ]
+    tbl = table(s, ML, yy, CW, [2.45, 1.50, 1.30, 2.55, 4.17], data,
+                row_h=0.36, head_h=0.38, size=9.5, head_size=9.5, col_bold={0})
+    for c in range(5):
+        tbl.cell(5, c).text_frame.paragraphs[0].runs[0].font.bold = True
+    for r in range(1, 5):
+        for c in (1, 2):
+            run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
+            run.font.name = MONO
+            run.font.size = Pt(9)
+
+    yy2 = caption(s, ML, yy + 0.38 + 5 * 0.36 + 0.14, CW, "Table 4.",
+                  "Class consolidation. Retained classes and the disposition of "
+                  "those removed.")
+
     half = (CW - 0.30) / 2
-    card(s, ML, yy, half, 2.10,
-         heading="The four we removed \u2014 and where they went",
-         lines=["handrise, look_forward, turn_head and stand each had only a few "
-                "dozen boxes. A detector trained on that memorises those boxes; it "
-                "does not learn the class.",
-                "Three of them are better measured by geometry anyway. Wrist above "
-                "shoulder is a raised hand; head pitch is a bowed head. They moved "
-                "to the rule layer \u2014 removed from the model, not from the "
-                "system."],
-         accent=AMBER, heading_size=11.5, body_size=10, fill=PANEL)
-    card(s, ML + half + 0.30, yy, half, 2.10,
-         heading="The four we kept",
-         lines=["using_device 2,204 boxes  \u00b7  sleep 1,512  \u00b7  "
-                "read 1,254  \u00b7  write 1,121.",
-                "Two source sets were merged to get there, taking training images "
-                "from 423 to 877.",
-                "The validation split was deliberately left untouched at 58 images, "
-                "so the before-and-after on the next slide is measured on exactly "
-                "the same held-out data."],
-         accent=GREEN, heading_size=11.5, body_size=10, fill=PANEL2)
+    note(s, ML, yy2 + 0.04, half, 1.30, "Rationale",
+         ["The four removed classes each carried only tens of annotated boxes, "
+          "insufficient for a detector to generalise. Three describe configurations "
+          "measurable geometrically — wrist elevation and head pitch — and were "
+          "reassigned to the rule layer rather than discarded from the system."])
+    note(s, ML + half + 0.30, yy2 + 0.04, half, 1.30, "Method",
+         ["The validation split was held constant at 58 images across both runs, so "
+          "that the comparison reported in Figure 1 is measured on identical "
+          "held-out data. The split is fixed by seed 0."])
     return s
 
 
-def s05_ablation(prs, page):
-    s, y = chrome(prs, "Criterion 2 \u2014 Dataset Preparation",
-                  "What that bought", None, page, GREEN)
-    y = claim(s, y, "Same model, same weights, same held-out split. Only the data "
-                    "changed \u2014 and mAP@50 rose 46%.", GREEN)
+def s06_ablation(prs, page):
+    s, y = chrome(prs, "Criterion II — Dataset Preparation",
+                  "Effect of Dataset Preparation on Detection Performance",
+                  "Architecture, pretrained weights and validation split held "
+                  "constant; only the training data differs.", page)
 
     picture(s, ASSETS / "dataset_ablation.png", ML, y, 7.05)
+    caption(s, ML, y + 3.78, 7.05, "Figure 1.",
+            "Validation metrics before and after class consolidation and source "
+            "merging (n = 58 images).")
+
     x2 = ML + 7.05 + 0.34
     w2 = SW - MR - x2
-    card(s, x2, y, w2, 1.85,
-         heading="Read the recall bar first",
-         lines=["0.381 \u2192 0.586. Recall moving most is the signature that makes "
-                "this believable: the old model was not confused about what it saw, "
-                "it was failing to see at all, because four of its classes had too "
-                "few examples to ever fire."],
-         accent=GREEN, heading_size=11.5, body_size=10, fill=PANEL2)
-    card(s, x2, y + 2.03, w2, 1.68,
-         heading="The confound, before anyone asks",
-         lines=["Image size also dropped 960 \u2192 640 and batch rose 4 \u2192 8, "
-                "to fit a 6.4 GB card. So this is not a clean single-variable test.",
-                "It still points the right way: resolution went DOWN, which should "
-                "hurt a detector, and the score rose anyway."],
-         accent=AMBER, heading_size=11.5, body_size=10, fill=PANEL)
+    note(s, x2, y, w2, 1.95, "Observation",
+         ["Mean average precision at IoU 0.50 rose from 0.415 to 0.607, an increase "
+          "of 46 per cent. Recall rose proportionally more, from 0.381 to 0.586.",
+          "The disproportionate movement in recall is consistent with the stated "
+          "cause: the earlier model was not misclassifying detections but failing "
+          "to produce them, as four of its classes had too few examples to fire."])
+    note(s, x2, y + 2.13, w2, 1.75, "Limitation",
+         ["Inference resolution was reduced from 960 to 640 pixels and batch size "
+          "raised from 4 to 8 between the two runs, to accommodate 6.4 GB of "
+          "available memory. The comparison is therefore not a single-variable "
+          "ablation. Resolution was reduced, which would be expected to depress "
+          "detection performance; the measured direction is nonetheless positive."],
+         accent=AMBER)
     return s
 
 
-# --------------------------------------------------------------- criterion 3
+def s07_training(prs, page):
+    s, y = chrome(prs, "Criterion III — Training and Evaluation",
+                  "Training Configuration",
+                  "Fine-tuning from COCO-pretrained weights with no layers frozen. "
+                  "Full configuration in Appendix A.", page)
 
-def s06_training(prs, page):
-    s, y = chrome(prs, "Criterion 3 \u2014 Training & Evaluation",
-                  "How it was trained", None, page, AMBER)
-    y = claim(s, y, "Fine-tuned from COCO weights with every layer unfrozen. "
-                    "Nothing was hyperparameter-searched \u2014 and that is "
-                    "deliberate.", AMBER)
-
-    tiles = [("42", "epochs run, of 60 requested", AMBER),
-             ("27", "best epoch \u2014 early stopped", GREEN),
-             ("20.1 M", "parameters, all updated", TEAL),
-             ("23 min", "on an RTX 4050 laptop", TEAL)]
+    stats = [("42 / 60", "epochs run of those requested"),
+             ("27", "best epoch, by mAP@50-95"),
+             ("20.1 M", "parameters, all updated"),
+             ("23 min", "wall-clock, RTX 4050")]
     tw = (CW - 3 * 0.24) / 4
-    for i, (v, lab, c) in enumerate(tiles):
-        tile(s, ML + i * (tw + 0.24), y, tw, v, lab, c)
+    for i, (v, lab) in enumerate(stats):
+        stat(s, ML + i * (tw + 0.24), y, tw, v, lab, h=0.96)
 
-    yy = y + 1.40
-    third = (CW - 2 * 0.26) / 3
-    notes = [
-        ("Started from COCO, froze nothing", TEAL,
-         "yolo11m.pt as the starting point, freeze: null. The backbone already "
-         "knows edges and human shape; only the class meanings had to change, so "
-         "all 20.1 M parameters were allowed to move."),
-        ("Defaults, on purpose", RED,
-         "Every optimiser value is the Ultralytics default. With 877 training "
-         "images and 58 validation images, a hyperparameter search would tune "
-         "against noise and report the winner as a finding."),
-        ("The two we did choose", AMBER,
-         "imgsz 640 and batch 8, chosen by what fits in 6.4 GB of VRAM. At 960 the "
-         "run wanted 9.05 GB and slowed to an estimated 18 hours. We say so rather "
-         "than implying they were optimised."),
+    yy = y + 1.12
+    data = [
+        ["Parameter", "Value", "Basis for the value"],
+        ["Initial weights", "yolo11m.pt", "COCO-pretrained; random initialisation is "
+                                          "not viable at 877 images"],
+        ["Frozen layers", "none", "The target domain differs sufficiently that a "
+                                  "fixed backbone is inappropriate"],
+        ["Epochs / patience", "60 / 15", "Terminated at 42 by early stopping"],
+        ["Inference size", "640", "Determined by available memory; 960 required "
+                                  "9.05 GB against 6.4 GB available"],
+        ["Batch size", "8", "Largest admissible at 640 pixels"],
+        ["Optimiser and schedule", "Ultralytics defaults",
+         "Not searched; see the note below"],
     ]
-    for i, (title, accent, body) in enumerate(notes):
-        x = ML + i * (third + 0.26)
-        rect(s, x, yy, third, 2.05, fill=PANEL, line=BORDER)
-        bar(s, x, yy, 0.05, 2.05, accent)
-        add_text(s, x + 0.24, yy + 0.18, third - 0.44, 1.70,
-                 [P(title, 11.5, True, INK, FONT_SB, line=1.12),
-                  P(body, 10, False, BODY, line=1.24, space_before=7)])
-    add_text(s, ML, SH - 0.44, CW, 0.22,
-             [P("Full hyperparameter and augmentation tables are in the appendix.",
-                9, False, MUTE)])
+    tbl = table(s, ML, yy, CW, [2.40, 1.90, 7.67], data,
+                row_h=0.38, head_h=0.36, size=9.5, head_size=9.5, col_bold={0})
+    for r in range(1, len(data)):
+        run = tbl.cell(r, 1).text_frame.paragraphs[0].runs[0]
+        run.font.name = MONO
+        run.font.size = Pt(9)
+        run.font.color.rgb = TEAL_D
+        run.font.bold = True
+
+    yy2 = caption(s, ML, yy + 0.36 + 6 * 0.38 + 0.12, CW, "Table 5.",
+                  "Principal training parameters and the basis on which each was "
+                  "set.")
+
+    note(s, ML, yy2 + 0.02, CW, 0.90, "Note on hyperparameter selection",
+         ["No hyperparameter search was conducted. With 877 training and 58 "
+          "validation images, a search would optimise against sampling noise and "
+          "report the resulting configuration as a finding. The two values that "
+          "were chosen — inference size and batch size — were determined by memory "
+          "capacity, and are reported as such rather than as tuned quantities."])
     return s
 
 
-def s07_curves(prs, page):
-    s, y = chrome(prs, "Criterion 3 \u2014 Training & Evaluation",
-                  "Loss and detection quality", None, page, AMBER)
-    y = claim(s, y, "It learned, then it stopped learning \u2014 and we stopped "
-                    "training. Peak at epoch 27, mAP@50 0.607.", AMBER)
+def s08_curves(prs, page):
+    s, y = chrome(prs, "Criterion III — Training and Evaluation",
+                  "Convergence and Early Stopping",
+                  "Validation loss and detection quality across the 42 epochs "
+                  "completed.", page)
 
     half = (CW - 0.34) / 2
     b1 = picture(s, ASSETS / "train_loss.png", ML, y, half)
     b2 = picture(s, ASSETS / "train_metrics.png", ML + half + 0.34, y, half)
+    yb = max(b1, b2) + 0.10
+    caption(s, ML, yb, half, "Figure 2.",
+            "Validation loss by epoch, by loss term.")
+    yc = caption(s, ML + half + 0.34, yb, half, "Figure 3.",
+                 "Mean average precision by epoch, at two IoU regimes.")
 
-    yy = max(b1, b2) + 0.24
     third = (CW - 2 * 0.26) / 3
     notes = [
-        ("This is validation loss", TEAL,
-         "Training loss always falls. The question worth answering is whether it "
-         "fell on images the model never saw, so that is what is plotted."),
-        ("Two charts, not one", GREEN,
-         "Loss and mAP share an x-axis and nothing else. A second y-scale would "
-         "let you read a relationship off where two lines happen to cross."),
-        ("The curve is noisy \u2014 that is the split", AMBER,
-         "58 validation images means one hard image visibly moves mAP. We quote the "
-         "peak, but the honest read is a plateau around 0.55\u20130.60."),
+        ("Measurement", TEAL,
+         "Validation loss is plotted rather than training loss. Training loss "
+         "decreases by construction; the quantity of interest is performance on "
+         "images excluded from training."),
+        ("Presentation", TEAL,
+         "Loss and mean average precision are plotted separately. A shared "
+         "secondary axis would permit an apparent relationship arising from the "
+         "choice of scaling rather than from the data."),
+        ("Limitation", AMBER,
+         "With 58 validation images, a single difficult image displaces mean "
+         "average precision measurably. The peak value is reported, but the "
+         "sustained level is approximately 0.55 to 0.60."),
     ]
-    for i, (title, accent, body) in enumerate(notes):
-        x = ML + i * (third + 0.26)
-        rect(s, x, yy, third, 1.22, fill=PANEL, line=BORDER)
-        bar(s, x, yy, 0.045, 1.22, accent)
-        add_text(s, x + 0.22, yy + 0.14, third - 0.40, 0.96,
-                 [P(title, 10.5, True, INK, FONT_SB, line=1.10),
-                  P(body, 9.5, False, BODY, line=1.20, space_before=5)])
+    for i, (label, accent, body) in enumerate(notes):
+        note(s, ML + i * (third + 0.26), yc + 0.06, third, 1.32, label, [body],
+             accent=accent)
     return s
 
 
-def s08_perclass(prs, page):
-    s, y = chrome(prs, "Criterion 3 \u2014 Training & Evaluation",
-                  "Per-class results", None, page, AMBER)
-    y = claim(s, y, "Three classes work. \u201cread\u201d does not \u2014 and the "
-                    "pipeline was already designed around that.", AMBER)
+def s09_perclass(prs, page):
+    s, y = chrome(prs, "Criterion III — Training and Evaluation",
+                  "Per-Class Evaluation Results",
+                  "Re-validated from the trained weights for this review, rather "
+                  "than reproduced from the training log.", page)
 
     data = [
-        ["Class", "mAP@50", "Precision", "Recall", "Train boxes"],
-        ["write", "0.767", "0.723", "0.681", "1,121"],
-        ["using_device", "0.720", "0.749", "0.700", "2,204"],
-        ["sleep", "0.521", "0.670", "0.495", "1,512"],
-        ["read", "0.419", "0.455", "0.469", "1,254"],
-        ["all", "0.607", "0.649", "0.586", "6,091"],
+        ["Class", "mAP@50", "mAP@50-95", "Precision", "Recall", "Train boxes"],
+        ["write", "0.767", "0.331", "0.723", "0.681", "1,121"],
+        ["using_device", "0.720", "0.336", "0.749", "0.700", "2,204"],
+        ["sleep", "0.521", "0.263", "0.670", "0.495", "1,512"],
+        ["read", "0.419", "0.143", "0.455", "0.469", "1,254"],
+        ["All classes", "0.607", "0.268", "0.649", "0.586", "6,091"],
     ]
-    tw = 6.55
-    tbl = table(s, ML, y, tw, [1.75, 1.25, 1.25, 1.10, 1.20], data,
-                row_h=0.42, head_h=0.40, size=10.5, head_size=10,
-                col_bold={0}, head_fill=AMBER)
+    tw = 6.95
+    tbl = table(s, ML, y, tw, [1.75, 1.10, 1.25, 1.10, 0.95, 0.80], data,
+                row_h=0.40, head_h=0.38, size=10, head_size=9.5, col_bold={0})
     for r in range(1, len(data)):
-        for c in range(1, 5):
+        for c in range(1, 6):
             run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
             run.font.name = MONO
-            run.font.size = Pt(10)
-        colour = (INK if data[r][0] == "all" else
-                  GREEN if r <= 2 else (AMBER if r == 3 else RED))
-        for c in (0, 1):
-            run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
-            run.font.color.rgb = colour
-            run.font.bold = True
+            run.font.size = Pt(9.5)
+        if r == 5:
+            for c in range(6):
+                tbl.cell(r, c).text_frame.paragraphs[0].runs[0].font.bold = True
+
+    caption(s, ML, y + 0.38 + 5 * 0.40 + 0.14, tw, "Table 6.",
+            "Per-class validation metrics (n = 58 images).")
 
     x2 = ML + tw + 0.32
     w2 = SW - MR - x2
-    card(s, x2, y, w2, 1.90,
-         heading="Why \u201cread\u201d fails, and why more data will not fix it",
-         lines=["read has MORE training boxes than write and scores far worse. So "
-                "this is not a data-volume problem.",
-                "Reading and writing differ only by what the hands are doing. The "
-                "closest published work reaches 57.8% on writing even with a strong "
-                "temporal model."],
-         accent=RED, heading_size=11.5, body_size=10, fill=PANEL)
-    card(s, x2, y + 2.08, w2, 1.90,
-         heading="So the output never forces the choice",
-         lines=["Book visible, hands not visible \u2192 reported as \u201creading "
-                "or writing\u201d, one label covering both.",
-                "Hands visible \u2192 writing is reported with confidence "
-                "\u201cinferred\u201d, never \u201cdirect\u201d.",
-                "The weakest number in the table is the one the system is most "
-                "careful about."],
-         accent=GREEN, heading_size=11.5, body_size=10, fill=PANEL2)
+    note(s, x2, y, w2, 2.00, "Analysis of the weakest class",
+         ["The read class attains mAP@50 of 0.419 against 0.767 for write, despite "
+          "carrying more annotated boxes. The deficit is therefore not attributable "
+          "to data volume.",
+          "Reading and writing are distinguished only by hand activity. Comparable "
+          "published work reports 57.8 per cent on writing recognition using a "
+          "temporal model."],
+         accent=AMBER)
+    note(s, x2, y + 2.18, w2, 2.00, "Treatment in the output",
+         ["Where a book is detected and the hands are not visible, the reported "
+          "action is 'reading or writing', a single label spanning both classes.",
+          "Where the hands are visible, writing is reported with confidence "
+          "'inferred' rather than 'direct'. The least reliable measurement is "
+          "accordingly the one subject to the most qualification."])
 
-    banner(s, y + 4.16,
-           [R("And it is a second opinion, never the primary signal:  ", 10.5, True,
-              TEAL_D, FONT_SB),
-            R("actions are decided first by geometry \u2014 object overlap, wrist "
-              "position, head pitch \u2014 which needs no training data. Where the "
-              "two disagree, geometry wins. That is why a 0.607 model is safe to "
-              "ship inside this system.", 10.5, False, INK)],
-           h=0.80)
+    note(s, ML, y + 2.90, tw, 1.28, "Role within the system",
+         ["The behaviour model is a secondary signal. Actions are determined first "
+          "by geometric evidence — object overlap, wrist position and head pitch — "
+          "which requires no training data and is inspectable. Where the two "
+          "disagree, geometry governs and both are recorded."])
     return s
 
 
-# --------------------------------------------------------------- criterion 4
+def s10_comparison(prs, page):
+    s, y = chrome(prs, "Criterion IV — Comparison with Base Paper",
+                  "Comparison with Base Papers",
+                  "One quantitative comparison is admissible. Three are not, for "
+                  "reasons stated individually.", page)
 
-def s09_comparison(prs, page):
-    s, y = chrome(prs, "Criterion 4 \u2014 Comparison with Base Paper",
-                  "What we can and cannot compare", None, page, RED)
-    y = claim(s, y, "One comparison is real. Two are not applicable. One is "
-                    "impossible \u2014 and each has a specific reason.", RED)
-
-    blocks = [
-        ("REAL COMPARISON", GREEN,
-         "Our fine-tuned detector",
-         "write mAP@50 0.767  \u00b7  read 0.419",
-         "Literature reports 57.8% on writing detection. Different metric, "
-         "different data \u2014 so we claim only the ORDERING: both find writing "
-         "hard, and our read/write gap reproduces the difficulty they report."),
-        ("NOT APPLICABLE", MUTE,
-         "The two FER papers",
-         "no expression benchmark run",
-         "We never reproduced their task. We took their methods \u2014 the rolling "
-         "window and the refusal to force a confusable class. Claiming their "
-         "accuracy numbers would be claiming work we did not do."),
-        ("IMPOSSIBLE", RED,
-         "ARG group activity",
-         "Volleyball 92.3% \u2014 we have no number",
-         "The GCN is implemented but untrained. Training needs ~3,000 clips "
-         "labelled high/medium/low by agreeing raters. The architecture, contract, "
-         "abstention rule and tests are done; the missing piece is data."),
+    data = [
+        ["Source", "Reported result", "Corresponding result here", "Admissibility"],
+        ["Our fine-tuned detector\n(YOLO11m, four classes)",
+         "Published work on writing\nrecognition: 57.8%",
+         "write mAP@50 0.767;\nread mAP@50 0.419",
+         "Admissible for\nordering only"],
+        ["Robust Dynamic FER\n(Liu, Wang and Shen, 2025)",
+         "Accuracy on DFEW and\nFERV39k",
+         "Not reproduced — adopted at the\nlevel of method",
+         "Not applicable"],
+        ["Dynamic Objectives Learning\n(Wen et al., 2020)",
+         "Accuracy on posed and\nin-the-wild sets",
+         "Not reproduced — adopted at the\nlevel of method",
+         "Not applicable"],
+        ["ARG\n(Wu et al., CVPR 2019)",
+         "Volleyball 92.3%;\nCollective Activity 91.0%",
+         "None — the network is untrained",
+         "Not available"],
     ]
-    third = (CW - 2 * 0.28) / 3
-    for i, (tag, accent, who, num, body) in enumerate(blocks):
-        x = ML + i * (third + 0.28)
-        rect(s, x, y, third, 3.10, fill=WHITE, line=BORDER)
-        bar(s, x, y, third, 0.05, accent)
-        add_text(s, x + 0.24, y + 0.22, third - 0.48, 0.24,
-                 [P(tag, 9, True, accent, FONT_SB)])
-        add_text(s, x + 0.24, y + 0.56, third - 0.48, 0.32,
-                 [P(who, 13, True, INK, FONT_SB, line=1.10)])
-        add_text(s, x + 0.24, y + 0.98, third - 0.48, 0.30,
-                 [P(num, 10.5, True, accent, MONO, line=1.12)])
-        add_text(s, x + 0.24, y + 1.42, third - 0.48, 1.52,
-                 [P(body, 10, False, BODY, line=1.24)])
+    tbl = table(s, ML, y, CW, [3.10, 2.85, 3.70, 2.32], data,
+                row_h=0.70, head_h=0.38, size=9.5, head_size=9.5, col_bold={0})
+    for r in range(1, len(data)):
+        run = tbl.cell(r, 3).text_frame.paragraphs[0].runs[0]
+        run.font.bold = True
+        run.font.color.rgb = TEAL_D if r == 1 else (RED if r == 4 else MUTE)
 
-    banner(s, y + 3.32,
-           [R("The point we want to land:  ", 11, True, TEAL_D, FONT_SB),
-            R("a comparison we cannot make is a finding, not a gap in the report. "
-              "Saying exactly which one is missing and exactly what it would take "
-              "is worth more than a number that describes nothing.",
-              11, False, INK)],
-           h=0.84)
+    yy = caption(s, ML, y + 0.38 + 4 * 0.70 + 0.14, CW, "Table 7.",
+                 "Admissibility of comparison against each base paper.")
+
+    half = (CW - 0.30) / 2
+    note(s, ML, yy + 0.04, half, 1.72, "Basis of the admissible comparison",
+         ["The published figure is an accuracy on a writing-recognition benchmark; "
+          "ours is mean average precision on a 58-image validation split. The "
+          "metric, the data and the task definition all differ.",
+          "What the comparison supports is the ordering: both find writing "
+          "difficult, and the read–write disparity observed here reproduces the "
+          "difficulty reported in the literature."])
+    note(s, ML + half + 0.30, yy + 0.04, half, 1.72, "Requirement for the ARG comparison",
+         ["A labelled group-engagement corpus of approximately 3,000 clips with "
+          "ordinal labels agreed between raters. No such corpus is publicly "
+          "available for classroom footage.",
+          "The architecture, input contract, abstention rule and test suite are "
+          "complete. The outstanding requirement is data rather than "
+          "implementation."],
+         accent=RED)
     return s
 
 
-def s10_summary(prs, page):
-    s, y = chrome(prs, "Summary", "The four criteria, in one line each", None, page)
-    y = claim(s, y, "Every number here came from a command we can re-run in front "
-                    "of you. Where we could not measure something, the slide says so.")
+def s11_summary(prs, page):
+    s, y = chrome(prs, "Conclusion", "Summary of Findings and Limitations",
+                  "Each finding is paired with the limitation that qualifies it.",
+                  page)
 
-    rows = [
-        ("1", "Base paper implementation", GREEN,
-         "ARG replicated stage for stage, 14 tests passing. Two FER papers adopted "
-         "as methods.", "GCN untrained \u2014 no labelled data exists"),
-        ("2", "Dataset preparation", GREEN,
-         "8 classes \u2192 4, 423 \u2192 877 images. mAP@50 0.415 \u2192 0.607 "
-         "from data alone.", "imgsz and batch also changed \u2014 confounded"),
-        ("3", "Training & evaluation", AMBER,
-         "42 epochs, early stop at 27, per-class validation re-run from the weights.",
-         "58-image validation split is small and noisy"),
-        ("4", "Comparison with base paper", RED,
-         "One real comparison, two not applicable, one impossible \u2014 each "
-         "explained.", "different metric \u2014 ordering, not parity"),
+    data = [
+        ["Criterion", "Finding", "Evidence", "Limitation"],
+        ["I · Base paper\nimplementation",
+         "ARG replicated stage for stage;\ntwo FER papers adopted as method",
+         "backend/group_activity.py;\n14 unit tests",
+         "Network untrained; no\nlabelled corpus available"],
+        ["II · Dataset\npreparation",
+         "Consolidation raised mAP@50\nfrom 0.415 to 0.607",
+         "args.yaml, data.yaml,\nFigure 1",
+         "Resolution and batch also\nvaried between runs"],
+        ["III · Training and\nevaluation",
+         "42 epochs, early stopping at 27,\nper-class validation reported",
+         "results.csv; re-validated\nfrom best.pt",
+         "Validation split of 58\nimages is small"],
+        ["IV · Comparison with\nbase paper",
+         "One admissible comparison;\nthree inadmissible, each explained",
+         "Table 6 against published\n57.8% on writing",
+         "Differing metrics permit\nordering only"],
     ]
-    rh = 0.86
-    for i, (num, title, accent, did, gap) in enumerate(rows):
-        yy = y + i * (rh + 0.14)
-        rect(s, ML, yy, CW, rh, fill=WHITE if i % 2 == 0 else PANEL, line=BORDER)
-        bar(s, ML, yy, 0.05, rh, accent)
-        add_text(s, ML + 0.26, yy + 0.16, 2.95, 0.52,
-                 [PR([R(num + "   ", 14, True, accent, FONT_SB),
-                      R(title, 11.5, True, INK, FONT_SB)])])
-        add_text(s, ML + 3.35, yy + 0.18, 5.05, 0.56,
-                 [P(did, 10, False, BODY, line=1.20)])
-        add_text(s, ML + 8.60, yy + 0.18, CW - 8.85, 0.56,
-                 [PR([R("gap:  ", 9.5, True, AMBER, FONT_SB),
-                      R(gap, 9.5, False, BODY)], line=1.20)])
+    tbl = table(s, ML, y, CW, [2.55, 3.65, 2.95, 2.82], data,
+                row_h=0.72, head_h=0.38, size=9.5, head_size=9.5, col_bold={0})
+
+    yy = caption(s, ML, y + 0.38 + 4 * 0.72 + 0.14, CW, "Table 8.",
+                 "Findings and limitations by criterion.")
+
+    note(s, ML, yy + 0.06, CW, 1.10, "Reproducibility",
+         ["Every quantity reported in this deck is produced by a command in the "
+          "repository: tools/model_facts.py --validate for model and per-class "
+          "metrics, tools/make_review_charts.py for Figures 1 to 3, and "
+          "tools/train_behaviour.py for the training run itself. Quantities that "
+          "could not be measured are reported as unmeasured."])
     return s
 
 
-# ------------------------------------------------------------------ appendix
-
-def s11_appendix_hyper(prs, page):
-    s, y = chrome(prs, "Appendix", "Full hyperparameters, as args.yaml recorded them",
-                  "Kept off the main deck so criterion 3 has one point, not forty. "
-                  "Here when a question needs it.", page, MUTE)
+def s12_appendix_a(prs, page):
+    s, y = chrome(prs, "Appendix A", "Complete Training Configuration",
+                  "As recorded in runs/behaviour/merged4_aug/args.yaml.", page, MUTE)
 
     half = (CW - 0.30) / 2
     cfg = [
-        ["Setting", "Value", "Note"],
-        ["base weights", "yolo11m.pt", "COCO-pretrained"],
-        ["freeze", "null", "all layers updated"],
-        ["epochs / patience", "60 / 15", "ran 42"],
-        ["best epoch", "27", "later epochs overfit"],
-        ["imgsz", "640", "960 needed 9.05 GB"],
-        ["batch", "8", "largest that fits"],
+        ["Parameter", "Value", "Source"],
+        ["model", "yolo11m.pt", "COCO-pretrained"],
+        ["freeze", "null", "all layers trainable"],
+        ["epochs", "60", "42 completed"],
+        ["patience", "15", "early stopping"],
+        ["imgsz", "640", "memory-constrained"],
+        ["batch", "8", "memory-constrained"],
         ["optimizer", "auto (SGD)", "default"],
-        ["lr0 / lrf", "0.01 / 0.01", "default"],
+        ["lr0", "0.01", "default"],
+        ["lrf", "0.01", "default"],
         ["momentum", "0.937", "default"],
         ["weight_decay", "0.0005", "default"],
         ["warmup_epochs", "3.0", "default"],
         ["amp", "true", "required to fit"],
-        ["seed", "0", "reproducible split"],
+        ["seed", "0", "fixed split"],
     ]
-    tbl = table(s, ML, y, half, [2.10, 1.65, 2.17], cfg, row_h=0.285, head_h=0.32,
+    tbl = table(s, ML, y, half, [2.10, 1.65, 2.17], cfg, row_h=0.275, head_h=0.32,
                 size=9.5, head_size=9.5, col_bold={0}, head_fill=MUTE)
     for r in range(1, len(cfg)):
         run = tbl.cell(r, 1).text_frame.paragraphs[0].runs[0]
@@ -688,13 +865,15 @@ def s11_appendix_hyper(prs, page):
         run.font.size = Pt(9)
         run.font.color.rgb = TEAL_D
         run.font.bold = True
+    caption(s, ML, y + 0.32 + 14 * 0.275 + 0.12, half, "Table A1.",
+            "Training parameters.")
 
     x2 = ML + half + 0.30
     loss = [
-        ["Loss term", "Weight", "Penalises"],
-        ["box", "7.5", "box regression error (CIoU)"],
-        ["cls", "0.5", "class confidence error (BCE)"],
-        ["dfl", "1.5", "distribution focal loss on edges"],
+        ["Loss term", "Weight", "Quantity penalised"],
+        ["box", "7.5", "Bounding-box regression error (CIoU)"],
+        ["cls", "0.5", "Class confidence error (BCE)"],
+        ["dfl", "1.5", "Distribution focal loss on box edges"],
     ]
     tbl2 = table(s, x2, y, half, [1.85, 1.30, 2.77], loss, row_h=0.32, head_h=0.34,
                  size=9.5, head_size=9.5, col_bold={0}, head_fill=MUTE)
@@ -703,39 +882,35 @@ def s11_appendix_hyper(prs, page):
         run.font.name = MONO
         run.font.bold = True
         run.font.color.rgb = TEAL_D
+    yy = caption(s, x2, y + 0.34 + 3 * 0.32 + 0.12, half, "Table A2.",
+                 "Loss term weights.")
 
-    card(s, x2, y + 1.48, half, 2.55,
-         heading="ARG stage-by-stage mapping",
-         lines=["Nodes = detected students \u2014 same as paper.",
-                "Typed relations, appearance + position, each with its own learned "
-                "weight \u2014 same as paper.",
-                "Renormalised adjacency D^-1/2 (A+I) D^-1/2 \u2014 same as paper.",
-                "2-layer GCN message passing \u2014 same as paper.",
-                "Mean-pool readout \u2014 same as paper.",
-                "Deviations: ordinal engagement not activity classes; 2 layers not a "
-                "deep stack; abstains when too few students are visible."],
-         accent=GREEN, heading_size=11.5, body_size=9.5, fill=PANEL2)
+    note(s, x2, yy + 0.06, half, 1.95, "Data splits",
+         ["877 training images and 58 validation images, fixed by seed 0.",
+          "No test split was reserved. With 58 validation images, partitioning a "
+          "third set would render both unusable. All figures reported in this deck "
+          "are validation figures and are labelled as such."])
     return s
 
 
-def s12_appendix_aug(prs, page):
-    s, y = chrome(prs, "Appendix", "Augmentation, and what each setting defends against",
-                  "An augmentation set is defined as much by what is switched off as "
-                  "by what is on.", page, MUTE)
+def s13_appendix_b(prs, page):
+    s, y = chrome(prs, "Appendix B", "Augmentation Configuration",
+                  "Settings applied during fine-tuning, with the variation each is "
+                  "intended to model.", page, MUTE)
 
     aug = [
-        ["Augmentation", "Value", "Defends against"],
-        ["mosaic", "1.0", "four images per sample: more context per step"],
-        ["close_mosaic", "10", "last 10 epochs clean, so it ends on real layout"],
-        ["fliplr", "0.5", "a student on the left is the same student"],
-        ["scale", "0.5", "front row and back row differ hugely in pixels"],
-        ["translate", "0.1", "the camera is not framed identically every time"],
-        ["hsv_h / hsv_s / hsv_v", "0.015 / 0.7 / 0.4", "lighting, daylight to tube light"],
-        ["erasing", "0.4", "occlusion by desks, bags and neighbours"],
-        ["auto_augment", "randaugment", "applied to classification crops"],
-        ["degrees / shear / perspective", "0 / 0 / 0", "OFF \u2014 a rotated classroom is not a real view"],
-        ["flipud", "0", "OFF \u2014 nobody is upside down"],
-        ["mixup / copy_paste", "0 / 0", "OFF \u2014 blended students are not a real scene"],
+        ["Setting", "Value", "Variation modelled"],
+        ["mosaic", "1.0", "Four images per sample; greater context per step"],
+        ["close_mosaic", "10", "Final ten epochs without mosaic"],
+        ["fliplr", "0.5", "Lateral position within the room"],
+        ["scale", "0.5", "Apparent size between front and rear rows"],
+        ["translate", "0.1", "Variation in camera framing"],
+        ["hsv_h / hsv_s / hsv_v", "0.015 / 0.7 / 0.4", "Illumination, daylight to fluorescent"],
+        ["erasing", "0.4", "Occlusion by furniture and by other students"],
+        ["auto_augment", "randaugment", "Applied to classification crops"],
+        ["degrees / shear / perspective", "0 / 0 / 0", "Disabled — not observable in fixed-camera footage"],
+        ["flipud", "0", "Disabled — not physically realisable"],
+        ["mixup / copy_paste", "0 / 0", "Disabled — composited students are not a valid scene"],
     ]
     tw = 8.05
     tbl = table(s, ML, y, tw, [2.65, 1.85, 3.55], aug, row_h=0.325, head_h=0.35,
@@ -746,24 +921,23 @@ def s12_appendix_aug(prs, page):
         run.font.size = Pt(9)
         run.font.color.rgb = MUTE if r >= 9 else TEAL_D
         run.font.bold = r < 9
+    caption(s, ML, y + 0.35 + 11 * 0.325 + 0.12, tw, "Table B1.",
+            "Augmentation settings. Disabled settings are listed explicitly, as "
+            "the configuration is defined as much by exclusion as by inclusion.")
 
     x2 = ML + tw + 0.30
     w2 = SW - MR - x2
-    card(s, x2, y, w2, 1.75,
-         heading="The split",
-         lines=["877 train / 58 validation, fixed with seed 0.",
-                "No test split: with 58 validation images, carving out a third set "
-                "would leave neither usable. Every number in this deck is a "
-                "validation number and is labelled as one."],
-         accent=AMBER, heading_size=11.5, body_size=9.5, fill=PANEL)
-    card(s, x2, y + 1.93, w2, 1.95,
-         heading="close_mosaic is the subtle one",
-         lines=["Mosaic helps early: four images per sample means more context per "
-                "gradient step.",
-                "But a model that only ever sees four-image composites never "
-                "calibrates on a real frame, so it is switched off for the final ten "
-                "epochs and the run ends on genuine classroom layout."],
-         accent=TEAL, heading_size=11.5, body_size=9.5, fill=PANEL2)
+    note(s, x2, y, w2, 2.05, "Mosaic and its termination",
+         ["Mosaic composition improves early training by presenting more context "
+          "per gradient step.",
+          "A model exposed only to four-image composites is not calibrated on "
+          "single frames, so the setting is withdrawn for the final ten epochs and "
+          "training concludes on unmodified classroom images."])
+    note(s, x2, y + 2.23, w2, 1.80, "Geometric augmentations",
+         ["Rotation, shear, perspective and vertical flip are disabled. A "
+          "fixed-position classroom camera does not produce such views, and "
+          "training against them allocates capacity to variation that does not "
+          "occur in deployment."])
     return s
 
 
@@ -773,17 +947,18 @@ def main():
     prs.slide_height = Inches(SH)
 
     s01_title(prs)
-    s02_papers(prs, 2)
-    s03_arg(prs, 3)
-    s04_dataset(prs, 4)
-    s05_ablation(prs, 5)
-    s06_training(prs, 6)
-    s07_curves(prs, 7)
-    s08_perclass(prs, 8)
-    s09_comparison(prs, 9)
-    s10_summary(prs, 10)
-    s11_appendix_hyper(prs, 11)
-    s12_appendix_aug(prs, 12)
+    s02_scope(prs, 2)
+    s03_papers(prs, 3)
+    s04_arg(prs, 4)
+    s05_dataset(prs, 5)
+    s06_ablation(prs, 6)
+    s07_training(prs, 7)
+    s08_curves(prs, 8)
+    s09_perclass(prs, 9)
+    s10_comparison(prs, 10)
+    s11_summary(prs, 11)
+    s12_appendix_a(prs, 12)
+    s13_appendix_b(prs, 13)
 
     prs.save(str(OUT))
     print(f"wrote {OUT}  ({len(prs.slides.__iter__.__self__._sldIdLst)} slides)")
