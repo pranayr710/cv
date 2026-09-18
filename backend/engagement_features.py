@@ -101,6 +101,11 @@ class Window:
             can be compared against the rules on identical spans, NOT so it can
             be trained on them.
         scene: The scene index, for splitting.
+        frame_ids: The pipeline frame ids this window covers. Carried from the
+            graph log rather than recomputed from timestamps, because the two
+            disagree: the log is written per PROCESSED frame, and reconstructing
+            an index from elapsed milliseconds silently assumed every source
+            clip had been processed.
     """
 
     person_id: int
@@ -109,6 +114,7 @@ class Window:
     features: tuple[float, ...]
     rule_verdict: str | None
     scene: int
+    frame_ids: tuple[int, ...]
 
 
 def _safe_div(a: float, b: float) -> float:
@@ -240,11 +246,13 @@ def iter_windows(graph_path: Path,
         g = json.loads(line)
         ts = int(g.get("timestamp_ms") or 0)
         times.append(ts)
+        fid = int(g.get("frame_id") or 0)
         for node in g.get("nodes", []):
             pid = node.get("person_id")
             if pid and pid > 0:
                 by_student.setdefault(int(pid), []).append(
-                    (ts, int(g.get("scene") or 0), node.get("features") or {}))
+                    (ts, int(g.get("scene") or 0), node.get("features") or {},
+                     fid))
 
     if not times:
         return
@@ -259,16 +267,19 @@ def iter_windows(graph_path: Path,
         start = first
         while start + window_ms <= last + stride_ms:
             end = start + window_ms
-            inside = [(s, f) for (t, s, f) in rows if start <= t < end]
+            inside = [(sc, f, fid) for (t, sc, f, fid) in rows
+                      if start <= t < end]
             if inside:
-                feats = window_features([f for _, f in inside], expected)
+                frames = [f for _, f, _ in inside]
+                feats = window_features(frames, expected)
                 if feats[0] >= min_coverage:
                     yield Window(
                         person_id=pid,
                         start_ms=start,
                         end_ms=end,
                         features=feats,
-                        rule_verdict=_rule_verdict([f for _, f in inside]),
+                        rule_verdict=_rule_verdict(frames),
                         scene=inside[0][0],
+                        frame_ids=tuple(fid for _, _, fid in inside),
                     )
             start += stride_ms

@@ -151,3 +151,27 @@ def test_iter_windows_yields_typed_windows_with_identity(tmp_path: Path):
     assert all(isinstance(w, Window) for w in windows)
     assert {w.person_id for w in windows} == {7}
     assert all(w.rule_verdict == "on" for w in windows)
+
+
+def test_window_carries_the_frame_ids_it_covers(tmp_path: Path):
+    """Frame ids must come from the log, not be derived from elapsed time.
+
+    Deriving them assumed every source clip had been processed. Only 60 of 157
+    were, so the estimated frame interval was 2.6x too small and crops resolved
+    for fewer than half the windows.
+    """
+    rows = []
+    for i in range(80):
+        rows.append(json.dumps({
+            "frame_id": i, "timestamp_ms": i * 333, "scene": 0,
+            "nodes": [{"person_id": 3, "features": _frame(action="attentive")}],
+        }))
+    path = tmp_path / "graph.jsonl"
+    path.write_text("\n".join(rows), encoding="utf-8")
+    windows = list(iter_windows(path))
+    assert windows
+    for w in windows:
+        assert w.frame_ids, "a window with frames must name them"
+        # The count of frame ids is the same quantity the feature reports.
+        assert len(w.frame_ids) == int(w.features[FEATURE_NAMES.index("n_frames")])
+        assert all(isinstance(f, int) for f in w.frame_ids)
