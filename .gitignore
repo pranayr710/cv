@@ -32,3 +32,9 @@ runs/
 *.pptx
 ppt_assets/
 *.zip
+
+# Labelling package: extracted crops are ~130 MB of JPEGs regenerable from the
+# pipeline outputs plus the source clips (labeling/prepare_package.py). The
+# manifest and the labels themselves ARE tracked -- they are small, and the
+# labels are hand-produced work that cannot be regenerated.
+labeling/images/
