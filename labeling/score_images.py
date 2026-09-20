@@ -31,6 +31,7 @@ Progress saves after every keypress, so quitting loses nothing.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from pathlib import Path
 
@@ -57,6 +58,27 @@ ANCHORS = {
     4: "engaged",
     5: "clearly, fully engaged",
 }
+
+
+
+def write_outputs(store: dict, json_path: Path) -> None:
+    """Save scores as JSON and as a spreadsheet-friendly CSV.
+
+    JSON is what the calibration step reads and what makes a session
+    resumable. The CSV exists so the scores can be opened in Excel and eyeballed
+    without a parser -- checking your own distribution part-way through is how
+    you notice you have drifted into scoring everything a 3.
+    """
+    json_path.write_text(json.dumps(store, indent=1), encoding="utf-8")
+
+    csv_path = json_path.with_suffix(".csv")
+    columns = ["file", "score_5", "folder_label", "age_band", "gender", "source"]
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=columns)
+        writer.writeheader()
+        for name, entry in sorted(store.items()):
+            writer.writerow({"file": name, **{c: entry.get(c, "")
+                                              for c in columns[1:]}})
 
 
 def draw(entry, idx: int, total: int, scored: int):
@@ -146,7 +168,7 @@ def main() -> int:
                 "gender": entry["gender"],
                 "source": entry["source"],
             }
-            out.write_text(json.dumps(store, indent=1), encoding="utf-8")
+            write_outputs(store, out)
             i += 1
     finally:
         cv2.destroyAllWindows()
