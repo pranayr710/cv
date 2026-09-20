@@ -80,6 +80,8 @@ class Session:
         self.stride = max(1, stride)
         self.min_face_px = min_face_px
         self.running = False
+        # Why the last session ended, when it ended on its own.
+        self.stop_reason: str | None = None
         self.frame_jpeg: bytes | None = None
         self.payload: dict = {}
         self.started = 0.0
@@ -177,6 +179,17 @@ class Session:
                     tick = time.perf_counter()
                     ok, frame = capture.read()
                     if not ok:
+                        # Almost always another process holding the camera --
+                        # a server left running from an earlier session. On
+                        # Windows those survive Ctrl+C in a way that is easy to
+                        # miss, and the symptom is a session that stops on its
+                        # own with nothing on screen explaining it.
+                        self.stop_reason = (
+                            "The camera stopped returning frames after "
+                            f"{index} frames. Another program is most likely "
+                            "using it -- check for a server left running from "
+                            "an earlier session.")
+                        logger.warning("%s", self.stop_reason)
                         break
 
                     persons, objects = detector.detect(frame)
@@ -248,6 +261,14 @@ class Session:
                         if ok:
                             self.frame_jpeg = buf.tobytes()
                         self.payload = self._snapshot(record, graph, names, elapsed)
+        except Exception:
+            # Without this the thread dies silently and the only symptom is a
+            # session that stopped by itself. The traceback goes to the log and
+            # the reason to the UI, so a failure says what it was.
+            self.stop_reason = (
+                "The capture loop failed. See the server log for the "
+                "traceback.")
+            logger.exception("capture loop failed after %d frames", index)
         finally:
             capture.release()
             frames_file.close()
@@ -536,6 +557,7 @@ def create_app(args):
         session = state["session"]
         return JSONResponse({
             "running": bool(session and session.running),
+            "stop_reason": session.stop_reason if session else None,
             "frames": session.frames if session else 0,
         })
 
