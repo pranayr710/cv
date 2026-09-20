@@ -568,7 +568,7 @@ def s05_dataset(prs, page):
           "reassigned to the rule layer rather than discarded from the system."])
     note(s, ML + half + 0.30, yy2 + 0.04, half, 1.30, "Method",
          ["The validation split was held constant at 58 images across both runs, so "
-          "that the comparison reported in Figure 1 is measured on identical "
+          "that the comparison in Figure 1 is measured on identical "
           "held-out data. The split is fixed by seed 0."])
     return s
 
@@ -599,6 +599,112 @@ def s06_ablation(prs, page):
           "ablation. Resolution was reduced, which would be expected to depress "
           "detection performance; the measured direction is nonetheless positive."],
          accent=AMBER)
+    return s
+
+
+def s06b_leakage(prs, page):
+    """The duplicate finding, and what it did to the reported accuracy."""
+    s, y = chrome(prs, "Criterion II - Dataset Preparation",
+                  "Duplicate Detection and Its Effect on Reported Accuracy",
+                  "A second annotated set was obtained for image-level scoring. "
+                  "Its duplication rate changes what any accuracy figure on it "
+                  "means.", page)
+
+    stats = [("12,582", "images after exact dedup"),
+             ("83.7%", "near-duplicates remaining"),
+             ("678", "visually distinct groups"),
+             ("36", "images under both labels")]
+    tw = (CW - 3 * 0.24) / 4
+    for i, (v, lab) in enumerate(stats):
+        stat(s, ML + i * (tw + 0.24), y, tw, v, lab)
+
+    yy = y + 1.22
+    data = [
+        ["Evaluation protocol", "Accuracy", "What it measures"],
+        ["Random train/test split", "0.968",
+         "Partly recall of near-copies present in both splits"],
+        ["Split over duplicate groups", "0.664",
+         "Generalisation to images the model has not seen"],
+        ["Human rater vs folder labels", "0.840",
+         "How far the labels themselves are agreed"],
+    ]
+    tbl = table(s, ML, yy, CW, [4.10, 2.05, 5.82], data,
+                row_h=0.44, head_h=0.38, size=10, head_size=10, col_bold={0})
+    for r in range(1, len(data)):
+        run = tbl.cell(r, 1).text_frame.paragraphs[0].runs[0]
+        run.font.name = MONO
+        run.font.bold = True
+        run.font.color.rgb = RED if r == 1 else (TEAL_D if r == 2 else MUTE)
+
+    yy2 = caption(s, ML, yy + 0.38 + 3 * 0.44 + 0.14, CW, "Table 5.",
+                  "The same model and features under three protocols.")
+
+    note(s, ML, yy2 + 0.04, CW, 1.30, "How the discrepancy was identified",
+         ["The 0.968 was not accepted because it exceeded the rate at which a "
+          "human rater agreed with the folder labels. A model has no basis for "
+          "outperforming a person on the labels that person was judging, so "
+          "the result was treated as evidence of leakage and tested with a "
+          "perceptual hash, which found the duplication above.",
+          "Copies are grouped rather than deleted: removing them would discard "
+          "84% of the data, while grouping retains every image for training "
+          "and leaves the evaluation set genuinely unseen."])
+    return s
+
+
+def s09b_scorer(prs, page):
+    """The image-level scorer and its calibration."""
+    s, y = chrome(prs, "Criterion III - Training and Evaluation",
+                  "Image-Level Engagement Scorer",
+                  "A second trained model, producing a 1-10 score from a single "
+                  "frame. Evaluated out-of-fold over duplicate groups.", page)
+
+    data = [
+        ["Quantity", "Value", "Basis"],
+        ["Training labels", "12,232", "binary, from the directory structure"],
+        ["Human ordinal scores", "350", "five-point scale, stratified sample"],
+        ["Accuracy, grouped split", "0.664", "leakage-free protocol"],
+        ["ROC AUC, grouped split", "0.729", "same protocol"],
+        ["Spearman rho vs human", "0.556", "out-of-fold, p = 7.8e-30"],
+        ["Calibrated error", "0.84", "points of five"],
+    ]
+    tw = 7.15
+    tbl = table(s, ML, y, tw, [2.75, 1.60, 2.80], data,
+                row_h=0.40, head_h=0.38, size=10, head_size=10, col_bold={0})
+    for r in range(1, len(data)):
+        run = tbl.cell(r, 1).text_frame.paragraphs[0].runs[0]
+        run.font.name = MONO
+        run.font.bold = True
+        run.font.color.rgb = TEAL_D
+
+    caption(s, ML, y + 0.38 + 6 * 0.40 + 0.14, tw, "Table 8.",
+            "Image-level scorer, trained on binary labels and calibrated "
+            "against human ordinal judgement.")
+
+    x2 = ML + tw + 0.30
+    w2 = SW - MR - x2
+    note(s, x2, y, w2, 2.00, "Method",
+         ["The directory labels are binary, so the model emits a probability "
+          "rather than a score. Isotonic regression maps that probability onto "
+          "the human five-point scale, and the five-point value is expressed "
+          "as 1-10 only at the final step.",
+          "The scored images contribute to training as well as to validation, "
+          "through out-of-fold prediction: each fold is calibrated by a model "
+          "that did not see it."])
+    note(s, x2, y + 2.18, w2, 2.00, "Alternative tested",
+         ["Fitting a regressor directly to the 350 ordinal scores was measured "
+          "against calibrating the classifier, on the same features and the "
+          "same folds.",
+          "Direct regression reached rho 0.353 against 0.556. The larger set of "
+          "binary labels carries more usable signal than the smaller set of "
+          "ordinal ones, despite the latter being individually richer."],
+         accent=AMBER)
+
+    note(s, ML, y + 3.10, tw, 1.08, "Limitation",
+         ["The resulting distribution is bimodal, with few images scored near "
+          "the middle of the range. The underlying decision remains binary and "
+          "the calibration spreads it across a scale; the score is ordered and "
+          "validated, but it is not a uniform ten-point continuum."],
+         accent=RED)
     return s
 
 
@@ -639,7 +745,7 @@ def s07_training(prs, page):
         run.font.color.rgb = TEAL_D
         run.font.bold = True
 
-    yy2 = caption(s, ML, yy + 0.36 + 6 * 0.38 + 0.12, CW, "Table 5.",
+    yy2 = caption(s, ML, yy + 0.36 + 6 * 0.38 + 0.12, CW, "Table 6.",
                   "Principal training parameters and the basis on which each was "
                   "set.")
 
@@ -714,7 +820,7 @@ def s09_perclass(prs, page):
             for c in range(6):
                 tbl.cell(r, c).text_frame.paragraphs[0].runs[0].font.bold = True
 
-    caption(s, ML, y + 0.38 + 5 * 0.40 + 0.14, tw, "Table 6.",
+    caption(s, ML, y + 0.38 + 5 * 0.40 + 0.14, tw, "Table 7.",
             "Per-class validation metrics (n = 58 images).")
 
     x2 = ML + tw + 0.32
@@ -774,7 +880,7 @@ def s10_comparison(prs, page):
         run.font.bold = True
         run.font.color.rgb = TEAL_D if r == 1 else (RED if r == 4 else MUTE)
 
-    yy = caption(s, ML, y + 0.38 + 4 * 0.70 + 0.14, CW, "Table 7.",
+    yy = caption(s, ML, y + 0.38 + 4 * 0.70 + 0.14, CW, "Table 9.",
                  "Admissibility of comparison against each base paper.")
 
     half = (CW - 0.30) / 2
@@ -808,22 +914,22 @@ def s11_summary(prs, page):
          "backend/group_activity.py;\n14 unit tests",
          "Network untrained; no\nlabelled corpus available"],
         ["II · Dataset\npreparation",
-         "Consolidation raised mAP@50\nfrom 0.415 to 0.607",
-         "args.yaml, data.yaml,\nFigure 1",
+         "Consolidation raised mAP@50 to\n0.607; 83.7% duplication found\nin the second set",
+         "args.yaml, Figure 1,\nTable 6",
          "Resolution and batch also\nvaried between runs"],
         ["III · Training and\nevaluation",
-         "42 epochs, early stopping at 27,\nper-class validation reported",
-         "results.csv; re-validated\nfrom best.pt",
-         "Validation split of 58\nimages is small"],
+         "Behaviour detector mAP@50 0.607;\nimage scorer rho 0.556 vs human",
+         "results.csv, Table 7;\nre-validated from weights",
+         "Both validation sets small\n(58 images, 350 scores)"],
         ["IV · Comparison with\nbase paper",
          "One admissible comparison;\nthree inadmissible, each explained",
-         "Table 6 against published\n57.8% on writing",
+         "Table 8 against published\n57.8% on writing",
          "Differing metrics permit\nordering only"],
     ]
     tbl = table(s, ML, y, CW, [2.55, 3.65, 2.95, 2.82], data,
                 row_h=0.72, head_h=0.38, size=9.5, head_size=9.5, col_bold={0})
 
-    yy = caption(s, ML, y + 0.38 + 4 * 0.72 + 0.14, CW, "Table 8.",
+    yy = caption(s, ML, y + 0.38 + 4 * 0.72 + 0.14, CW, "Table 10.",
                  "Findings and limitations by criterion.")
 
     note(s, ML, yy + 0.06, CW, 1.10, "Reproducibility",
@@ -952,13 +1058,15 @@ def main():
     s04_arg(prs, 4)
     s05_dataset(prs, 5)
     s06_ablation(prs, 6)
-    s07_training(prs, 7)
-    s08_curves(prs, 8)
-    s09_perclass(prs, 9)
-    s10_comparison(prs, 10)
-    s11_summary(prs, 11)
-    s12_appendix_a(prs, 12)
-    s13_appendix_b(prs, 13)
+    s06b_leakage(prs, 7)
+    s07_training(prs, 8)
+    s08_curves(prs, 9)
+    s09_perclass(prs, 10)
+    s09b_scorer(prs, 11)
+    s10_comparison(prs, 12)
+    s11_summary(prs, 13)
+    s12_appendix_a(prs, 14)
+    s13_appendix_b(prs, 15)
 
     prs.save(str(OUT))
     print(f"wrote {OUT}  ({len(prs.slides.__iter__.__self__._sldIdLst)} slides)")
