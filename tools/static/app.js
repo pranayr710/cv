@@ -54,11 +54,19 @@ function paintRoster(students) {
     const el = document.querySelector(`.student[data-id="${s.id}"]`);
     if (!el) continue;
     el.classList.toggle("present", s.present);
+    // The learned model's 1-10 score. A dash until it has seen a full
+    // window of this student: inventing a number for someone who just walked
+    // in would contradict how the rest of this system treats thin evidence.
     const pct = el.querySelector(".pct");
-    pct.textContent = s.attention == null ? "—" : `${Math.round(s.attention * 100)}%`;
-    pct.style.color = s.attention == null ? "var(--muted)"
-      : s.attention >= 0.7 ? "var(--accent)"
-      : s.attention >= 0.4 ? "var(--warn)" : "var(--bad)";
+    const score = s.attention_score;
+    pct.textContent = score == null ? "—" : `${score}/10`;
+    pct.style.color = score == null ? "var(--muted)"
+      : score >= 7 ? "var(--accent)"
+      : score >= 4 ? "var(--warn)" : "var(--bad)";
+    pct.title = score == null
+      ? "waiting for a full 15s window"
+      : `${s.attention_label || "no verdict"} · ${s.attention_reason || ""}` +
+        (s.attention_source ? ` · from the ${s.attention_source}` : "");
 
     const act = s.action ? ACTION_LABEL[s.action] || s.action : "not seen";
     el.querySelector(".act").innerHTML =

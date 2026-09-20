@@ -334,7 +334,22 @@ class Session:
                 "id": pid,
                 "name": name,
                 "present": self.last_seen.get(pid, -99) >= record["frame_id"] - 4,
-                "attention": (counts["teacher"] / graded) if graded else None,
+                # The model's score, not the old gaze ratio. counts["teacher"]
+                # over graded measured how often a student faced the front,
+                # which is a different claim from whether they were engaged --
+                # and in group work it is close to the opposite one.
+                "attention_score": (feats.get(pid) or {}).get(
+                    "attention_score"),
+                "attention_label": (feats.get(pid) or {}).get(
+                    "attention_label"),
+                "attention_reason": (feats.get(pid) or {}).get(
+                    "attention_reason"),
+                "attention_source": (feats.get(pid) or {}).get(
+                    "attention_source"),
+                # Kept so the two can be shown side by side rather than one
+                # quietly standing in for the other.
+                "facing_front_pct": (counts["teacher"] / graded)
+                if graded else None,
                 "gaze": dict(counts),
                 "expression": dict(self.expr[pid]),
                 "actions": dict(self.actions[pid]),
