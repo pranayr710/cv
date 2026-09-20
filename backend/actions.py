@@ -252,6 +252,49 @@ def _object_in_hands(posture, person_bbox, obj_bbox) -> bool:
     return _overlaps(person_bbox, obj_bbox, "lap")
 
 
+
+#: Largest an object may be, as a multiple of the student's face height, and
+#: still be a handheld device rather than a laptop.
+#:
+#: YOLO confuses the two on a held phone: a phone raised toward the camera is a
+#: large bright rectangle, and COCO's cell-phone examples are mostly portrait
+#: phones at arm's length. The consequence is not cosmetic -- on_phone is
+#: off-task and on_laptop is on-task, so the misread flips the verdict.
+#:
+#: Size settles it, but only against the right reference. Measured over the
+#: 60-clip run, as a fraction of PERSON height, phones run to 0.26 at the 90th
+#: percentile and laptops start at 0.31 -- separable, but useless on a webcam,
+#: where a student sits close and a held phone occupies far more of them.
+#: Against FACE height the same objects give:
+#:
+#:     cell phone   median 0.7x   90th 1.2x
+#:     laptop       median 2.8x   10th 1.6x
+#:     book         median 1.6x
+#:
+#: which holds at any distance, because the face and the object shrink
+#: together. 1.4 sits in the gap between the two.
+HANDHELD_MAX_FACE_MULTIPLE: float = 1.4
+
+
+def _looks_handheld(obj_bbox, face_bbox) -> bool | None:
+    """Is this object phone-sized for this student's face?
+
+    Args:
+        obj_bbox: The detected object's box.
+        face_bbox: The student's face box, or ``None`` when no face was read.
+
+    Returns:
+        ``True`` when the object is small enough to be a handheld device,
+        ``False`` when it is too large, and ``None`` when there is no face to
+        measure against -- in which case the detector's own class stands,
+        because guessing without the reference would be worse than trusting it.
+    """
+    if not face_bbox or len(face_bbox) < 4 or not face_bbox[3]:
+        return None
+    longest = max(obj_bbox[2], obj_bbox[3])
+    return longest <= face_bbox[3] * HANDHELD_MAX_FACE_MULTIPLE
+
+
 def mouth_open_ratio(landmarks) -> float | None:
     """Vertical mouth opening over mouth width, from Face Mesh landmarks.
 
@@ -354,6 +397,7 @@ def classify(
     landmarks=None,
     oriented: bool | None = None,
     eyes_closed_ms: int | None = None,
+    face_bbox=None,
 ) -> Action:
     """Decide what one student is doing this frame.
 
@@ -433,6 +477,19 @@ def classify(
         return Action("studying", "book overlap, hands not visible", False, "book")
 
     if "laptop" in near_any:
+        # A phone held up reads as a laptop to the detector often enough to
+        # matter, and the two land on opposite sides of on-task. Measure it
+        # against the face before believing the class. See
+        # HANDHELD_MAX_FACE_MULTIPLE.
+        laptop_box = next((o.get("bbox") for o in (objects or ())
+                           if o.get("cls") == "laptop" and o.get("bbox")
+                           and _overlaps(person_bbox, o["bbox"])), None)
+        handheld = (_looks_handheld(laptop_box, face_bbox)
+                    if laptop_box else None)
+        if handheld and _object_in_hands(posture, person_bbox, laptop_box):
+            return Action("on_phone",
+                          "device in hand, phone-sized against the face",
+                          False, "cell phone", "inferred")
         return Action("on_laptop", "laptop overlap", False, "laptop")
 
     ratio = mouth_open_ratio(landmarks)
@@ -568,6 +625,7 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
             config,
             posture=person.get("posture") or feat.get("posture"),
             landmarks=face.get("landmarks"),
+            face_bbox=face.get("bbox"),
             # Set by backend.scene_layout.annotate, which must run first. When
             # present it replaces the camera-relative gaze test entirely.
             oriented=feat.get("oriented"),

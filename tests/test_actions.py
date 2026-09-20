@@ -302,3 +302,57 @@ class TestOnTaskPercentage:
         from backend.student_profile import _on_task_pct
 
         assert _on_task_pct(["unknown", None]) is None
+
+
+def test_phone_sized_device_in_hands_is_not_a_laptop():
+    """A held phone reads as a laptop to the detector often enough to matter.
+
+    on_phone is off-task and on_laptop is on-task, so the misread flips the
+    verdict rather than merely mislabelling the object.
+    """
+    from backend.actions import classify
+
+    posture = {"left_wrist": [200, 300], "right_wrist": [260, 300]}
+    objects = [{"cls": "laptop", "bbox": [190, 270, 100, 60], "confidence": 0.6}]
+    action = classify((80, 80, 300, 500), objects, None, None, None,
+                      posture=posture, face_bbox=[100, 100, 60, 80])
+    assert action.label == "on phone"
+    assert action.confidence == "inferred"
+
+
+def test_a_real_laptop_stays_a_laptop():
+    """The size test must not reclassify anything genuinely laptop-sized."""
+    from backend.actions import classify
+
+    posture = {"left_wrist": [200, 300], "right_wrist": [260, 300]}
+    objects = [{"cls": "laptop", "bbox": [150, 300, 260, 170], "confidence": 0.6}]
+    action = classify((80, 80, 300, 500), objects, None, None, None,
+                      posture=posture, face_bbox=[100, 100, 60, 80])
+    assert action.label == "on laptop"
+
+
+def test_without_a_face_the_detector_class_stands():
+    """No reference to measure against means no second-guessing.
+
+    Guessing the size without the face would be worse than trusting the class,
+    because the whole test depends on a reference that shrinks with distance
+    exactly as the object does.
+    """
+    from backend.actions import classify
+
+    posture = {"left_wrist": [200, 300], "right_wrist": [260, 300]}
+    objects = [{"cls": "laptop", "bbox": [190, 270, 100, 60], "confidence": 0.6}]
+    action = classify((80, 80, 300, 500), objects, None, None, None,
+                      posture=posture, face_bbox=None)
+    assert action.label == "on laptop"
+
+
+def test_a_phone_sized_object_not_in_hands_is_left_alone():
+    """A small laptop-classed object on a desk is not someone using a phone."""
+    from backend.actions import classify
+
+    objects = [{"cls": "laptop", "bbox": [190, 270, 100, 60], "confidence": 0.6}]
+    action = classify((80, 80, 300, 500), objects, None, None, None,
+                      posture={"left_wrist": [400, 700]},
+                      face_bbox=[100, 100, 60, 80])
+    assert action.label == "on laptop"
