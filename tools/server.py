@@ -117,6 +117,10 @@ class Session:
         import cv2
 
         from backend.actions import annotate_graph
+        from backend.attention_score import (
+            AttentionScorer,
+            annotate_attention,
+        )
         from backend.face import FaceAnalyzer
         from backend.integrate import (
             _assemble_frame,
@@ -149,6 +153,14 @@ class Session:
         # most needs to keep following them.
         tracker = _build_person_tracker(self.config)
         temporal = TemporalTracker(self.config)
+        # One scorer per session: it carries each student's rolling
+        # window across frames, so it cannot be rebuilt per frame.
+        scorer = AttentionScorer()
+        if not scorer.available:
+            logger.warning(
+                "no trained attention model found; scores will be "
+                "absent and the rule verdict is the only answer. "
+                "Train one with tools/train_window_model.py.")
         names = {p.person_id: p.name for p in self.gallery.people}
         floor = self.config.identity.min_face_score_for_identity
 
@@ -207,14 +219,19 @@ class Session:
                         [None] * len(persons), track_ids,
                         person_ids, objects,
                     )
-                    # Layout first: actions read `oriented` from it.
-                    graph = annotate_graph(
-                        annotate_layout(
-                            temporal.update_frame(
-                                generate_scene_graph(record, self.config)),
-                            record,
+                    # Layout first: actions read `oriented` from it. Attention
+                    # last: its window features are built from everything the
+                    # earlier stages produce.
+                    graph = annotate_attention(
+                        annotate_graph(
+                            annotate_layout(
+                                temporal.update_frame(
+                                    generate_scene_graph(record, self.config)),
+                                record,
+                            ),
+                            record, self.config,
                         ),
-                        record, self.config,
+                        scorer,
                     )
                     frames_file.write(json.dumps(record) + "\n")
                     graph_file.write(json.dumps(graph) + "\n")

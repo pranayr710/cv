@@ -225,6 +225,7 @@ def run(args) -> int:
     import cv2
 
     from backend.actions import annotate_graph
+    from backend.attention_score import AttentionScorer, annotate_attention
     from backend.config import CONFIG
     from backend.enrollment import EnrolledGallery
     from backend.identity import TwoPassIdentityResolver
@@ -396,6 +397,9 @@ def run(args) -> int:
 
     # ---- pass 2: final ids, scene graph, actions --------------------------
     temporal = TemporalTracker(config)
+    # One scorer for the whole session: it carries each student's
+    # rolling window across frames.
+    scorer = AttentionScorer()
     graph_path = out / "live_graph.jsonl"
     raw_path = out / "raw.jsonl"
     with (keyed_path.open(encoding="utf-8") as source,
@@ -410,11 +414,16 @@ def run(args) -> int:
             raws.write(json.dumps(record) + "\n")
             # Layout first: actions read `oriented` from it to decide
             # looking_away without a camera-relative gaze constant.
-            graph = annotate_graph(
-                annotate_layout(
-                    temporal.update_frame(generate_scene_graph(record, config)),
-                    record),
-                record, config)
+            # Attention last: its window features are built from what every
+            # earlier stage produces.
+            graph = annotate_attention(
+                annotate_graph(
+                    annotate_layout(
+                        temporal.update_frame(
+                            generate_scene_graph(record, config)),
+                        record),
+                    record, config),
+                scorer)
             graphs.write(json.dumps(graph) + "\n")
     keyed_path.unlink(missing_ok=True)
 

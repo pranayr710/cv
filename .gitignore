@@ -42,3 +42,4 @@ labeling/images/_duplicates/
 labeling/images/calibration/*.jpg
 outputs/engagement_features.npz
 outputs/image_engagement_scores.csv
+labeling/to_label_next.json
