@@ -47,9 +47,19 @@ SAMPLE = 10
 #: keeps the sequence visibly continuous rather than a slideshow.
 FRAME_STRIDE = 3
 
-#: Resize each crop so its longer side is at most this many pixels. Chosen to
-#: stay legible for judging posture/phone/book while keeping each JPEG small.
-MAX_LONG_SIDE = 320
+#: Resize each crop so its longer side is at most this many pixels. Raised from
+#: 320 along with the wider context crop: the same pixel budget now has to cover
+#: the neighbours and the desk, not just the one student.
+MAX_LONG_SIDE = 420
+
+#: How far past the student's own box to include, as a fraction of the box.
+#: Generous on purpose -- whether someone is on task depends on what is in
+#: front of them, and a crop tight to the shoulders hides the desk entirely.
+CONTEXT_PAD = 0.75
+
+#: How much to darken everything outside the student's box. Enough that the
+#: subject is unmistakable, not so much that the context stops being readable.
+CONTEXT_DIM = 0.45
 
 JPEG_QUALITY = 78
 
@@ -89,13 +99,38 @@ def load_boxes() -> dict[tuple[int, int], tuple[int, int, int, int]]:
 
 
 def save_crop(frame, bbox, dest: Path) -> bool:
+    """Write one crop with the student being judged made unambiguous.
+
+    The first version of this padded the box by 22% and wrote the result
+    straight out. In a packed classroom that produced crops holding three or
+    four students with nothing to say which one the label was about, so the
+    windows could not be labelled at all.
+
+    Two changes fix it. The crop is widened so the desk and neighbours are
+    visible as context -- engagement is partly a question of what is in front
+    of the person -- and everything outside the student's own box is darkened
+    with a bright outline drawn on it, so the subject is obvious at a glance
+    while the surroundings stay readable.
+    """
     x, y, w, h = bbox
-    pad = int(max(w, h) * 0.22)
+    pad = int(max(w, h) * CONTEXT_PAD)
     H, W = frame.shape[:2]
-    crop = frame[max(0, y - pad):min(H, y + h + pad),
-                 max(0, x - pad):min(W, x + w + pad)]
+    x0, y0 = max(0, x - pad), max(0, y - pad)
+    x1, y1 = min(W, x + w + pad), min(H, y + h + pad)
+    crop = frame[y0:y1, x0:x1]
     if crop.size == 0:
         return False
+    crop = crop.copy()
+
+    # Dim the context, then restore the subject at full brightness.
+    tx0, ty0 = x - x0, y - y0
+    tx1, ty1 = tx0 + w, ty0 + h
+    subject = crop[max(0, ty0):ty1, max(0, tx0):tx1].copy()
+    crop = (crop * CONTEXT_DIM).astype("uint8")
+    if subject.size:
+        crop[max(0, ty0):ty1, max(0, tx0):tx1] = subject
+    cv2.rectangle(crop, (tx0, ty0), (tx1, ty1), (90, 230, 90), 2)
+
     scale = MAX_LONG_SIDE / max(crop.shape[:2])
     if scale < 1.0:
         crop = cv2.resize(crop, None, fx=scale, fy=scale)
