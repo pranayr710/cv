@@ -114,6 +114,11 @@ def _people_in(record: dict) -> tuple[list[dict], bool]:
             "engagement": features.get("engagement"),
             "eyes_closed": features.get("eyes_closed"),
             "rolling_engagement_pct": features.get("rolling_engagement_pct"),
+            # The learned attention score, from
+            # backend/attention_score.py. Carried, never recomputed.
+            "attention_score": features.get("attention_score"),
+            "attention_label": features.get("attention_label"),
+            "attention_source": features.get("attention_source"),
             "is_sustained_distracted": features.get("is_sustained_distracted"),
             "is_eyes_closed_sustained": features.get("is_eyes_closed_sustained"),
             "is_poster": features.get("is_poster"),
@@ -385,6 +390,7 @@ def build_profiles(
     # this module only ever read Stage 1.
     gaze_labels: dict[int, list[str | None]] = defaultdict(list)
     action_labels: dict[int, list[str | None]] = defaultdict(list)
+    attention_scores: dict[int, list[int]] = defaultdict(list)
     action_times: dict[int, list[int]] = defaultdict(list)
     scene_frames: dict[object, set] = defaultdict(set)
     scene_of: dict[int, object] = {}
@@ -448,6 +454,9 @@ def build_profiles(
                 behaviour_label = behaviour["label"] if behaviour else None
                 gaze_labels[person_id].append(gaze_label)
                 action_labels[person_id].append(person.get("action"))
+                score = person.get("attention_score")
+                if score is not None:
+                    attention_scores[person_id].append(int(score))
                 action_times[person_id].append(record.get("timestamp_ms", 0))
                 scene = record.get("scene")
                 scene_frames[scene].add(record.get("frame_id"))
@@ -620,6 +629,16 @@ def build_profiles(
             # One is about what a student did, the other about where they
             # faced; averaging them would hide which evidence a score rests on.
             "engagement_pct": _engagement_pct(oriented_flags[person_id]),
+            # The learned score, kept as its own field rather than folded into
+            # on_task_pct. They answer different questions and disagree: the
+            # rule behind on_task_pct matched a human on 45% of 179 labelled
+            # windows against the model's 63%, and averaging them would hide
+            # which one a reader is looking at.
+            "attention_score": (
+                round(sum(attention_scores[person_id])
+                      / len(attention_scores[person_id]))
+                if attention_scores[person_id] else None),
+            "attention_windows": len(attention_scores[person_id]),
             "layout": (Counter(layout_kinds[person_id]).most_common(1)[0][0]
                        if layout_kinds[person_id] else None),
             "posture": _summarise_posture(posture_samples[person_id]),

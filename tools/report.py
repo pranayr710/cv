@@ -477,6 +477,11 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
     label = {p["person_id"]: names.get(p["person_id"], f"Student {p['person_id']}")
              for p in students}
     on_task = {p["person_id"]: p.get("on_task_pct") for p in students}
+    # The learned score, shown beside the rule-derived figures
+    # rather than instead of them: they disagree, and which one a
+    # reader is looking at should never be ambiguous.
+    attention = {p["person_id"]: p.get("attention_score")
+                 for p in students}
     engaged = {p["person_id"]: p.get("engagement_pct") for p in students}
     order = sorted((p["person_id"] for p in students),
                    key=lambda pid: (on_task.get(pid) is None, on_task.get(pid, 0)))
@@ -493,8 +498,10 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
       <header><h3>{label[pid]}</h3>
         <span class="id">#{pid} · {p["frames_seen"]} frames</span></header>
       <div class="pair">
+        <div><b>{"—" if attention[pid] is None else f"{attention[pid]}/10"}</b>
+             <small>attention &middot; model</small></div>
         <div><b>{"—" if on_task[pid] is None else f"{on_task[pid]:.0f}%"}</b>
-             <small>on task</small></div>
+             <small>on task &middot; rules</small></div>
         <div><b>{"—" if engaged[pid] is None else f"{engaged[pid]:.0f}%"}</b>
              <small>facing room</small></div>
       </div>
@@ -503,6 +510,7 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
         <dt>Most of the time</dt><dd>{top or "—"}</dd>
         <dt>Expression</dt><dd>{_stack_expr(p["expression"]["counts"])}</dd>
         <dt>Posture</dt><dd>{posture_label(lean)}</dd>
+        <dt>Attention from</dt><dd>{p.get('attention_windows', 0)} scored windows</dd>
       </dl>
       <div class="tghead">How they moved between actions</div>
       {_transitions_svg(pid, transitions)}
