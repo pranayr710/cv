@@ -38,7 +38,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from backend.engagement_features import FEATURE_NAMES
-from backend.engagement_model import EngagementModel
+from backend.engagement_model import EngagementModel, MLPEngagementModel
 
 LABELS = Path("labeling/labels.json")
 REPORT = Path("outputs/window_model_report.json")
@@ -100,10 +100,16 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--min-labels", type=int, default=60,
                     help="refuse to train below this many usable labels")
+    ap.add_argument("--model", choices=("logistic", "mlp"), default="mlp",
+                    help="mlp measured better on 179 labels (0.632 vs 0.588, "
+                         "and half the fold spread); logistic gives an exact "
+                         "rather than approximate explanation. Re-check with "
+                         "tools/compare_classifiers.py as labels accumulate.")
     args = ap.parse_args()
 
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import GroupKFold
+    from sklearn.neural_network import MLPClassifier
     from sklearn.preprocessing import StandardScaler
 
     try:
@@ -122,15 +128,26 @@ def main() -> int:
         print("\n  too few distinct students to split by student.")
         return 1
 
+    def make(scaler, xs, ys):
+        """Fit the chosen estimator and wrap it in the shipping artifact."""
+        if args.model == "mlp":
+            net = MLPClassifier(hidden_layer_sizes=(16,), max_iter=3000,
+                                random_state=args.seed)
+            net.fit(scaler.transform(xs), ys)
+            return MLPEngagementModel(
+                net.coefs_[0], net.intercepts_[0], net.coefs_[1],
+                net.intercepts_[1], list(FEATURE_NAMES), scaler.mean_,
+                scaler.scale_)
+        clf = LogisticRegression(max_iter=2000, C=1.0)
+        clf.fit(scaler.transform(xs), ys)
+        return EngagementModel(clf.coef_[0], float(clf.intercept_[0]),
+                               list(FEATURE_NAMES), scaler.mean_,
+                               scaler.scale_)
+
     n_folds = min(5, len(set(groups)))
     oof: list[str | None] = [None] * len(y)
     for tr, te in GroupKFold(n_splits=n_folds).split(x, y, groups):
-        scaler = StandardScaler().fit(x[tr])
-        clf = LogisticRegression(max_iter=2000, C=1.0)
-        clf.fit(scaler.transform(x[tr]), y[tr])
-        model = EngagementModel(clf.coef_[0], float(clf.intercept_[0]),
-                                list(FEATURE_NAMES), scaler.mean_,
-                                scaler.scale_)
+        model = make(StandardScaler().fit(x[tr]), x[tr], y[tr])
         for i in te:
             oof[i] = model.classify(x[i]).label
 
@@ -148,14 +165,12 @@ def main() -> int:
     print(f"\n  better on this evidence: {verdict}")
 
     # Final fit on everything, for the model that would actually ship.
-    scaler = StandardScaler().fit(x)
-    clf = LogisticRegression(max_iter=2000, C=1.0).fit(scaler.transform(x), y)
-    final = EngagementModel(clf.coef_[0], float(clf.intercept_[0]),
-                            list(FEATURE_NAMES), scaler.mean_, scaler.scale_)
+    final = make(StandardScaler().fit(x), x, y)
     path = final.save()
-    print(f"  model written to {path}")
+    print(f"  model written to {path}  ({args.model})")
 
-    order = sorted(zip(FEATURE_NAMES, clf.coef_[0]), key=lambda kv: -abs(kv[1]))
+    order = sorted(zip(FEATURE_NAMES, final.coefficients),
+                   key=lambda kv: -abs(kv[1]))
     print("\n  what it leans on (standardised weights):")
     for name, weight in order[:8]:
         print(f"    {name:<24} {weight:+.3f}")
@@ -169,6 +184,7 @@ def main() -> int:
         "rule_baseline": rules,
         "learned_model": learned,
         "better": verdict,
+        "estimator": args.model,
         "weights": {n: round(float(w), 4) for n, w in order},
     }, indent=1), encoding="utf-8")
     print(f"\n  report: {REPORT}")
