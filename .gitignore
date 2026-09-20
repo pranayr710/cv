@@ -39,3 +39,4 @@ ppt_assets/
 # labels are hand-produced work that cannot be regenerated.
 labeling/images/
 labeling/images/_duplicates/
+labeling/images/calibration/*.jpg
