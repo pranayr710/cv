@@ -40,3 +40,4 @@ ppt_assets/
 labeling/images/
 labeling/images/_duplicates/
 labeling/images/calibration/*.jpg
+outputs/engagement_features.npz

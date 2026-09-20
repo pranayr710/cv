@@ -1,0 +1,2452 @@
+{
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_488.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_488.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_164.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_164.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_863.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_863.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_845.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_845.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_844.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_844.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_606.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_606.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_901.jpg": {
+  "score_5": 2,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_901.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_771.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_771.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_10.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_10.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_357.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_357.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_110.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_110.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_782.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_782.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_741.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_741.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_232.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_232.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_268.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_268.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_602.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_602.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_93.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_93.jpg"
+ },
+ "Disengagement__22-Above-Years__Boy__DISENG_22_ABOVE_BOY_587.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Boy/DISENG_22_ABOVE_BOY_587.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_476.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_476.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_378.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_378.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_654.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_654.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_653.jpg": {
+  "score_5": 5,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_653.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_427.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_427.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_851.jpg": {
+  "score_5": 2,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_851.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_978.jpg": {
+  "score_5": 1,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_978.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_798.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_798.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_670.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_670.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_155.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_155.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_162.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_162.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_428.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_428.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_974.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_974.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_853.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_853.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_82.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_82.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_14.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_14.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_834.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_834.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_255.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_255.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_286.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_286.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_319.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_319.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_337.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_337.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_24.jpg": {
+  "score_5": 1,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_24.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_191.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_191.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_358.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_358.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_133.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_133.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_60.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_60.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_648.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_648.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_510.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_510.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_726.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_726.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_86.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_86.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_729.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_729.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_882.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_882.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_278.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_278.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_679.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_679.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_11.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_11.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_986.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_986.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_363.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_363.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_878.jpg": {
+  "score_5": 1,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_878.jpg"
+ },
+ "Disengagement__22-Above-Years__Boy__DISENG_22_ABOVE_BOY_241.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Boy/DISENG_22_ABOVE_BOY_241.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_875.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_875.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_919.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_919.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_413.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_413.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_863.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_863.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_533.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_533.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_65.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_65.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_398.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_398.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_366.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_366.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_868.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_868.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_63.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_63.jpg"
+ },
+ "Disengagement__22-Above-Years__Boy__DISENG_22_ABOVE_BOY_227.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Boy/DISENG_22_ABOVE_BOY_227.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_46.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_46.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_661.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_661.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_904.jpg": {
+  "score_5": 2,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_904.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_749.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_749.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_22.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_22.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_161.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_161.jpg"
+ },
+ "Engagement__16-21-Years__Boy__ENG_16_21_BOY_13.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Boy/ENG_16_21_BOY_13.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_484.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_484.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_800.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_800.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_887.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_887.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_629.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_629.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_752.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_752.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_905.jpg": {
+  "score_5": 2,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_905.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_641.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_641.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_407.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_407.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_180.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_180.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_711.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_711.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_131.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_131.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_893.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_893.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_943.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_943.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_749.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_749.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_14.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_14.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_582.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_582.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_429.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_429.jpg"
+ },
+ "Disengagement__16-21-Years__Boy__DISENG_16_21_BOY_414.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Boy/DISENG_16_21_BOY_414.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_95.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_95.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_245.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_245.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_297.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_297.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_222.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_222.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_800.jpg": {
+  "score_5": 1,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_800.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_692.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_692.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_532.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_532.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_742.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_742.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_998.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_998.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_191.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_191.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_90.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_90.jpg"
+ },
+ "Engagement__22-Above-Years__Boy__ENG_22_ABOVE_BOY_310.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Boy/ENG_22_ABOVE_BOY_310.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_579.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_579.jpg"
+ },
+ "Engagement__22-Above-Years__Boy__ENG_22_ABOVE_BOY_390.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Boy/ENG_22_ABOVE_BOY_390.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_753.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_753.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_749.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_749.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_615.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_615.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_321.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_321.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_112.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_112.jpg"
+ },
+ "Disengagement__16-21-Years__Boy__DISENG_16_21_BOY_763.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Boy/DISENG_16_21_BOY_763.jpg"
+ },
+ "Engagement__22-Above-Years__Boy__ENG_22_ABOVE_BOY_466.jpg": {
+  "score_5": 2,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Boy/ENG_22_ABOVE_BOY_466.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_724.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_724.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_758.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_758.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_724.jpg": {
+  "score_5": 5,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_724.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_385.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_385.jpg"
+ },
+ "Engagement__16-21-Years__Boy__ENG_16_21_BOY_730.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Boy/ENG_16_21_BOY_730.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_669.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_669.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_57.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_57.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_135.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_135.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_166.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_166.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_182.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_182.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_348.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_348.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_69.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_69.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_949.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_949.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_68.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_68.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_272.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_272.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_359.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_359.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_682.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_682.jpg"
+ },
+ "Engagement__16-21-Years__Boy__ENG_16_21_BOY_822.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Boy/ENG_16_21_BOY_822.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_83.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_83.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_315.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_315.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_547.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_547.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_440.jpg": {
+  "score_5": 2,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_440.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_870.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_870.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_760.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_760.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_994.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_994.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_30.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_30.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_403.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_403.jpg"
+ },
+ "Engagement__22-Above-Years__Boy__ENG_22_ABOVE_BOY_391.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Boy/ENG_22_ABOVE_BOY_391.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_948.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_948.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_922.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_922.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_22.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_22.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_339.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_339.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_338.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_338.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_154.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_154.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_697.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_697.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_525.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_525.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_245.jpg": {
+  "score_5": 2,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_245.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_513.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_513.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_663.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_663.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_881.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_881.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_870.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_870.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_384.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_384.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_926.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_926.jpg"
+ },
+ "Disengagement__22-Above-Years__Boy__DISENG_22_ABOVE_BOY_847.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Boy/DISENG_22_ABOVE_BOY_847.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_212.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_212.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_320.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_320.jpg"
+ },
+ "Engagement__16-21-Years__Boy__ENG_16_21_BOY_288.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Boy/ENG_16_21_BOY_288.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_795.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_795.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_233.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_233.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_686.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_686.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_208.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_208.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_471.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_471.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_707.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_707.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_689.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_689.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_604.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_604.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_971.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_971.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_944.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_944.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_329.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_329.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_660.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_660.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_390.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_390.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_236.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_236.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_384.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_384.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_469.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_469.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_118.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_118.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_622.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_622.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_424.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_424.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_508.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_508.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_658.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_658.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_542.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_542.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_681.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_681.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_773.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_773.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_376.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_376.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_275.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_275.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_64.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_64.jpg"
+ },
+ "Disengagement__16-21-Years__Boy__DISENG_16_21_BOY_937.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Boy/DISENG_16_21_BOY_937.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_78.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_78.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_773.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_773.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_904.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_904.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_703.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_703.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_453.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_453.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_544.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_544.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_329.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_329.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_52.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_52.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_404.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_404.jpg"
+ },
+ "Engagement__16-21-Years__Boy__ENG_16_21_BOY_255.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Boy/ENG_16_21_BOY_255.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_798.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_798.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_212.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_212.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_991.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_991.jpg"
+ },
+ "Disengagement__16-21-Years__Boy__DISENG_16_21_BOY_823.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Boy/DISENG_16_21_BOY_823.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_491.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_491.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_886.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_886.jpg"
+ },
+ "Engagement__22-Above-Years__Boy__ENG_22_ABOVE_BOY_721.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Boy/ENG_22_ABOVE_BOY_721.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_122.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_122.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_538.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_538.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_563.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_563.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_552.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_552.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_592.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_592.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_406.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_406.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_459.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_459.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_632.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_632.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_646.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_646.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_19.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_19.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_64.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_64.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_649.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_649.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_265.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_265.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_422.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_422.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_109.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_109.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_456.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_456.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_537.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_537.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_273.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_273.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_835.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_835.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_431.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_431.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_937.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_937.jpg"
+ },
+ "Disengagement__22-Above-Years__Boy__DISENG_22_ABOVE_BOY_782.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Boy/DISENG_22_ABOVE_BOY_782.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_654.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_654.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_938.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_938.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_865.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_865.jpg"
+ },
+ "Disengagement__22-Above-Years__Boy__DISENG_22_ABOVE_BOY_93.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Boy/DISENG_22_ABOVE_BOY_93.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_856.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_856.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_128.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_128.jpg"
+ },
+ "Engagement__16-21-Years__Boy__ENG_16_21_BOY_185.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Boy/ENG_16_21_BOY_185.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_719.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_719.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_319.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_319.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_186.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_186.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_928.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_928.jpg"
+ },
+ "Engagement__22-Above-Years__Boy__ENG_22_ABOVE_BOY_204.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Boy/ENG_22_ABOVE_BOY_204.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_709.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_709.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_862.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_862.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_597.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_597.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_26.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_26.jpg"
+ },
+ "Engagement__22-Above-Years__Boy__ENG_22_ABOVE_BOY_934.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Boy/ENG_22_ABOVE_BOY_934.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_300.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_300.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_906.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_906.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_182.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_182.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_402.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_402.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_886.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_886.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_820.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_820.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_303.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_303.jpg"
+ },
+ "Disengagement__16-21-Years__Boy__DISENG_16_21_BOY_930.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Boy/DISENG_16_21_BOY_930.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_621.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_621.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_270.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_270.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_170.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_170.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_847.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_847.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_10.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_10.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_628.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_628.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_205.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_205.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_352.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_352.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_91.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_91.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_354.jpg": {
+  "score_5": 5,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_354.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_711.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_711.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_427.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_427.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_636.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_636.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_204.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_204.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_614.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_614.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_830.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_830.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_663.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_663.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_174.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_174.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_172.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_172.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_537.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_537.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_813.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_813.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_486.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_486.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_58.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_58.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_850.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_850.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_835.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_835.jpg"
+ },
+ "Disengagement__22-Above-Years__Boy__DISENG_22_ABOVE_BOY_876.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Boy/DISENG_22_ABOVE_BOY_876.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_726.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_726.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_404.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_404.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_204.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_204.jpg"
+ },
+ "Engagement__16-21-Years__Boy__ENG_16_21_BOY_929.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Boy/ENG_16_21_BOY_929.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_447.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_447.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_735.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_735.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_440.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_440.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_480.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_480.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_456.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_456.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_745.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_745.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_987.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_987.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_935.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_935.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_3.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_3.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_546.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_546.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_597.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_597.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_156.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_156.jpg"
+ },
+ "Disengagement__16-21-Years__Boy__DISENG_16_21_BOY_884.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Boy/DISENG_16_21_BOY_884.jpg"
+ },
+ "Engagement__11-15-Years__Boy__ENG_11_15_BOY_407.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Boy/ENG_11_15_BOY_407.jpg"
+ },
+ "Engagement__22-Above-Years__Boy__ENG_22_ABOVE_BOY_550.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Boy/ENG_22_ABOVE_BOY_550.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_960.jpg": {
+  "score_5": 5,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_960.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_797.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_797.jpg"
+ },
+ "Disengagement__16-21-Years__Boy__DISENG_16_21_BOY_490.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Boy/DISENG_16_21_BOY_490.jpg"
+ },
+ "Engagement__16-21-Years__Boy__ENG_16_21_BOY_40.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Boy/ENG_16_21_BOY_40.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_743.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_743.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_945.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_945.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_166.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_166.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_684.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_684.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_570.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_570.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_39.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_39.jpg"
+ },
+ "Disengagement__22-Above-Years__Boy__DISENG_22_ABOVE_BOY_27.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Boy/DISENG_22_ABOVE_BOY_27.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_728.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_728.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_923.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_923.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_85.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_85.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_642.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_642.jpg"
+ },
+ "Disengagement__16-21-Years__Boy__DISENG_16_21_BOY_2.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Boy/DISENG_16_21_BOY_2.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_75.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_75.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_499.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_499.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_920.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_920.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_127.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_127.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_789.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_789.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_172.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_172.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_363.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_363.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_453.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_453.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_351.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_351.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_272.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_272.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_962.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_962.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_989.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_989.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_892.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_892.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_927.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_927.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_699.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_699.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_567.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_567.jpg"
+ },
+ "Disengagement__22-Above-Years__Girl__DISENG_22_ABOVE_GIRL_367.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/22-Above Years/Girl/DISENG_22_ABOVE_GIRL_367.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_685.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_685.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_227.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_227.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_451.jpg": {
+  "score_5": 2,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_451.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_485.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_485.jpg"
+ },
+ "Disengagement__5-10-Years__Girl__DISENG_5_10_Girl_744.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Girl/DISENG_5_10_Girl_744.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_608.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_608.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_920.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_920.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_877.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_877.jpg"
+ },
+ "Engagement__5-10-Years__Boy__ENG_5_10_BOY_719.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Boy/ENG_5_10_BOY_719.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_704.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_704.jpg"
+ },
+ "Engagement__16-21-Years__Girl__ENG_16_21_GIRL_134.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/16-21 Years/Girl/ENG_16_21_GIRL_134.jpg"
+ },
+ "Engagement__22-Above-Years__Girl__ENG_22_ABOVE_GIRL_505.jpg": {
+  "score_5": 5,
+  "folder_label": "Engagement",
+  "age_band": "22-Above Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/22-Above Years/Girl/ENG_22_ABOVE_GIRL_505.jpg"
+ },
+ "Engagement__5-10-Years__Girl__ENG_5_10_GIRL_81.jpg": {
+  "score_5": 3,
+  "folder_label": "Engagement",
+  "age_band": "5-10 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/5-10 Years/Girl/ENG_5_10_GIRL_81.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_31.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_31.jpg"
+ },
+ "Disengagement__5-10-Years__Boy__DISENT_5_10_BOY_218.jpg": {
+  "score_5": 1,
+  "folder_label": "Disengagement",
+  "age_band": "5-10 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/5-10 Years/Boy/DISENT_5_10_BOY_218.jpg"
+ },
+ "Disengagement__11-15-Years__Girl__DISENG_11_15_GIRL_59.jpg": {
+  "score_5": 2,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Girl/DISENG_11_15_GIRL_59.jpg"
+ },
+ "Engagement__11-15-Years__Girl__ENG_11_15_GIRL_269.jpg": {
+  "score_5": 4,
+  "folder_label": "Engagement",
+  "age_band": "11-15 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Engagement/11-15 Years/Girl/ENG_11_15_GIRL_269.jpg"
+ },
+ "Disengagement__16-21-Years__Girl__DISENG_16_21_GIRL_978.jpg": {
+  "score_5": 3,
+  "folder_label": "Disengagement",
+  "age_band": "16-21 Years",
+  "gender": "Girl",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/16-21 Years/Girl/DISENG_16_21_GIRL_978.jpg"
+ },
+ "Disengagement__11-15-Years__Boy__DISENG_11_15_BOY_226.jpg": {
+  "score_5": 4,
+  "folder_label": "Disengagement",
+  "age_band": "11-15 Years",
+  "gender": "Boy",
+  "source": "labeling/images/Final Dataset 256/Final Dataset 256/Disengagement/11-15 Years/Boy/DISENG_11_15_BOY_226.jpg"
+ }
+}
