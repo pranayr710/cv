@@ -38,3 +38,4 @@ ppt_assets/
 # manifest and the labels themselves ARE tracked -- they are small, and the
 # labels are hand-produced work that cannot be regenerated.
 labeling/images/
+labeling/images/_duplicates/
