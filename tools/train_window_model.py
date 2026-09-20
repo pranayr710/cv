@@ -28,9 +28,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
+
+# Running this file directly puts tools/ on the path, not the project root, so
+# `backend` would not import. Matches the bootstrap the other tools use.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from backend.engagement_features import FEATURE_NAMES
 from backend.engagement_model import EngagementModel
@@ -101,7 +106,12 @@ def main() -> int:
     from sklearn.model_selection import GroupKFold
     from sklearn.preprocessing import StandardScaler
 
-    x, y, groups, rule = load_labelled()
+    try:
+        x, y, groups, rule = load_labelled()
+    except (FileNotFoundError, ValueError) as exc:
+        # An expected state, not a crash: nothing has been labelled yet.
+        print(f"\n  {exc}")
+        return 1
     print(f"{len(y)} usable labels ({y.sum()} on, {len(y) - y.sum()} off) "
           f"across {len(set(groups))} students")
     if len(y) < args.min_labels:
