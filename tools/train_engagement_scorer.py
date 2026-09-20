@@ -12,9 +12,12 @@ So this does two separable things:
 2. Fit the map from its probability to a human 1-5 judgement, using the
    calibration set, and report how well the resulting score tracks a person.
 
-The calibration images are excluded from training. They are the only evidence
-that the score means anything, and a model scored on images it was fitted to
-would report a number about its own memory.
+The scored images both train and validate, via out-of-fold prediction. Holding
+350 hand-made labels out of training entirely wastes them; training on them and
+then calibrating on them reports a number about the model's memory of those
+exact pictures. Out-of-fold avoids both: for each fold the model trains on
+everything except that fold -- including the other 9/10 of the scored images --
+and is calibrated on the fold it never saw.
 
 Features come from an ImageNet-pretrained ResNet18 rather than from
 fine-tuning. With ~12,000 images of a task this subjective, a linear model on
@@ -178,6 +181,7 @@ def main() -> int:
     from sklearn.linear_model import LogisticRegression
     from sklearn.metrics import accuracy_score, roc_auc_score
     from sklearn.model_selection import (
+        GroupKFold,
         GroupShuffleSplit,
         train_test_split,
     )
@@ -246,8 +250,31 @@ def main() -> int:
             y_human.append(human[name]["score_5"])
     idx = np.array(idx)
     y_human = np.array(y_human, dtype=float)
-    p_calib = clf.predict_proba(features[idx])[:, 1]
     print(f"\n  calibration images with a human score: {len(idx)}")
+
+    # The scored images train too, without corrupting the number they justify.
+    #
+    # Holding them out entirely wastes 350 hand-made labels; training on them
+    # and then calibrating on them measures the model's memory of those exact
+    # pictures. Out-of-fold does both properly: for each fold the model trains
+    # on everything except that fold -- including the other 9/10 of the scored
+    # images -- and is calibrated on the fold it never saw. Every scored image
+    # contributes to training AND supplies one honest prediction.
+    #
+    # The folds respect the near-duplicate groups. Splitting the scored set at
+    # random would put copies of one picture in both halves and reproduce, at
+    # small scale, the leak that made the first result meaningless.
+    calib_groups = duplicate_groups([paths[i] for i in idx])
+    n_folds = min(5, len(set(calib_groups)))
+    p_calib = np.zeros(len(idx), dtype=float)
+    for tr, te in GroupKFold(n_splits=n_folds).split(idx, y_human,
+                                                     calib_groups):
+        x_fold = np.vstack([x_pool, features[idx[tr]]])
+        y_fold = np.concatenate([y_pool, labels[idx[tr]]])
+        model = LogisticRegression(max_iter=2000).fit(x_fold, y_fold)
+        p_calib[te] = model.predict_proba(features[idx[te]])[:, 1]
+    print(f"  out-of-fold over {n_folds} group-aware folds "
+          f"(+{len(idx)} images now training)")
 
     rho, pval = spearmanr(p_calib, y_human)
     print(f"  Spearman rho (probability vs human 1-5): {rho:.3f} "
