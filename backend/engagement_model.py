@@ -273,9 +273,24 @@ def load_or_none(path: Path | None = None) -> EngagementModel | None:
     because the rules are what ships today.
     """
     try:
-        return EngagementModel.load(path)
-    except (FileNotFoundError, KeyError, ValueError):
+        model = EngagementModel.load(path)
+    except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError):
         return None
+    # A model trained on a different feature set is worse than no model: the
+    # weights still apply, silently, to the wrong columns. This happened once
+    # -- n_frames was removed from the feature set and a stale artifact would
+    # have kept scoring against it -- so the check is enforced at load rather
+    # than left to the caller.
+    if model.feature_names != list(FEATURE_NAMES):
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "ignoring %s: trained on %d features %s, current set has %d. "
+            "Retrain with tools/train_window_model.py.",
+            path or DEFAULT_MODEL, len(model.feature_names),
+            "that differ from the current ones", len(FEATURE_NAMES))
+        return None
+    return model
 
 
 def feature_names_match() -> bool:

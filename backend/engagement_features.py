@@ -67,6 +67,14 @@ ON_TASK_ACTIONS = frozenset({
 #: The feature names, in the fixed order :func:`window_features` emits them.
 #: Named rather than positional because feature importances are only useful if
 #: the importance can be attached to a word.
+#:
+#: n_frames was removed after it broke the model on live webcam input. It was a
+#: raw count, so it scaled with frame rate: the batch pipeline samples at 3 fps
+#: and produced windows of about 41 frames, while a webcam session produced
+#: 130. Standardised against the training mean that is a shift of nearly 13
+#: standard deviations, on a feature carrying no information the model needed
+#: -- coverage already expresses how full a window is, normalised. Every
+#: student in a live session scored 1/10 because of it.
 FEATURE_NAMES: tuple[str, ...] = (
     "coverage",              # fraction of frames with any readable signal
     "frac_on_task_action",   # fraction of read frames whose action is on-task
@@ -83,7 +91,6 @@ FEATURE_NAMES: tuple[str, ...] = (
     "mean_vertical_lean",    # mean nose-to-shoulder offset, normalised
     "frac_expr_negative",    # fraction with a sad expression
     "frac_expr_uncertain",   # fraction where expression could not be read
-    "n_frames",              # window length in frames, for weighting
 )
 
 
@@ -210,7 +217,6 @@ def window_features(frames: Sequence[Mapping[str, Any]],
         mean_lean,
         _safe_div(neg, n),
         _safe_div(unc, n),
-        float(n),
     )
 
 

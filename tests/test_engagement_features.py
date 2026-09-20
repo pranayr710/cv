@@ -172,6 +172,31 @@ def test_window_carries_the_frame_ids_it_covers(tmp_path: Path):
     assert windows
     for w in windows:
         assert w.frame_ids, "a window with frames must name them"
-        # The count of frame ids is the same quantity the feature reports.
-        assert len(w.frame_ids) == int(w.features[FEATURE_NAMES.index("n_frames")])
         assert all(isinstance(f, int) for f in w.frame_ids)
+        # Coverage is how full the window is, so it must move with the frames
+        # actually present. n_frames used to be asserted here and was removed
+        # from the feature set: as a raw count it scaled with frame rate, and
+        # a webcam running faster than the batch pipeline pushed it thirteen
+        # standard deviations out and drove every live score to 1/10.
+        coverage = w.features[FEATURE_NAMES.index("coverage")]
+        # Slightly above 1.0 is legitimate: expected_frames is estimated from
+        # the frame rate, so a window can hold a frame or two more than
+        # predicted. What matters is that it stays near 1 rather than scaling
+        # with the rate the way a raw count would.
+        assert 0.0 < coverage <= 1.2
+
+
+def test_no_feature_is_a_raw_count():
+    """Every feature must be scale-free, or frame rate leaks into the model.
+
+    A raw count is not comparable between a 3 fps batch run and a live webcam,
+    and standardising one against the other's mean produces a value far outside
+    anything the model saw in training.
+    """
+    frames = [_frame(action="attentive")] * 40
+    few = window_features(frames[:10], expected_frames=10)
+    many = window_features(frames, expected_frames=40)
+    for i, name in enumerate(FEATURE_NAMES):
+        assert -200.0 <= few[i] <= 200.0, f"{name} looks unbounded"
+        assert -200.0 <= many[i] <= 200.0, f"{name} looks unbounded"
+    assert "n_frames" not in FEATURE_NAMES
