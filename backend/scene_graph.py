@@ -23,19 +23,33 @@ from backend.peer_interaction import (
 logger = logging.getLogger(__name__)
 
 
-def _phone_overlaps(person_bbox: list[float], objects: list[dict], cfg: Config) -> bool:
-    """Whether a phone-class object overlaps this student's box at all."""
+def _phone_overlaps(person_bbox: list[float], objects: list[dict], cfg: Config,
+                    posture: dict | None = None) -> bool:
+    """Whether this student is holding a phone-class object.
+
+    Formerly: whether such an object overlapped their box anywhere. A phone
+    lying on the desk in front of a student who is reading falls inside that
+    box, so anyone sitting near a phone was reported as using one. Measured
+    against 179 hand-labelled windows, that conflation was the single largest
+    source of disagreement with a human rater -- mean phone-frames ran 0.334 on
+    windows the rule got wrong against 0.003 on those it got right.
+
+    The hand test now lives in :func:`backend.actions._object_in_hands` and is
+    shared, because this check and the one in backend.actions had drifted into
+    two different answers to the same question, and fixing one left the other
+    wrong.
+    """
     if not cfg.engagement.use_object_fallback:
         return False
-    px, py, pw, ph = person_bbox
+    from backend.actions import _object_in_hands, _overlaps
+
     for obj in objects:
         if obj.get("cls") not in cfg.engagement.fallback_off_task_objects:
             continue
-        ox, oy, ow, oh = obj["bbox"]
-        if (
-            max(0.0, min(px + pw, ox + ow) - max(px, ox)) > 0
-            and max(0.0, min(py + ph, oy + oh) - max(py, oy)) > 0
-        ):
+        bbox = obj.get("bbox")
+        if not bbox or not _overlaps(tuple(person_bbox), tuple(bbox)):
+            continue
+        if _object_in_hands(posture, tuple(person_bbox), tuple(bbox)):
             return True
     return False
 
@@ -87,7 +101,8 @@ def generate_scene_graph(record: dict, config: Config | None = None) -> dict:
         eyes_closed = None
         if face and face.get("ear") is not None:
             eyes_closed = face["ear"] < cfg.face.ear_closed_threshold
-        phone_nearby = _phone_overlaps(person["bbox"], objects, cfg)
+        phone_nearby = _phone_overlaps(person["bbox"], objects, cfg,
+                                       person.get("posture"))
 
         engagement = classify_engagement(
             gaze_label,

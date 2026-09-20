@@ -187,6 +187,71 @@ def _overlaps(person_bbox, obj_bbox, region: str = "any") -> bool:
     return (ix * iy) / max(ow * oh, 1e-6) > 0.0
 
 
+
+#: How close a phone must come to a wrist, as a fraction of the person's height,
+#: before it counts as being held.
+#:
+#: The rule this replaces asked only whether the phone's box overlapped the
+#: student's box anywhere. A phone lying on the desk in front of a student who
+#: is reading falls inside that box, so the student was reported as being on
+#: their phone. Measured against 179 hand-labelled windows, that single
+#: conflation accounted for most of the rule's disagreement with a human: mean
+#: phone-frames were 0.334 on windows it got wrong against 0.003 on the ones it
+#: got right.
+#:
+#: Measured on the 60-clip run: phone-to-nearest-wrist distance has a median of
+#: 0.99 person-heights and a 10th percentile of 0.27, so most phone/student
+#: pairs are nowhere near each other and a generous radius mostly admits phones
+#: belonging to the desk rather than the hand. 0.30 still fired on 841 frames a
+#: human called on-task; 0.15 sits just below the 10th percentile.
+#:
+#: This cannot be made exact. A phone lying on a desk is genuinely close to a
+#: hand resting on the same desk, and no distance threshold separates holding
+#: from sitting beside. The rule is therefore tightened to the point where it
+#: errs toward missing a real phone rather than inventing one, and the learned
+#: model is left to weigh the signal rather than obey it.
+PHONE_AT_HAND: float = 0.15
+
+
+def _object_in_hands(posture, person_bbox, obj_bbox) -> bool:
+    """Whether an object sits close enough to a wrist to be held.
+
+    Falls back to the lower body when no wrist was read. That is weaker than a
+    wrist test but far stronger than the whole box: a phone on the desk in
+    front of a seated student is usually above their lap line, while a phone
+    in their hands is not.
+
+    Args:
+        posture: The student's posture dict, or ``None``.
+        person_bbox: ``(x, y, w, h)``.
+        obj_bbox: The object's box.
+
+    Returns:
+        ``True`` when the object is plausibly in this student's hands.
+    """
+    ox, oy, ow, oh = obj_bbox
+    centre = (ox + ow / 2.0, oy + oh / 2.0)
+
+    wrists = []
+    if posture:
+        for side in ("left_wrist", "right_wrist"):
+            wrist = posture.get(side)
+            if wrist:
+                wrists.append(wrist)
+
+    if wrists:
+        near = person_bbox[3] * PHONE_AT_HAND
+        for wrist in wrists:
+            dx = centre[0] - float(wrist[0])
+            dy = centre[1] - float(wrist[1])
+            if (dx * dx + dy * dy) ** 0.5 < near:
+                return True
+        return False
+
+    # No wrists read: require the lower body rather than anywhere in the box.
+    return _overlaps(person_bbox, obj_bbox, "lap")
+
+
 def mouth_open_ratio(landmarks) -> float | None:
     """Vertical mouth opening over mouth width, from Face Mesh landmarks.
 
@@ -329,8 +394,16 @@ def classify(
     if raised:
         return Action("raising_hand", why, False)
 
-    if "cell phone" in near_any:
-        return Action("on_phone", "cell phone overlap", True, "cell phone")
+    # A phone must be held, not merely present. See PHONE_AT_HAND: testing
+    # only for overlap with the student's box reported anyone with a phone on
+    # their desk as using it, which was the largest single source of
+    # disagreement between this rule and a human rater.
+    phone_box = next((o.get("bbox") for o in (objects or ())
+                      if o.get("cls") == "cell phone" and o.get("bbox")
+                      and _overlaps(person_bbox, o["bbox"])), None)
+    if phone_box is not None and _object_in_hands(posture, person_bbox,
+                                                  phone_box):
+        return Action("on_phone", "cell phone in hand", True, "cell phone")
 
     drink = near_head & DRINK_CLASSES
     if drink:
