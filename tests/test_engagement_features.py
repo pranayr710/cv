@@ -200,3 +200,73 @@ def test_no_feature_is_a_raw_count():
         assert -200.0 <= few[i] <= 200.0, f"{name} looks unbounded"
         assert -200.0 <= many[i] <= 200.0, f"{name} looks unbounded"
     assert "n_frames" not in FEATURE_NAMES
+
+
+class TestPeerContext:
+    """The room is context, and it was the largest gain found without labels."""
+
+    def test_peer_columns_are_zero_when_nobody_else_is_there(self):
+        """A student alone has no room to compare against.
+
+        Zero rather than an omitted column, so the vector length never varies
+        between a full classroom and a one-person webcam session.
+        """
+        from backend.engagement_features import PEER_FEATURE_NAMES, peer_features
+
+        assert peer_features([]) == (0.0,) * len(PEER_FEATURE_NAMES)
+
+    def test_peer_features_average_the_others(self):
+        from backend.engagement_features import (
+            BASE_FEATURE_NAMES,
+            PEER_COUNT_SCALE,
+            peer_features,
+        )
+
+        i_on = BASE_FEATURE_NAMES.index("frac_on_task_action")
+        a = [0.0] * len(BASE_FEATURE_NAMES)
+        b = [0.0] * len(BASE_FEATURE_NAMES)
+        a[i_on], b[i_on] = 1.0, 0.0
+        on, _gaze, count = peer_features([a, b])
+        assert on == pytest.approx(0.5)
+        assert count == pytest.approx(2 / PEER_COUNT_SCALE)
+
+    def test_peer_count_is_scaled_not_raw(self):
+        """A raw count would scale with class size.
+
+        That is the same defect n_frames had: a magnitude that depends on the
+        recording setup rather than on the student, which shifts far outside
+        the training range when the setup changes.
+        """
+        from backend.engagement_features import BASE_FEATURE_NAMES, peer_features
+
+        many = [[0.0] * len(BASE_FEATURE_NAMES) for _ in range(30)]
+        assert peer_features(many)[2] <= 5.0
+
+    def test_a_students_own_vector_is_not_in_its_peer_summary(self, tmp_path):
+        """Including yourself would make the feature partly a copy of another.
+
+        Two students in the same window would each carry a peer summary built
+        from the other plus themselves, and the column would stop measuring
+        the room.
+        """
+        from backend.engagement_features import FEATURE_NAMES, iter_windows
+
+        rows = []
+        for i in range(80):
+            rows.append(json.dumps({
+                "frame_id": i, "timestamp_ms": i * 333, "scene": 0,
+                "nodes": [
+                    {"person_id": 1, "features": _frame(action="attentive")},
+                    {"person_id": 2, "features": _frame(action="on_phone")},
+                ],
+            }))
+        path = tmp_path / "graph.jsonl"
+        path.write_text("\n".join(rows), encoding="utf-8")
+        windows = {w.person_id: w for w in iter_windows(path)}
+        assert set(windows) == {1, 2}
+
+        i_peer_on = FEATURE_NAMES.index("peer_frac_on_task")
+        # Student 1 is on task, so student 2's peer summary must say so, and
+        # vice versa. If each included itself the two would converge.
+        assert windows[2].features[i_peer_on] > 0.9
+        assert windows[1].features[i_peer_on] < 0.1

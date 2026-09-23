@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.engagement_features import (
+    BASE_FEATURE_NAMES,
     MIN_COVERAGE,
     STRIDE_MS,
     WINDOW_MS,
@@ -144,7 +145,8 @@ class AttentionScorer:
 
         start = state.frames[0][0]
         vector = window_features([f for _, f in state.frames],
-                                 self.expected_frames)
+                                 self.expected_frames,
+                                 self._peer_vectors(person_id, start))
         if vector[0] < MIN_COVERAGE:
             return None
 
@@ -174,6 +176,32 @@ class AttentionScorer:
             reason = f"{verdict.reason} ({self.model.explain(vector)})"
         return AttentionReading(person_id, score, probability, verdict.label,
                                 reason, start)
+
+    def _peer_vectors(self, person_id: int,
+                      start_ms: int) -> list[tuple[float, ...]]:
+        """Base vectors for the other students visible over the same span.
+
+        Built from the other students' live buffers rather than from their
+        last emitted window, because windows complete at different moments per
+        student and a stale neighbour would describe a different span than the
+        one being scored.
+
+        Only the base columns are taken. Including a peer's own peer columns
+        would make each student's score depend on a summary that already
+        contains them, which is circular.
+        """
+        peers: list[tuple[float, ...]] = []
+        for other, other_state in self._students.items():
+            if other == person_id or not other_state.frames:
+                continue
+            frames = [f for t, f in other_state.frames if t >= start_ms]
+            if not frames:
+                continue
+            base = window_features(frames, self.expected_frames)[
+                :len(BASE_FEATURE_NAMES)]
+            if base[0] >= MIN_COVERAGE:
+                peers.append(base)
+        return peers
 
     def session_score(self, person_id: int) -> int | None:
         """A student's attention over the whole session so far, 1-10.
