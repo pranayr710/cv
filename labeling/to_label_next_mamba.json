@@ -1,0 +1,362 @@
+[
+ {
+  "person_id": 25,
+  "start_ms": 503666,
+  "probability": 0.5014,
+  "margin": 0.0014
+ },
+ {
+  "person_id": 23,
+  "start_ms": 339333,
+  "probability": 0.4962,
+  "margin": 0.0038
+ },
+ {
+  "person_id": 24,
+  "start_ms": 538000,
+  "probability": 0.5078,
+  "margin": 0.0078
+ },
+ {
+  "person_id": 29,
+  "start_ms": 492000,
+  "probability": 0.4782,
+  "margin": 0.0218
+ },
+ {
+  "person_id": 2,
+  "start_ms": 52500,
+  "probability": 0.5346,
+  "margin": 0.0346
+ },
+ {
+  "person_id": 15,
+  "start_ms": 211166,
+  "probability": 0.4608,
+  "margin": 0.0392
+ },
+ {
+  "person_id": 18,
+  "start_ms": 126000,
+  "probability": 0.4596,
+  "margin": 0.0404
+ },
+ {
+  "person_id": 14,
+  "start_ms": 246000,
+  "probability": 0.5423,
+  "margin": 0.0423
+ },
+ {
+  "person_id": 26,
+  "start_ms": 361833,
+  "probability": 0.4473,
+  "margin": 0.0527
+ },
+ {
+  "person_id": 12,
+  "start_ms": 96666,
+  "probability": 0.5543,
+  "margin": 0.0543
+ },
+ {
+  "person_id": 7,
+  "start_ms": 75000,
+  "probability": 0.5577,
+  "margin": 0.0577
+ },
+ {
+  "person_id": 21,
+  "start_ms": 519333,
+  "probability": 0.5604,
+  "margin": 0.0604
+ },
+ {
+  "person_id": 14,
+  "start_ms": 96000,
+  "probability": 0.4393,
+  "margin": 0.0607
+ },
+ {
+  "person_id": 18,
+  "start_ms": 201000,
+  "probability": 0.5608,
+  "margin": 0.0608
+ },
+ {
+  "person_id": 9,
+  "start_ms": 133500,
+  "probability": 0.5627,
+  "margin": 0.0627
+ },
+ {
+  "person_id": 21,
+  "start_ms": 511833,
+  "probability": 0.5681,
+  "margin": 0.0681
+ },
+ {
+  "person_id": 20,
+  "start_ms": 361833,
+  "probability": 0.5714,
+  "margin": 0.0714
+ },
+ {
+  "person_id": 18,
+  "start_ms": 283500,
+  "probability": 0.5793,
+  "margin": 0.0793
+ },
+ {
+  "person_id": 23,
+  "start_ms": 399333,
+  "probability": 0.5799,
+  "margin": 0.0799
+ },
+ {
+  "person_id": 31,
+  "start_ms": 485500,
+  "probability": 0.5799,
+  "margin": 0.0799
+ },
+ {
+  "person_id": 26,
+  "start_ms": 369333,
+  "probability": 0.5819,
+  "margin": 0.0819
+ },
+ {
+  "person_id": 24,
+  "start_ms": 470500,
+  "probability": 0.4169,
+  "margin": 0.0831
+ },
+ {
+  "person_id": 15,
+  "start_ms": 218666,
+  "probability": 0.4061,
+  "margin": 0.0939
+ },
+ {
+  "person_id": 23,
+  "start_ms": 429333,
+  "probability": 0.5943,
+  "margin": 0.0943
+ },
+ {
+  "person_id": 18,
+  "start_ms": 291000,
+  "probability": 0.5952,
+  "margin": 0.0952
+ },
+ {
+  "person_id": 27,
+  "start_ms": 466833,
+  "probability": 0.4002,
+  "margin": 0.0998
+ },
+ {
+  "person_id": 1,
+  "start_ms": 37500,
+  "probability": 0.602,
+  "margin": 0.102
+ },
+ {
+  "person_id": 23,
+  "start_ms": 406833,
+  "probability": 0.6021,
+  "margin": 0.1021
+ },
+ {
+  "person_id": 2,
+  "start_ms": 15000,
+  "probability": 0.3968,
+  "margin": 0.1032
+ },
+ {
+  "person_id": 26,
+  "start_ms": 429333,
+  "probability": 0.3954,
+  "margin": 0.1046
+ },
+ {
+  "person_id": 17,
+  "start_ms": 293333,
+  "probability": 0.6054,
+  "margin": 0.1054
+ },
+ {
+  "person_id": 27,
+  "start_ms": 481833,
+  "probability": 0.6061,
+  "margin": 0.1061
+ },
+ {
+  "person_id": 26,
+  "start_ms": 451833,
+  "probability": 0.6076,
+  "margin": 0.1076
+ },
+ {
+  "person_id": 10,
+  "start_ms": 283500,
+  "probability": 0.3915,
+  "margin": 0.1085
+ },
+ {
+  "person_id": 20,
+  "start_ms": 451833,
+  "probability": 0.3867,
+  "margin": 0.1133
+ },
+ {
+  "person_id": 21,
+  "start_ms": 361833,
+  "probability": 0.3862,
+  "margin": 0.1138
+ },
+ {
+  "person_id": 16,
+  "start_ms": 297833,
+  "probability": 0.382,
+  "margin": 0.118
+ },
+ {
+  "person_id": 11,
+  "start_ms": 216000,
+  "probability": 0.3817,
+  "margin": 0.1183
+ },
+ {
+  "person_id": 11,
+  "start_ms": 193500,
+  "probability": 0.6189,
+  "margin": 0.1189
+ },
+ {
+  "person_id": 11,
+  "start_ms": 141000,
+  "probability": 0.6197,
+  "margin": 0.1197
+ },
+ {
+  "person_id": 11,
+  "start_ms": 126000,
+  "probability": 0.3803,
+  "margin": 0.1197
+ },
+ {
+  "person_id": 26,
+  "start_ms": 346833,
+  "probability": 0.3788,
+  "margin": 0.1212
+ },
+ {
+  "person_id": 15,
+  "start_ms": 331166,
+  "probability": 0.6216,
+  "margin": 0.1216
+ },
+ {
+  "person_id": 26,
+  "start_ms": 496833,
+  "probability": 0.6296,
+  "margin": 0.1296
+ },
+ {
+  "person_id": 26,
+  "start_ms": 526833,
+  "probability": 0.363,
+  "margin": 0.137
+ },
+ {
+  "person_id": 23,
+  "start_ms": 556833,
+  "probability": 0.6376,
+  "margin": 0.1376
+ },
+ {
+  "person_id": 9,
+  "start_ms": 238500,
+  "probability": 0.6393,
+  "margin": 0.1393
+ },
+ {
+  "person_id": 3,
+  "start_ms": 52500,
+  "probability": 0.3597,
+  "margin": 0.1403
+ },
+ {
+  "person_id": 23,
+  "start_ms": 579333,
+  "probability": 0.3586,
+  "margin": 0.1414
+ },
+ {
+  "person_id": 11,
+  "start_ms": 276000,
+  "probability": 0.3525,
+  "margin": 0.1475
+ },
+ {
+  "person_id": 23,
+  "start_ms": 354333,
+  "probability": 0.6479,
+  "margin": 0.1479
+ },
+ {
+  "person_id": 20,
+  "start_ms": 534333,
+  "probability": 0.3509,
+  "margin": 0.1491
+ },
+ {
+  "person_id": 23,
+  "start_ms": 376833,
+  "probability": 0.3455,
+  "margin": 0.1545
+ },
+ {
+  "person_id": 21,
+  "start_ms": 384333,
+  "probability": 0.3447,
+  "margin": 0.1553
+ },
+ {
+  "person_id": 7,
+  "start_ms": 15000,
+  "probability": 0.6564,
+  "margin": 0.1564
+ },
+ {
+  "person_id": 2,
+  "start_ms": 60000,
+  "probability": 0.6573,
+  "margin": 0.1573
+ },
+ {
+  "person_id": 22,
+  "start_ms": 579333,
+  "probability": 0.3398,
+  "margin": 0.1602
+ },
+ {
+  "person_id": 21,
+  "start_ms": 376833,
+  "probability": 0.3354,
+  "margin": 0.1646
+ },
+ {
+  "person_id": 11,
+  "start_ms": 208500,
+  "probability": 0.3323,
+  "margin": 0.1677
+ },
+ {
+  "person_id": 10,
+  "start_ms": 96000,
+  "probability": 0.331,
+  "margin": 0.169
+ }
+]
