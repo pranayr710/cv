@@ -1,0 +1,17 @@
+{
+ "n_images": 12582,
+ "n_human_scored": 350,
+ "evaluation": "out-of-fold over near-duplicate groups",
+ "methods": {
+  "calibrated classifier": {
+   "spearman_rho": 0.5147,
+   "mae_points_of_5": 0.893
+  },
+  "direct ridge on 350 scores": {
+   "spearman_rho": 0.3528,
+   "mae_points_of_5": 1.046
+  }
+ },
+ "used_for_scoring": "calibrated classifier",
+ "note": "Generated scores are an output, not training data. Refitting on them would sharpen the model's existing biases and report the result as progress."
+}

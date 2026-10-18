@@ -99,10 +99,12 @@ def test_whole_sources_land_in_exactly_one_split() -> None:
 
 
 def test_assignment_is_deterministic() -> None:
-    mk = lambda: [
-        type("C", (), {"clip_id": r["clip_id"], "source_video": r["source_video"], "camera": r["camera"], "label": r["label"]})()
-        for r in BASIC_ROWS
-    ]
+    def mk():
+        return [
+            type("C", (), {"clip_id": r["clip_id"], "source_video": r["source_video"], "camera": r["camera"], "label": r["label"]})()
+            for r in BASIC_ROWS
+        ]
+
     assert assign_splits(mk()) == assign_splits(mk())
 
 

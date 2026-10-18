@@ -1,0 +1,482 @@
+{
+  "classroom_summary": {
+    "students_considered": 59,
+    "average_engagement": 0.9314297913837428,
+    "total_sustained_distractions": 0,
+    "interacting_pairs_count": 2
+  },
+  "student_profiles": [
+    {
+      "node_id": -108,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -107,
+      "duration_ms": 26026,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -106,
+      "duration_ms": 200200,
+      "calibration_baseline": 0.0,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -105,
+      "duration_ms": 205205,
+      "calibration_baseline": 0.0,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -104,
+      "duration_ms": 221221,
+      "calibration_baseline": 1.0,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": 0.0,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -103,
+      "duration_ms": 54054,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -102,
+      "duration_ms": 107107,
+      "calibration_baseline": 0.0,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -101,
+      "duration_ms": 158158,
+      "calibration_baseline": 0.0,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -100,
+      "duration_ms": 186186,
+      "calibration_baseline": 0.0,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -38,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -37,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -36,
+      "duration_ms": 10010,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -35,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -34,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -33,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -32,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -31,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -30,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -29,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -28,
+      "duration_ms": 3003,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -27,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -26,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -25,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -24,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -23,
+      "duration_ms": 17017,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -22,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -21,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -20,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -19,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -18,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -17,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -16,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -15,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -14,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -13,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -12,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -11,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -10,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -9,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -8,
+      "duration_ms": 11011,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -7,
+      "duration_ms": 8008,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -6,
+      "duration_ms": 5005,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -5,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -4,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -3,
+      "duration_ms": 1001,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -2,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": -1,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 1,
+      "duration_ms": 249249,
+      "calibration_baseline": 1.0,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": 0.0,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 2,
+      "duration_ms": 164164,
+      "calibration_baseline": 0.0,
+      "final_engagement_pct": 0.125,
+      "deviation_from_baseline": 0.125,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 3,
+      "duration_ms": 236236,
+      "calibration_baseline": 1.0,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": 0.0,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 4,
+      "duration_ms": 249249,
+      "calibration_baseline": 1.0,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": 0.0,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 6,
+      "duration_ms": 249249,
+      "calibration_baseline": 0.9411764705882353,
+      "final_engagement_pct": 0.9655172413793104,
+      "deviation_from_baseline": 0.024340770791075106,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 7,
+      "duration_ms": 249249,
+      "calibration_baseline": 1.0,
+      "final_engagement_pct": 0.9782608695652174,
+      "deviation_from_baseline": -0.021739130434782594,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 8,
+      "duration_ms": 249249,
+      "calibration_baseline": 1.0,
+      "final_engagement_pct": 0.9795918367346939,
+      "deviation_from_baseline": -0.020408163265306145,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 9,
+      "duration_ms": 189189,
+      "calibration_baseline": 0.5,
+      "final_engagement_pct": 0.9230769230769231,
+      "deviation_from_baseline": 0.42307692307692313,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 10,
+      "duration_ms": 220220,
+      "calibration_baseline": 1.0,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": 0.0,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 11,
+      "duration_ms": 128128,
+      "calibration_baseline": 1.0,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": 0.0,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 12,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": 1.0,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    },
+    {
+      "node_id": 13,
+      "duration_ms": 0,
+      "calibration_baseline": null,
+      "final_engagement_pct": null,
+      "deviation_from_baseline": null,
+      "sustained_distractions_count": 0
+    }
+  ]
+}

@@ -451,7 +451,8 @@ def run(args) -> int:
                     key = ord("q")
                     cv2.imshow(window, canvas.finish())
                     cv2.waitKey(1)
-                    frames_out.close(); graph_out.close()
+                    frames_out.close()
+                    graph_out.close()
                     state = HOME
                     message = _finish(out, gallery, args, build_profiles)
                     print(message)
@@ -498,7 +499,8 @@ def run(args) -> int:
                     name, shots = name + chr(key), []
 
             elif state == SESSION and key in (ord("q"), 27):
-                frames_out.close(); graph_out.close()
+                frames_out.close()
+                graph_out.close()
                 state = HOME
                 message = _finish(out, gallery, args, build_profiles)
 

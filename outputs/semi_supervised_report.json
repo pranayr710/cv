@@ -1,0 +1,37 @@
+{
+ "n_labelled": 179,
+ "n_unlabelled": 405,
+ "n_students": 27,
+ "seeds": 5,
+ "confidence_threshold": 0.9,
+ "evaluation": "out-of-fold on human labels, grouped by student; pseudo-labelling done inside each training fold",
+ "results": {
+  "baseline (179 human labels)": {
+   "accuracy": 0.6402,
+   "accuracy_sd": 0.0297,
+   "macro_f1": 0.6379,
+   "macro_f1_sd": 0.0301
+  },
+  "self-training": {
+   "accuracy": 0.6291,
+   "accuracy_sd": 0.0168,
+   "macro_f1": 0.6268,
+   "macro_f1_sd": 0.0175,
+   "pseudo_labels_added": 279.0
+  },
+  "co-training (MLP + Mamba agree)": {
+   "accuracy": 0.6436,
+   "accuracy_sd": 0.0281,
+   "macro_f1": 0.6416,
+   "macro_f1_sd": 0.0291,
+   "pseudo_labels_added": 167.5
+  },
+  "label spreading": {
+   "accuracy": 0.676,
+   "accuracy_sd": 0.0,
+   "macro_f1": 0.666,
+   "macro_f1_sd": 0.0
+  }
+ },
+ "best": "label spreading"
+}

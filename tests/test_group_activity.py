@@ -167,7 +167,9 @@ def test_clip_tie_breaks_toward_lower_engagement_class() -> None:
 def test_clip_abstains_when_most_frames_abstained() -> None:
     # 14 usable + 12 abstaining (below min_students) inside a 15-frame window
     frames = [classroom(6) for _ in range(14)] + [classroom(2) for _ in range(12)]
-    constant = lambda a, f: np.array([5.0, 0.0, 0.0])
+    def constant(a, f):
+        return np.array([5.0, 0.0, 0.0])
+
     clip = classify_clip(frames, model_fn=constant)
     assert clip.label is None
     assert "frames abstained" in clip.reason

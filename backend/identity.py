@@ -55,6 +55,42 @@ from backend.config import CONFIG, IdentityConfig
 
 logger = logging.getLogger(__name__)
 
+#: Box overlap above which two detections in one frame are treated as one
+#: person seen twice, rather than as two people.
+#:
+#: The co-occurrence constraint below assumes two boxes in a frame are two
+#: different people. That holds for tracker ids and fails when the detector
+#: puts two boxes on one student: the tracker confirms one and a surrogate is
+#: minted for the other, both land in the same frame, and the resolver records
+#: a cannot-link edge between a person and themselves. The edge is hard, so
+#: the split is permanent.
+#:
+#: Measured on the audited clip (8 real people), that produced 11-17 ids
+#: depending on match_threshold, flat across 0.05-0.60 -- unreachable by
+#: tuning, and unreachable by face registration, which was also tried: the
+#: clusters matched their own reference at 0.92-0.95 and were still refused,
+#: because a hard constraint correctly outranks similarity.
+#:
+#: 0.55 sits well above the overlap of two people sitting side by side at a
+#: desk and well below the near-coincident boxes of a double detection.
+OVERLAP_SAME_PERSON: float = 0.55
+
+
+def _iou(a: Sequence[float], b: Sequence[float]) -> float:
+    """Intersection over union of two ``(x, y, w, h)`` boxes."""
+    if not a or not b or len(a) < 4 or len(b) < 4:
+        return 0.0
+    ax, ay, aw, ah = a[:4]
+    bx, by, bw, bh = b[:4]
+    if aw <= 0 or ah <= 0 or bw <= 0 or bh <= 0:
+        return 0.0
+    left, right = max(ax, bx), min(ax + aw, bx + bw)
+    top, bottom = max(ay, by), min(ay + ah, by + bh)
+    if right <= left or bottom <= top:
+        return 0.0
+    overlap = (right - left) * (bottom - top)
+    return overlap / float(aw * ah + bw * bh - overlap)
+
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     """Cosine similarity of two vectors, safe against a zero-norm input.
@@ -373,6 +409,7 @@ class TwoPassIdentityResolver:
         embeddings: Sequence[np.ndarray | None],
         face_scores: Sequence[float | None] | None = None,
         face_sizes: Sequence[int | None] | None = None,
+        person_boxes: Sequence[Sequence[float] | None] | None = None,
     ) -> None:
         """Accumulate one frame's evidence without assigning anything yet.
 
@@ -387,6 +424,13 @@ class TwoPassIdentityResolver:
                 side of the face box), index-aligned. Used only by
                 quality-gated identity creation; when absent, quality falls
                 back to the detector score alone.
+            person_boxes: Optional per-person ``(x, y, w, h)``, index-aligned.
+                Used to suppress the cannot-link edge between two boxes that
+                overlap by more than :data:`OVERLAP_SAME_PERSON`, which are one
+                person detected twice rather than two people. Without them the
+                constraint is recorded as before, so older callers are
+                unaffected -- and so is the bug, which is why every caller that
+                has the boxes should pass them.
 
         Raises:
             ValueError: If the input sequences have mismatched lengths.
@@ -401,14 +445,35 @@ class TwoPassIdentityResolver:
         scores = face_scores if face_scores is not None else [1.0] * n
         sizes = face_sizes if face_sizes is not None else [None] * n
 
-        # Everything alive in this frame is mutually exclusive: one person
-        # cannot occupy two boxes at once. Recorded before the face-quality
-        # gate below, because the constraint holds whether or not a usable
-        # face was read this frame.
+        # Two boxes in one frame are usually two people, and that exclusion is
+        # the strongest evidence this resolver has. The exception is a double
+        # detection on one student, where recording it splits that student in
+        # two permanently -- so heavily-overlapping pairs are skipped when the
+        # boxes are available to tell them apart.
+        #
+        # Recorded before the face-quality gate below, because the constraint
+        # holds whether or not a usable face was read this frame.
+        boxes_by_track: dict[int, Sequence[float]] = {}
+        if person_boxes is not None and len(person_boxes) == n:
+            boxes_by_track = {
+                t: b for t, b in zip(track_ids, person_boxes)
+                if t is not None and b is not None
+            }
+
         present = [t for t in track_ids if t is not None]
         for track_id in present:
             others = self._conflicts.setdefault(track_id, set())
-            others.update(t for t in present if t != track_id)
+            for other in present:
+                if other == track_id:
+                    continue
+                box_a = boxes_by_track.get(track_id)
+                box_b = boxes_by_track.get(other)
+                if (box_a is not None and box_b is not None
+                        and _iou(box_a, box_b) >= OVERLAP_SAME_PERSON):
+                    # One person, two boxes. Asserting they are different
+                    # people is what makes the split unreachable by tuning.
+                    continue
+                others.add(other)
 
         for track_id, embedding, score, size in zip(
             track_ids, embeddings, scores, sizes

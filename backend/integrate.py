@@ -724,14 +724,24 @@ def process_video(
                         None if f.face_bbox is None else int(min(f.face_bbox[2], f.face_bbox[3]))
                         for f in faces
                     ]
+                    # Boxes let the resolver tell a double detection from
+                    # two students. The fallbacks keep older resolvers that
+                    # lack the parameter working unchanged.
                     try:
                         identity_resolver.observe(
-                            identity_keys, embeddings, face_scores, face_sizes
+                            identity_keys, embeddings, face_scores, face_sizes,
+                            person_boxes=person_bboxes,
                         )
                     except TypeError:
-                        identity_resolver.observe(
-                            identity_keys, embeddings, face_scores
-                        )
+                        try:
+                            identity_resolver.observe(
+                                identity_keys, embeddings, face_scores,
+                                face_sizes
+                            )
+                        except TypeError:
+                            identity_resolver.observe(
+                                identity_keys, embeddings, face_scores
+                            )
                     person_ids = list(identity_keys)
                 else:
                     person_ids = identity_resolver.resolve(

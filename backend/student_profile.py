@@ -52,6 +52,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from backend.actions import OFF_TASK as OFF_TASK_ACTIONS
+from backend.config import CONFIG
+from backend.engagement import classify_engagement, summarise_engagement
 
 #: Seconds of on-task frames tolerated inside an off-task stretch before it
 #: counts as two separate episodes. Set from the sampling rate rather than the
@@ -60,8 +62,6 @@ from backend.actions import OFF_TASK as OFF_TASK_ACTIONS
 #: as a hand moves, and short enough that genuinely returning to task ends the
 #: episode.
 FLICKER_BRIDGE_SECONDS = 2.0
-from backend.config import CONFIG
-from backend.engagement import classify_engagement, summarise_engagement
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,14 @@
+{
+ "n_images": 12582,
+ "n_train": 9815,
+ "n_test": 2417,
+ "held_out_accuracy_grouped": 0.6636,
+ "held_out_accuracy_random_leaky": 0.9681,
+ "held_out_roc_auc": 0.7287,
+ "n_calibration_scored": 350,
+ "spearman_rho_prob_vs_human": 0.5564,
+ "spearman_p": 7.805087437762276e-30,
+ "calibrated_mae_points_of_5": 0.842,
+ "backbone": "resnet18 (ImageNet), frozen",
+ "classifier": "logistic regression"
+}

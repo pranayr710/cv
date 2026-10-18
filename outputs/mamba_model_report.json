@@ -1,0 +1,27 @@
+{
+ "n_labels": 179,
+ "n_students": 27,
+ "evaluation": "out-of-fold, grouped by student",
+ "mamba_parameters": 2897,
+ "seq_len": 48,
+ "n_frame_features": 13,
+ "epochs": 150,
+ "results": {
+  "rule (precedence)": {
+   "accuracy": 0.4472,
+   "decided": 161,
+   "abstained": 18
+  },
+  "MLP on aggregates (shipping)": {
+   "accuracy": 0.6089,
+   "decided": 179,
+   "abstained": 0
+  },
+  "Mamba on sequences": {
+   "accuracy": 0.5922,
+   "decided": 179,
+   "abstained": 0
+  }
+ },
+ "best": "MLP on aggregates (shipping)"
+}

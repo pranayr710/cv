@@ -635,3 +635,110 @@ def test_best_evidenced_cluster_gets_person_id_one() -> None:
         resolver.observe([2], [PERSON_B], [0.9])
     mapping = resolver.finalise()
     assert mapping[1] == 1
+
+
+class TestDoubleDetectionDoesNotSplitAPerson:
+    """The co-occurrence constraint assumes two boxes are two people.
+
+    That is true for tracker ids and false when the detector puts two boxes on
+    one student: the tracker confirms one and a surrogate is minted for the
+    other, both appear in the same frame, and a cannot-link edge is recorded
+    between a person and themselves. The edge is hard, so the split is
+    permanent -- measured at 11-17 ids for 8 real people, flat across every
+    match_threshold from 0.05 to 0.60, and unreachable by face registration
+    too.
+    """
+
+    @staticmethod
+    def _embedding(seed: int = 0):
+        rng = np.random.default_rng(seed)
+        vec = rng.normal(size=512).astype(np.float32)
+        return vec / np.linalg.norm(vec)
+
+    def test_overlapping_boxes_do_not_become_a_cannot_link(self):
+        """One person detected twice must finish as one id, not two."""
+        from backend.identity import TwoPassIdentityResolver
+
+        emb = self._embedding()
+        resolver = TwoPassIdentityResolver()
+        for _ in range(40):
+            resolver.observe(
+                [1, 2], [emb, emb], [0.9, 0.9], [80, 80],
+                person_boxes=[[10, 10, 100, 200], [14, 12, 98, 198]])
+        assert len(set(resolver.finalise().values())) == 1
+
+    def test_without_boxes_the_old_behaviour_is_unchanged(self):
+        """Callers that cannot supply boxes must keep working.
+
+        They also keep the bug, which is why every caller that has the boxes
+        passes them. Pinned so the fallback is a deliberate choice rather than
+        something that quietly changes.
+        """
+        from backend.identity import TwoPassIdentityResolver
+
+        emb = self._embedding()
+        resolver = TwoPassIdentityResolver()
+        for _ in range(40):
+            resolver.observe([1, 2], [emb, emb], [0.9, 0.9], [80, 80])
+        assert len(set(resolver.finalise().values())) == 2
+
+    def test_two_people_side_by_side_stay_two_people(self):
+        """The gate must not merge students who merely sit near each other.
+
+        This is the failure that would matter most: suppressing a real
+        cannot-link lets two students collapse into one id, which is worse
+        than the over-split it fixes.
+        """
+        from backend.identity import TwoPassIdentityResolver
+
+        a, b = self._embedding(1), self._embedding(2)
+        resolver = TwoPassIdentityResolver()
+        for _ in range(40):
+            resolver.observe(
+                [1, 2], [a, b], [0.9, 0.9], [80, 80],
+                person_boxes=[[10, 10, 100, 200], [120, 10, 100, 200]])
+        assert len(set(resolver.finalise().values())) == 2
+
+    def test_identical_embeddings_still_split_when_boxes_are_apart(self):
+        """Geometry outranks appearance, and must keep doing so.
+
+        Twins, uniforms and low-resolution faces all produce near-identical
+        embeddings. Two boxes far apart in one frame are two people whatever
+        the similarity says, and that is the constraint's whole value.
+        """
+        from backend.identity import TwoPassIdentityResolver
+
+        emb = self._embedding()
+        resolver = TwoPassIdentityResolver()
+        for _ in range(40):
+            resolver.observe(
+                [1, 2], [emb, emb], [0.9, 0.9], [80, 80],
+                person_boxes=[[10, 10, 100, 200], [400, 10, 100, 200]])
+        assert len(set(resolver.finalise().values())) == 2
+
+
+class TestIoU:
+    def test_disjoint_boxes_score_zero(self):
+        from backend.identity import _iou
+
+        assert _iou([0, 0, 10, 10], [50, 50, 10, 10]) == 0.0
+
+    def test_identical_boxes_score_one(self):
+        from backend.identity import _iou
+
+        assert _iou([5, 5, 20, 30], [5, 5, 20, 30]) == pytest.approx(1.0)
+
+    def test_a_degenerate_box_is_not_an_overlap(self):
+        """A zero-width box must not divide by zero or claim an overlap."""
+        from backend.identity import _iou
+
+        assert _iou([0, 0, 0, 10], [0, 0, 10, 10]) == 0.0
+        assert _iou([], [0, 0, 10, 10]) == 0.0
+
+    def test_the_threshold_separates_the_two_real_cases(self):
+        """Side-by-side students fall below it; a double detection above."""
+        from backend.identity import OVERLAP_SAME_PERSON, _iou
+
+        touching = _iou([0, 0, 100, 200], [90, 0, 100, 200])
+        doubled = _iou([0, 0, 100, 200], [6, 4, 97, 196])
+        assert touching < OVERLAP_SAME_PERSON < doubled

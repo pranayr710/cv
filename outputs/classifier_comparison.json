@@ -1,0 +1,75 @@
+{
+ "n_labels": 179,
+ "n_students": 27,
+ "protocol": "out-of-fold, grouped by student",
+ "rule_baseline": 0.4472,
+ "models": {
+  "logistic regression (shipped)": {
+   "mean": 0.5825,
+   "worst_fold": 0.3784,
+   "best_fold": 0.7429,
+   "spread": 0.3645
+  },
+  "logistic regression, C=0.1": {
+   "mean": 0.594,
+   "worst_fold": 0.3514,
+   "best_fold": 0.7714,
+   "spread": 0.4201
+  },
+  "linear SVM": {
+   "mean": 0.5669,
+   "worst_fold": 0.2703,
+   "best_fold": 0.7429,
+   "spread": 0.4726
+  },
+  "RBF SVM": {
+   "mean": 0.5883,
+   "worst_fold": 0.3514,
+   "best_fold": 0.7714,
+   "spread": 0.4201
+  },
+  "linear discriminant": {
+   "mean": 0.6054,
+   "worst_fold": 0.3784,
+   "best_fold": 0.8,
+   "spread": 0.4216
+  },
+  "gaussian naive bayes": {
+   "mean": 0.5375,
+   "worst_fold": 0.3784,
+   "best_fold": 0.6286,
+   "spread": 0.2502
+  },
+  "k-nearest neighbours (k=9)": {
+   "mean": 0.5867,
+   "worst_fold": 0.4595,
+   "best_fold": 0.7027,
+   "spread": 0.2432
+  },
+  "random forest": {
+   "mean": 0.6057,
+   "worst_fold": 0.3784,
+   "best_fold": 0.7429,
+   "spread": 0.3645
+  },
+  "extra trees": {
+   "mean": 0.5889,
+   "worst_fold": 0.4054,
+   "best_fold": 0.7429,
+   "spread": 0.3375
+  },
+  "gradient boosting": {
+   "mean": 0.5892,
+   "worst_fold": 0.3243,
+   "best_fold": 0.7143,
+   "spread": 0.39
+  },
+  "small MLP (16)": {
+   "mean": 0.6102,
+   "worst_fold": 0.4595,
+   "best_fold": 0.7429,
+   "spread": 0.2834
+  }
+ },
+ "best": "small MLP (16)"
+}

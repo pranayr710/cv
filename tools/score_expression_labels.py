@@ -77,7 +77,7 @@ def _confusion(true: list[str], pred: list[str], labels: tuple[str, ...]) -> dic
 
 
 def _print_confusion(table: dict, labels: tuple[str, ...]) -> None:
-    header = "true\\pred".ljust(10) + "".join(l[:7].rjust(9) for l in labels)
+    header = "true\\pred".ljust(10) + "".join(name[:7].rjust(9) for name in labels)
     print(header)
     for t in labels:
         row = table.get(t, Counter())

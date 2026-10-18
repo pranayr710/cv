@@ -205,7 +205,9 @@ def evaluate(weights: Path, imgsz: int, conf: float) -> None:
     print("\n" + "=" * 64)
     print(f"GATE 3 -- independent dataset test split ({len(ood_images)} images, "
           f"never trained on)")
-    all_tp = sum(o_tp.values()); all_fp = sum(o_fp.values()); all_fn = sum(o_fn.values())
+    all_tp = sum(o_tp.values())
+    all_fp = sum(o_fp.values())
+    all_fn = sum(o_fn.values())
     gp, gr, gf = _prf(all_tp, all_fp, all_fn)
     print(f"  overall: precision {gp*100:.1f}%  recall {gr*100:.1f}%  F1 {gf*100:.1f}%"
           f"   (baseline {BASELINE_OOD_F1}%)")

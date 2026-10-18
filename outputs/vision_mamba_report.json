@@ -1,0 +1,15 @@
+{
+ "n_images": 12582,
+ "n_groups": 677,
+ "n_train": 10064,
+ "n_test": 2518,
+ "evaluation": "held out by near-duplicate group",
+ "parameters": 348289,
+ "epochs": 20,
+ "image_size": 128,
+ "vision_mamba_accuracy": 0.618,
+ "vision_mamba_best_epoch_accuracy": 0.6191,
+ "resnet18_logistic_accuracy": 0.6636,
+ "spearman_vs_human": 0.3272,
+ "n_human_in_test": 65
+}

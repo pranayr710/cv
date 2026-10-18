@@ -346,7 +346,10 @@ def run(args) -> int:
                         for r in results
                     ]
                     keys = resolver.keys_for(track_ids, embeddings, scores)
-                    resolver.observe(keys, embeddings, scores, sizes)
+                    # Boxes let the resolver tell a double detection from
+                    # two students; without them one person becomes two.
+                    resolver.observe(keys, embeddings, scores, sizes,
+                                     person_boxes=boxes)
 
                     record = _assemble_frame(
                         frame_id, int(frame_id * args.sample_rate * 1000 / 30),

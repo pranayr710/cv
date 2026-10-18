@@ -44,3 +44,18 @@ outputs/engagement_features.npz
 outputs/image_engagement_scores.csv
 labeling/to_label_next.json
 outputs/window_labels_with_image_feature.json
+
+# ...but the trained scorers themselves DO ship. They are kilobytes, they are
+# the actual deliverable, and regenerating them needs the graph log that
+# outputs/ excludes -- so without these a fresh clone silently falls back to
+# the rule-based verdict that scored 0.447.
+!outputs/window_engagement_model.json
+!outputs/mamba_attention_model.pt
+!outputs/window_model_report.json
+!outputs/mamba_model_report.json
+!outputs/semi_supervised_report.json
+!outputs/label_spreading_check.json
+!outputs/vision_mamba_report.json
+!outputs/classifier_comparison.json
+!outputs/engagement_scorer_report.json
+!outputs/score_method_comparison.json
