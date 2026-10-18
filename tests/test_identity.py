@@ -742,3 +742,63 @@ class TestIoU:
         touching = _iou([0, 0, 100, 200], [90, 0, 100, 200])
         doubled = _iou([0, 0, 100, 200], [6, 4, 97, 196])
         assert touching < OVERLAP_SAME_PERSON < doubled
+
+
+class TestShapeSeparatesDuplicatesFromOcclusion:
+    """IoU alone cannot do this job on this pipeline.
+
+    Detection runs NMS at iou=0.50, so a duplicate box is clipped to just
+    under that ceiling and lands in the same overlap band as a student seated
+    one row back. Across 130,000 person-pairs in five recordings the highest
+    overlap observed was 0.501, and all 188 pairs above 0.35 were two real
+    students: median height ratio 0.680, median centre separation 0.249.
+    """
+
+    def test_a_duplicate_box_is_recognised(self):
+        """Same size, same place: one person the detector saw twice."""
+        from backend.identity import _is_one_person_twice
+
+        assert _is_one_person_twice([100, 100, 80, 200], [108, 106, 79, 197])
+
+    def test_a_student_one_row_back_is_not(self):
+        """Smaller and offset, because they are further from the camera."""
+        from backend.identity import _is_one_person_twice
+
+        assert not _is_one_person_twice([100, 100, 80, 200],
+                                        [112, 120, 56, 136])
+
+    def test_same_size_but_displaced_is_not_a_duplicate(self):
+        """The closest real pair measured had a height ratio of 1.0.
+
+        Only its centre separation told it apart, at 0.141 box-heights. If
+        size alone were enough, that pair would merge two students into one
+        id -- worse than the over-split this is meant to repair.
+        """
+        from backend.identity import _is_one_person_twice
+
+        assert not _is_one_person_twice([100, 100, 80, 200],
+                                        [100, 128, 80, 200])
+
+    def test_low_overlap_is_rejected_whatever_the_shape(self):
+        """Two identical boxes far apart are two students, not one."""
+        from backend.identity import _is_one_person_twice
+
+        assert not _is_one_person_twice([0, 0, 80, 200], [400, 0, 80, 200])
+
+    def test_the_gate_sits_below_the_nms_ceiling(self):
+        """A gate above the NMS threshold can never fire.
+
+        The first version was set at 0.55 against NMS at 0.50, so it was
+        unreachable on any footage this pipeline produces -- correct code that
+        could not run. Pinned so the relationship stays visible if either
+        value is changed.
+        """
+        from backend.config import CONFIG
+        from backend.identity import OVERLAP_SAME_PERSON
+
+        assert OVERLAP_SAME_PERSON < CONFIG.detection.iou
+
+    def test_a_degenerate_box_cannot_merge_two_people(self):
+        from backend.identity import _is_one_person_twice
+
+        assert not _is_one_person_twice([0, 0, 80, 0], [0, 0, 80, 200])

@@ -55,25 +55,33 @@ from backend.config import CONFIG, IdentityConfig
 
 logger = logging.getLogger(__name__)
 
-#: Box overlap above which two detections in one frame are treated as one
-#: person seen twice, rather than as two people.
+#: Thresholds for deciding that two boxes in one frame are one person seen
+#: twice, rather than two people.
 #:
 #: The co-occurrence constraint below assumes two boxes in a frame are two
 #: different people. That holds for tracker ids and fails when the detector
-#: puts two boxes on one student: the tracker confirms one and a surrogate is
+#: puts two boxes on one student: the tracker confirms one, a surrogate is
 #: minted for the other, both land in the same frame, and the resolver records
 #: a cannot-link edge between a person and themselves. The edge is hard, so
-#: the split is permanent.
+#: the split is permanent and no match_threshold can reach it -- measured at
+#: 11-17 ids for 8 real people, flat across 0.05-0.60.
 #:
-#: Measured on the audited clip (8 real people), that produced 11-17 ids
-#: depending on match_threshold, flat across 0.05-0.60 -- unreachable by
-#: tuning, and unreachable by face registration, which was also tried: the
-#: clusters matched their own reference at 0.92-0.95 and were still refused,
-#: because a hard constraint correctly outranks similarity.
+#: **IoU alone cannot detect this case on this pipeline.** Detection runs NMS
+#: at ``iou=0.50``, so no two surviving person boxes can overlap by more than
+#: that; a duplicate box is clipped to just under the NMS ceiling and lands in
+#: the same band as a student sitting one row behind another. Across 130,000
+#: person-pairs in five recordings the highest overlap seen was 0.501.
 #:
-#: 0.55 sits well above the overlap of two people sitting side by side at a
-#: desk and well below the near-coincident boxes of a double detection.
-OVERLAP_SAME_PERSON: float = 0.55
+#: Shape is what separates them. Measured over the 188 pairs above IoU 0.35 in
+#: the main session, every one was two students: median height ratio 0.680
+#: (the further student is a third shorter) and median centre separation 0.249
+#: box-heights. None had a height ratio above 0.9 together with a centre shift
+#: below 0.15, which is what a duplicate box would look like. So all three
+#: conditions must hold, and the centre threshold sits at 0.10 rather than
+#: 0.15 to keep clearance from the closest real pair observed, at 0.141.
+OVERLAP_SAME_PERSON: float = 0.45
+SAME_PERSON_HEIGHT_RATIO: float = 0.90
+SAME_PERSON_CENTRE_SHIFT: float = 0.10
 
 
 def _iou(a: Sequence[float], b: Sequence[float]) -> float:
@@ -90,6 +98,37 @@ def _iou(a: Sequence[float], b: Sequence[float]) -> float:
         return 0.0
     overlap = (right - left) * (bottom - top)
     return overlap / float(aw * ah + bw * bh - overlap)
+
+
+def _is_one_person_twice(a: Sequence[float], b: Sequence[float]) -> bool:
+    """Whether two boxes are the same student detected twice.
+
+    All three conditions are required. Overlap alone is not enough, because
+    NMS caps it below the level a duplicate would otherwise reach, and a
+    student seated behind another produces the same overlap. A duplicate is
+    additionally the *same size* and in the *same place*; a student one row
+    back is smaller and offset, because they are further from the camera.
+
+    Args:
+        a: ``(x, y, w, h)`` of the first detection.
+        b: ``(x, y, w, h)`` of the second.
+
+    Returns:
+        True only when the pair looks like one person, in which case no
+        cannot-link edge should be recorded between them.
+    """
+    if _iou(a, b) < OVERLAP_SAME_PERSON:
+        return False
+    ah, bh = float(a[3]), float(b[3])
+    if ah <= 0 or bh <= 0:
+        return False
+    if min(ah, bh) / max(ah, bh) < SAME_PERSON_HEIGHT_RATIO:
+        return False
+    centre_a = (a[0] + a[2] / 2.0, a[1] + ah / 2.0)
+    centre_b = (b[0] + b[2] / 2.0, b[1] + bh / 2.0)
+    shift = ((centre_a[0] - centre_b[0]) ** 2
+             + (centre_a[1] - centre_b[1]) ** 2) ** 0.5
+    return shift / max(ah, bh) < SAME_PERSON_CENTRE_SHIFT
 
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -469,7 +508,7 @@ class TwoPassIdentityResolver:
                 box_a = boxes_by_track.get(track_id)
                 box_b = boxes_by_track.get(other)
                 if (box_a is not None and box_b is not None
-                        and _iou(box_a, box_b) >= OVERLAP_SAME_PERSON):
+                        and _is_one_person_twice(box_a, box_b)):
                     # One person, two boxes. Asserting they are different
                     # people is what makes the split unreachable by tuning.
                     continue
