@@ -10,6 +10,45 @@ self-reported.
 signal extraction. Stage 2+ (identity persistence, scene graph, group
 activity) is built but deliberately paused until Part 1 is solid.
 
+
+## Install and run
+
+```bash
+pip install -r requirements.txt
+pip install -e ".[learned]"
+classgraph doctor          # check this machine first
+```
+
+```bash
+classgraph serve                               # dashboard on :8000
+classgraph video --dir <folder of clips>       # process recorded footage
+classgraph train                               # refit the attention model
+```
+
+**[DEPLOYMENT.md](DEPLOYMENT.md)** covers installing on a machine that is not
+this one: model weights, Docker, privacy obligations, the known limits, and
+the failures worth recognising on sight.
+
+## Where it stands
+
+| | Measured |
+|---|---|
+| Attention score | **0.650 accuracy, 0.648 macro F1** at 91% coverage, against a rule baseline of **0.447 / 0.371**. Out-of-fold, split by student. |
+| Student detection | P 82.2% / R 90.6% / F1 86.2% |
+| Behaviour model (fine-tuned YOLO11m) | mAP50 0.607; `write` 0.769 |
+| Face recognition, close range | 0.978 against a held-out photo, 0.032 against a stranger |
+| Image engagement model | 0.664 held out by near-duplicate group — **not** the 0.968 a random split reports |
+| Headcount | **over-counts**: 13-18 ids for 8 real people. Per-student figures are sound per id; the roster is not. |
+
+Architectures that were tried and did **not** beat the shipping model, all
+measured the same way and kept in the record rather than dropped: a Mamba
+sequence scorer (0.574 against 0.575, statistically tied), Vision Mamba on
+12,582 images (0.618 against ResNet18's 0.664), and three semi-supervised
+methods over the 405 unlabelled windows (no gain that survived fold
+permutation). The one change that did help was giving the model peer context
+-- what the rest of the room was doing -- which is worth more than any of
+them.
+
 ## Where to look
 
 - **[PART1_PLAN.md](PART1_PLAN.md)** — current status: what's delivered, the
