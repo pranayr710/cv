@@ -367,7 +367,7 @@ def s01_title(prs):
     bar(s, 0, 0, SW, 0.09, TEAL)
     add_text(s, ML, 2.10, CW, 0.28,
              [P("PROJECT REVIEW", 10.5, True, TEAL, FONT_SB)])
-    add_text(s, ML, 2.50, CW, 1.05,
+    add_text(s, ML, 2.44, CW, 1.22,
              [P("ClassGraph: Classroom Engagement Estimation from Video",
                 33, True, INK, FONT_SB, line=1.08)])
     bar(s, ML, 3.86, 1.4, 0.03, TEAL)
@@ -848,6 +848,122 @@ def s09_perclass(prs, page):
     return s
 
 
+def s09c_attention(prs, page):
+    """The rule-based score was replaced by a learned one. This is why."""
+    s, y = chrome(prs, "Criterion III — Training and Evaluation",
+                  "Replacing the Rule-Based Attention Score",
+                  "The attention score was originally a precedence rule over "
+                  "detected actions. Measured against human judgement, it "
+                  "performed below chance.", page)
+
+    data = [
+        ["Predictor", "Accuracy", "Macro F1", "Decided", "Abstained"],
+        ["Rule (precedence)", "0.447", "0.371", "161", "18"],
+        ["Learned model, all windows", "0.636", "0.634", "179", "0"],
+        ["Learned model, abstaining", "0.650", "0.648", "163", "16"],
+    ]
+    tw = 6.95
+    tbl = table(s, ML, y, tw, [2.45, 1.15, 1.15, 1.10, 1.10], data,
+                row_h=0.40, head_h=0.38, size=10, head_size=9.5, col_bold={0})
+    for r in range(1, len(data)):
+        for c in range(1, 5):
+            run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
+            run.font.name = MONO
+            run.font.size = Pt(9.5)
+    for c in range(5):
+        tbl.cell(3, c).text_frame.paragraphs[0].runs[0].font.bold = True
+
+    caption(s, ML, y + 0.38 + 3 * 0.40 + 0.14, tw, "Table 9.",
+            "Out-of-fold over 179 hand-labelled windows, grouped by student "
+            "(n = 27 students).")
+
+    x2 = ML + tw + 0.32
+    w2 = SW - MR - x2
+    note(s, x2, y, w2, 2.10, "Why the rule failed",
+         ["The rule answered 'off task' for 82 per cent of windows where the "
+          "human rater answered so for 53 per cent.",
+          "The dominant cause was a phone check that fired whenever a phone "
+          "appeared anywhere within a student's bounding box, including on a "
+          "neighbouring desk. Correcting it moved accuracy from 0.447 to "
+          "0.451: the rule could not be recovered by tuning."],
+         accent=AMBER)
+    note(s, x2, y + 2.28, w2, 1.90, "Evaluation protocol",
+         ["Windows overlap by 50 per cent and a student appears in many "
+          "consecutive ones, so splitting at random places near-identical "
+          "windows on both sides of the division.",
+          "Splitting is therefore by student. Abstentions are reported "
+          "separately rather than counted as errors, so a predictor cannot "
+          "appear stronger by declining the difficult cases."])
+
+    note(s, ML, y + 2.82, tw, 1.18, "The change that produced the improvement",
+         ["Every feature described one student in isolation. Adding peer "
+          "context — what the remainder of the room was doing in the same "
+          "window — raised accuracy from 0.580 to 0.636 and macro F1 from "
+          "0.574 to 0.634, a gain exceeding the seed-to-seed spread. No "
+          "additional labels were required."])
+    return s
+
+
+def s09d_architectures(prs, page):
+    """Everything that was tried and did not win, reported rather than dropped."""
+    s, y = chrome(prs, "Criterion III — Training and Evaluation",
+                  "Architecture Search and Negative Results",
+                  "Six alternatives were evaluated under the same protocol. "
+                  "One succeeded. The remainder are reported rather than "
+                  "omitted.", page)
+
+    data = [
+        ["Candidate", "Accuracy", "Macro F1", "Outcome"],
+        ["Peer context (adopted)", "0.636", "0.634", "Adopted"],
+        ["Mamba, sequence model", "0.574", "0.572", "Tied with baseline"],
+        ["MLP baseline", "0.575", "0.569", "Reference"],
+        ["Lagged window features", "0.562", "0.558", "Degraded"],
+        ["Per-student normalisation", "0.536", "0.533", "Degraded"],
+        ["Self-training (405 unlab.)", "0.629", "0.627", "Degraded"],
+        ["Label spreading", "0.636", "0.626", "Within noise"],
+    ]
+    tw = 6.95
+    tbl = table(s, ML, y, tw, [2.60, 1.15, 1.15, 2.05], data,
+                row_h=0.355, head_h=0.36, size=9.5, head_size=9.5,
+                col_bold={0})
+    for r in range(1, len(data)):
+        for c in (1, 2):
+            run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
+            run.font.name = MONO
+            run.font.size = Pt(9.5)
+    for c in range(4):
+        tbl.cell(1, c).text_frame.paragraphs[0].runs[0].font.bold = True
+
+    caption(s, ML, y + 0.36 + 7 * 0.355 + 0.12, tw, "Table 10.",
+            "Mean over 5-10 seeds, out-of-fold, grouped by student.")
+
+    x2 = ML + tw + 0.32
+    w2 = SW - MR - x2
+    note(s, x2, y, w2, 2.10, "Mamba state-space models",
+         ["A selective state-space model over 48-step behavioural sequences "
+          "(2,897 parameters) tied the baseline: 0.574 against 0.575, a "
+          "difference of 0.001 against a combined spread of 0.040.",
+          "Vision Mamba over image patches (348,289 parameters) reached 0.618 "
+          "against 0.664 for frozen ResNet18 features on 12,582 images."],
+         accent=AMBER)
+    note(s, x2, y + 2.28, w2, 1.90, "Why a larger model does not help",
+         ["A 10,000-parameter network scored below a 300-parameter one at "
+          "every training-set size examined.",
+          "A learning curve fitted to the measured points indicates "
+          "approximately 364 labels for 0.70 accuracy. The constraint is the "
+          "quantity of human annotation, not model capacity."])
+
+    note(s, ML, y + 2.86, tw, 1.34, "On the apparent gain from label spreading",
+         ["Label spreading initially returned 0.676, an apparent improvement "
+          "of 0.036. It returned an identical figure under five seeds because "
+          "the method is deterministic and the fold assignment does not "
+          "shuffle. Permuting which students fall in which fold reduced the "
+          "difference to +0.014 ± 0.028, winning 7 of 12 permutations, and "
+          "accuracy varied by 16 points across the graph parameter. It was "
+          "rejected."])
+    return s
+
+
 def s10_comparison(prs, page):
     s, y = chrome(prs, "Criterion IV — Comparison with Base Paper",
                   "Comparison with Base Papers",
@@ -880,18 +996,18 @@ def s10_comparison(prs, page):
         run.font.bold = True
         run.font.color.rgb = TEAL_D if r == 1 else (RED if r == 4 else MUTE)
 
-    yy = caption(s, ML, y + 0.38 + 4 * 0.70 + 0.14, CW, "Table 9.",
+    yy = caption(s, ML, y + 0.38 + 4 * 0.70 + 0.14, CW, "Table 11.",
                  "Admissibility of comparison against each base paper.")
 
     half = (CW - 0.30) / 2
-    note(s, ML, yy + 0.04, half, 1.72, "Basis of the admissible comparison",
+    note(s, ML, yy + 0.02, half, 1.66, "Basis of the admissible comparison",
          ["The published figure is an accuracy on a writing-recognition benchmark; "
           "ours is mean average precision on a 58-image validation split. The "
           "metric, the data and the task definition all differ.",
           "What the comparison supports is the ordering: both find writing "
           "difficult, and the read–write disparity observed here reproduces the "
           "difficulty reported in the literature."])
-    note(s, ML + half + 0.30, yy + 0.04, half, 1.72, "Requirement for the ARG comparison",
+    note(s, ML + half + 0.30, yy + 0.02, half, 1.66, "Requirement for the ARG comparison",
          ["A labelled group-engagement corpus of approximately 3,000 clips with "
           "ordinal labels agreed between raters. No such corpus is publicly "
           "available for classroom footage.",
@@ -929,7 +1045,7 @@ def s11_summary(prs, page):
     tbl = table(s, ML, y, CW, [2.55, 3.65, 2.95, 2.82], data,
                 row_h=0.72, head_h=0.38, size=9.5, head_size=9.5, col_bold={0})
 
-    yy = caption(s, ML, y + 0.38 + 4 * 0.72 + 0.14, CW, "Table 10.",
+    yy = caption(s, ML, y + 0.38 + 4 * 0.72 + 0.14, CW, "Table 12.",
                  "Findings and limitations by criterion.")
 
     note(s, ML, yy + 0.06, CW, 1.10, "Reproducibility",
@@ -1063,10 +1179,12 @@ def main():
     s08_curves(prs, 9)
     s09_perclass(prs, 10)
     s09b_scorer(prs, 11)
-    s10_comparison(prs, 12)
-    s11_summary(prs, 13)
-    s12_appendix_a(prs, 14)
-    s13_appendix_b(prs, 15)
+    s09c_attention(prs, 12)
+    s09d_architectures(prs, 13)
+    s10_comparison(prs, 14)
+    s11_summary(prs, 15)
+    s12_appendix_a(prs, 16)
+    s13_appendix_b(prs, 17)
 
     prs.save(str(OUT))
     print(f"wrote {OUT}  ({len(prs.slides.__iter__.__self__._sldIdLst)} slides)")

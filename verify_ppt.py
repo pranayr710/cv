@@ -15,14 +15,17 @@ Run:  python verify_ppt.py
 from __future__ import annotations
 
 import math
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 from pptx import Presentation
-from pptx.util import Emu
 
 ROOT = Path(__file__).resolve().parent
-PPTX = ROOT / "ClassGraph.pptx"
+# The deck to audit. Taking it from the command line matters: this script used
+# to hard-code one path and silently ignore any argument, so auditing a second
+# deck reported the first one's issues against the second one's slide numbers.
+PPTX = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "ClassGraph.pptx"
 PREVIEW = ROOT / "ppt_preview"
 PREVIEW.mkdir(exist_ok=True)
 
