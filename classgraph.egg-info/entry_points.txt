@@ -1,4 +1,0 @@
-[console_scripts]
-classgraph = classgraph.cli:main
-classgraph-batch = tools.batch_session:main
-classgraph-server = tools.server:main

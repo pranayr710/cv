@@ -59,3 +59,8 @@ outputs/window_labels_with_image_feature.json
 !outputs/classifier_comparison.json
 !outputs/engagement_scorer_report.json
 !outputs/score_method_comparison.json
+
+# Build artifacts from `pip install -e .`
+*.egg-info/
+build/
+dist/
