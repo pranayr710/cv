@@ -64,3 +64,4 @@ outputs/window_labels_with_image_feature.json
 *.egg-info/
 build/
 dist/
+outputs/*.db

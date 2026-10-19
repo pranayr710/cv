@@ -441,6 +441,26 @@ def run(args) -> int:
     print(f"\n{kept} frames in {time.time() - started:.0f}s | "
           f"{len(students)} students profiled")
     print(f"report: {report}")
+
+    # The folder answers questions about this recording; the database answers
+    # the ones that span recordings. Writing both costs a second and means a
+    # session is queryable later without re-running anything.
+    if not args.no_db:
+        try:
+            from backend.store import connect, ingest_profiles, record_session
+
+            with connect(args.db) as conn:
+                session_id = record_session(
+                    conn, source=args.title or str(directory),
+                    n_frames=kept, scorer="window_engagement_model")
+                stored = ingest_profiles(
+                    conn, session_id, out / "live_profiles.json")
+            print(f"database: session {session_id}, {stored} students "
+                  f"-> {args.db}")
+        except Exception as exc:  # noqa: BLE001 - never lose a finished run
+            # The run itself succeeded and its files are on disk. A database
+            # problem must not make it look like the processing failed.
+            print(f"database: not written ({exc})")
     return 0
 
 
@@ -460,6 +480,11 @@ def main() -> int:
     parser.add_argument("--min-face-px-to-found", type=int, default=35,
                         help="Smallest best-face a cluster needs to become "
                              "a person. See IdentityConfig for the audit.")
+    parser.add_argument("--db", type=Path,
+                        default=Path("outputs/classgraph.db"),
+                        help="session database to append this run to")
+    parser.add_argument("--no-db", action="store_true",
+                        help="write the output folder only")
     parser.add_argument("--gallery", default=None,
                         help="Registered-student gallery, to name people.")
     parser.add_argument("--title", default=None)

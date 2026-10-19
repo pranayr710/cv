@@ -146,6 +146,7 @@ def main() -> int:
     sub.add_parser("live", help="webcam session without the browser")
     sub.add_parser("train", help="refit the attention model on all labels")
     sub.add_parser("label", help="queue the windows worth labelling next")
+    sub.add_parser("db", help="query sessions and students across runs")
 
     # A table rather than a chain of ifs, so adding a command is one line
     # and the help text above cannot drift from what actually dispatches.
@@ -155,6 +156,7 @@ def main() -> int:
         "live": ("tools.live_session", []),
         "train": ("tools.train_window_model", []),
         "label": ("tools.improve_model", ["--next", "60"]),
+        "db": ("tools.ingest_session", ["--list"]),
     }
 
     args, rest = parser.parse_known_args()
@@ -162,7 +164,13 @@ def main() -> int:
         return doctor(args)
     if args.command in routes:
         module, fallback = routes[args.command]
-        return _delegate(module, rest or fallback)
+        # The fallback is the default *action*, so it still applies when the
+        # only arguments given are settings like --db. Without this, naming a
+        # database silently turned `classgraph db` into a help screen.
+        if fallback and not any(a.startswith("--") and a not in ("--db",)
+                                for a in rest):
+            rest = [*rest, *fallback]
+        return _delegate(module, rest)
 
     parser.print_help()
     return 1
