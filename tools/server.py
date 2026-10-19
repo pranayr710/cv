@@ -33,7 +33,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
-import html
 import json
 import logging
 import os
@@ -480,14 +479,13 @@ def create_app(args):
 
     @app.get("/", response_class=HTMLResponse)
     async def index():
-        # The page is served without a token and carries one in a meta tag.
-        # A cross-origin page cannot read this response, so the token stays
-        # out of reach of the sites the Origin check is defending against,
-        # while the dashboard itself keeps working with no login step.
-        page = (STATIC / "index.html").read_text(encoding="utf-8")
-        tag = (f'<meta name="classgraph-token" '
-               f'content="{html.escape(token, quote=True)}">')
-        return page.replace("</head>", f"  {tag}\n</head>", 1)
+        # Served without the token. An earlier version injected it into a
+        # meta tag, reasoning that a cross-origin page cannot read this
+        # response -- true, and irrelevant: `curl http://host:8000/ | grep
+        # classgraph-token` hands any device on the network full API access,
+        # which is the threat the token exists to stop. The operator pastes
+        # the token printed at startup; the page keeps it in sessionStorage.
+        return (STATIC / "index.html").read_text(encoding="utf-8")
 
     @app.get("/api/students")
     async def students():

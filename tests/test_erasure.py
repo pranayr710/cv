@@ -178,7 +178,54 @@ class TestReporting:
                        db_path=world["db"], output_dirs=[world["folder"]])
         assert any("copy outside" in item for item in report.unreachable)
 
-    def test_matching_is_case_insensitive(self, world):
+    def test_matching_is_case_insensitive_in_every_store(self, world):
+        """Asserting only the gallery let a real bug through.
+
+        The gallery matched case-insensitively and the database did not, so
+        erase("asha") destroyed the face record, reported success, and left
+        every attention score in place. A test that checks one store endorses
+        that.
+        """
         report = erase("asha", gallery_path=world["gallery"],
                        db_path=world["db"], output_dirs=[world["folder"]])
         assert report.gallery_removed
+        assert report.db_sessions == 1
+        with connect(world["db"]) as conn:
+            remaining = [r["display_name"] for r in
+                         conn.execute("SELECT display_name FROM person")]
+        assert remaining == ["Ben"]
+        assert world["a"] not in _ids_in_graph(world["folder"])
+
+    def test_a_student_never_linked_to_a_person_is_still_erased(self, world,
+                                                                tmp_path):
+        """Ingest leaves person_id NULL; linking is a separate, optional step.
+
+        forget_person only reaches students that have one, so a student who
+        was ingested but never linked survived a deletion request entirely --
+        which is the default state of every ingested session.
+        """
+        from backend.store import record_session, upsert_student
+
+        with connect(world["db"]) as conn:
+            session = record_session(conn, source="unlinked")
+            student = upsert_student(conn, session, world["a"],
+                                     attention_score=2)
+            add_windows(conn, student,
+                        [{"start_ms": 0, "end_ms": 15000, "score_10": 2}])
+            before = conn.execute(
+                "SELECT COUNT(*) FROM student WHERE person_id IS NULL"
+            ).fetchone()[0]
+        assert before == 1
+
+        erase("Asha", gallery_path=world["gallery"], db_path=world["db"],
+              output_dirs=[world["folder"]])
+
+        with connect(world["db"]) as conn:
+            after = conn.execute(
+                "SELECT COUNT(*) FROM student WHERE person_id IS NULL"
+            ).fetchone()[0]
+            orphan_windows = conn.execute(
+                "SELECT COUNT(*) FROM window w LEFT JOIN student s "
+                "ON s.id = w.student_id WHERE s.id IS NULL").fetchone()[0]
+        assert after == 0
+        assert orphan_windows == 0

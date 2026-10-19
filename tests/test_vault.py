@@ -118,3 +118,45 @@ class TestRetention:
         entry = json.loads(path.read_text(encoding="utf-8"))["people"][0]
         assert entry["enrolled_at"]
         datetime.fromisoformat(entry["enrolled_at"])
+
+
+class TestProtectionIsNotLostByAccident:
+    """Every write path has to preserve encryption, not just the encrypt one."""
+
+    def test_a_retention_sweep_leaves_the_gallery_encrypted(self, tmp_path,
+                                                            monkeypatch):
+        """Running a privacy action destroyed at-rest encryption.
+
+        --expire-after decrypted to filter, then wrote the plaintext result
+        because re-encrypting was tied to a separate --encrypt flag. The
+        surviving children's names and embeddings landed in the clear.
+        """
+        import runpy
+        import sys
+
+        monkeypatch.setenv(vault.KEY_ENV, "a-term-passphrase")
+        path = tmp_path / "gallery.json"
+        _gallery(("Keep",)).save(path)
+        assert vault.is_encrypted(json.loads(path.read_text(encoding="utf-8")))
+
+        monkeypatch.setattr(
+            sys, "argv",
+            ["vault", "--gallery", str(path), "--expire-after", "3650"])
+        with pytest.raises(SystemExit):
+            runpy.run_module("backend.vault", run_name="__main__")
+
+        after = path.read_text(encoding="utf-8")
+        assert vault.is_encrypted(json.loads(after))
+        assert "Keep" not in after
+
+    def test_encryption_fails_closed_without_the_library(self, tmp_path,
+                                                         monkeypatch):
+        """An operator who set the passphrase believes the file is encrypted.
+
+        Writing plaintext with a warning, at a level the CLI does not print,
+        leaves them believing it.
+        """
+        monkeypatch.setenv(vault.KEY_ENV, "a-term-passphrase")
+        monkeypatch.setattr(vault, "available", lambda: False)
+        with pytest.raises(RuntimeError, match="cannot be encrypted"):
+            _gallery(("Asha",)).save(tmp_path / "gallery.json")

@@ -85,8 +85,23 @@ def main() -> int:
                 print(f"{profiles} not found.")
                 return 1
             facts = _session_facts(args.folder)
-            session_id = record_session(
-                conn, source=args.source or str(args.folder), **facts)
+            source = args.source or str(args.folder)
+            # Two runs over the same footage are two measurements and are
+            # kept apart deliberately. But an accidental re-ingest
+            # double-counts the student in every cross-session average, and
+            # the two look identical afterwards, so say which this is now.
+            seen = conn.execute(
+                "SELECT id, started_at FROM session WHERE source = ?",
+                (source,)).fetchall()
+            if seen:
+                print(f"  NOTE: {len(seen)} session(s) already recorded under "
+                      f"{source!r}:")
+                for row in seen:
+                    print(f"      session {row['id']}, {row['started_at'][:19]}")
+                print("  Adding another. If this is a re-ingest rather than")
+                print("  a second recording, remove the old one first, or")
+                print("  person averages will count this student twice.")
+            session_id = record_session(conn, source=source, **facts)
             n = ingest_profiles(conn, session_id, profiles)
             print(f"session {session_id}: {n} students from {args.folder}")
             if facts:

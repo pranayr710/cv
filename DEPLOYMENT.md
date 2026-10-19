@@ -88,7 +88,97 @@ cache (`~/.insightface/`, and the ultralytics cache) across.
 
 ---
 
-## 4. Running it
+## 4. Security configuration — read before any network deployment
+
+Two environment variables decide whether this is safe to run. Neither has a
+default that protects you, because a default secret in a repository is on
+every installation at once.
+
+### `CLASSGRAPH_TOKEN` — who may use the dashboard
+
+Every API route, and the WebSocket, requires it. Without it set, one is
+generated per run and printed at startup:
+
+```
+ClassGraph dashboard -> http://127.0.0.1:8000
+  access token: IunDG4V8jhW1h21XXjLTsSFyenv-yBAG
+```
+
+Paste that into the browser when it asks. The page does **not** carry the
+token — an earlier version did, which meant `curl http://host:8000/` handed
+it to anyone on the network.
+
+For a deployment that survives restarts:
+
+```bash
+export CLASSGRAPH_TOKEN="$(python -c 'import secrets;print(secrets.token_urlsafe(24))')"
+```
+
+Prefer the header over the query parameter. A token in a URL reaches reverse
+proxy and browser history logs:
+
+```bash
+curl -H "X-ClassGraph-Token: $CLASSGRAPH_TOKEN" http://127.0.0.1:8000/api/status
+```
+
+### `CLASSGRAPH_GALLERY_KEY` — encryption at rest
+
+The gallery holds children's names beside their face embeddings. With this
+set, it is encrypted with a scrypt-derived key:
+
+```bash
+pip install "classgraph[secure]"
+export CLASSGRAPH_GALLERY_KEY="a long passphrase you can retrieve"
+```
+
+**If you lose it, the gallery is unrecoverable** — everyone must re-enrol.
+Store it where you store other credentials, not next to the data.
+
+With the passphrase set and `cryptography` missing, enrolment **fails** rather
+than writing plaintext. That is deliberate: an operator who set the key
+believes the file is encrypted.
+
+### Check what is actually in force
+
+```bash
+python backend/vault.py --gallery outputs/enrollment/gallery.json
+```
+
+Reports whether the file is encrypted, how large it is, and what permissions
+it carries.
+
+### Retention
+
+Enrolments are dated. Remove old ones at the end of a term:
+
+```bash
+python backend/vault.py --expire-after 120 --dry-run
+python backend/vault.py --expire-after 120
+```
+
+Undated records count as expired. An encrypted gallery stays encrypted.
+
+### Deleting one person
+
+```bash
+python tools/erase_person.py "Name" --dry-run
+python tools/erase_person.py "Name"
+```
+
+One command covering all three stores: the face record, the session database,
+and every output folder. It prints what it could **not** reach — an emailed
+report, a backup — because a deletion that silently missed a copy is worse
+than one that says where it stopped.
+
+### Before exposing this on a network
+
+- Bind to loopback and put a reverse proxy with TLS in front. `--host 0.0.0.0`
+  prints a warning naming what is exposed.
+- The token travels in plain HTTP without TLS.
+- Confirm `classgraph doctor` passes on the target machine.
+
+
+## 5. Running it
 
 ### Recorded footage
 
@@ -126,7 +216,7 @@ python tools/stop_servers.py --kill
 
 ---
 
-## 5. Docker
+## 6. Docker
 
 For the recorded path. Live capture stays native, because passing a camera
 into a container is platform-specific and unsupported on Docker Desktop for
@@ -152,7 +242,7 @@ tell a running server from a crashed one.
 
 ---
 
-## 6. Privacy, before you deploy this anywhere real
+## 7. Privacy, before you deploy this anywhere real
 
 The face gallery is **biometric data about named people**. Deploying this in a
 school means:
@@ -170,7 +260,7 @@ school means:
 
 ---
 
-## 7. Known limits
+## 8. Known limits
 
 State these rather than let someone discover them:
 
@@ -184,7 +274,7 @@ State these rather than let someone discover them:
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Symptom | Cause |
 |---|---|

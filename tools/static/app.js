@@ -1,15 +1,43 @@
-// The server requires a token on every route. The page itself is served
-// without one and carries it in a meta tag, so the browser can read it while
-// a cross-origin page cannot -- which is the point: without this a page the
-// teacher happens to visit could call these same endpoints.
-const CG_TOKEN =
-  document.querySelector('meta[name="classgraph-token"]')?.content || "";
+// The server requires a token on every route. It is printed in the terminal
+// at startup and pasted here once, then kept in sessionStorage for this tab.
+//
+// It is deliberately NOT served with the page. An earlier version put it in a
+// meta tag, which meant `curl http://host:8000/` handed it to anyone who
+// asked -- the token protected nothing against exactly the networked attacker
+// it exists to stop.
+const CG_TOKEN_KEY = "classgraph-token";
+
+function cgToken() {
+  let token = sessionStorage.getItem(CG_TOKEN_KEY);
+  if (!token) {
+    token = window.prompt(
+      "Access token
+
+ClassGraph printed one in the terminal when it " +
+      "started.
+Paste it here to use this dashboard.");
+    if (token) sessionStorage.setItem(CG_TOKEN_KEY, token.trim());
+  }
+  return (token || "").trim();
+}
+
+/** Forget a rejected token, so a wrong paste can be corrected. */
+function cgForgetToken() {
+  sessionStorage.removeItem(CG_TOKEN_KEY);
+}
 
 /** fetch(), with the token attached. Used in place of fetch() throughout. */
-function cgFetch(url, options = {}) {
+async function cgFetch(url, options = {}) {
   const headers = { ...(options.headers || {}),
-                    "X-ClassGraph-Token": CG_TOKEN };
-  return fetch(url, { ...options, headers });
+                    "X-ClassGraph-Token": cgToken() };
+  const response = await fetch(url, { ...options, headers });
+  if (response.status === 401) {
+    // A stored token that no longer works is worse than none: the server
+    // restarts generate a new one, and without this the page would keep
+    // retrying the stale one forever.
+    cgForgetToken();
+  }
+  return response;
 }
 
 /* ClassGraph dashboard: roster, live overlay and enrollment.
@@ -195,7 +223,7 @@ function paintOverlay(boxes) {
 
 function connect() {
   socket = new WebSocket(
-    `ws://${location.host}/ws?token=${encodeURIComponent(CG_TOKEN)}`);
+    `ws://${location.host}/ws?token=${encodeURIComponent(cgToken())}`);
   socket.onmessage = (event) => {
     const d = JSON.parse(event.data);
     if (d.idle) return;

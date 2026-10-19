@@ -239,7 +239,12 @@ def main() -> int:
     payload = json.loads(path.read_text(encoding="utf-8"))
     secret = passphrase()
 
-    if is_encrypted(payload):
+    # Remembered, because every write below has to put it back. An earlier
+    # version decrypted here and wrote the plaintext result, so running a
+    # retention sweep -- a privacy action -- destroyed at-rest encryption of
+    # children's biometrics and left the surviving names in cleartext.
+    was_encrypted = is_encrypted(payload)
+    if was_encrypted:
         if not secret:
             print(f"The gallery is encrypted. Set {KEY_ENV} to work with it.")
             return 1
@@ -263,8 +268,12 @@ def main() -> int:
             print(f"  nothing older than {args.expire_after} days.")
 
     if args.decrypt:
+        # The only way to end up with plaintext, and it has to be asked for.
         changed = True
-    elif args.encrypt:
+        print("  WARNING: writing the gallery in plain text, as requested.")
+    elif args.encrypt or was_encrypted:
+        # `or was_encrypted` is the fix: anything that arrived encrypted
+        # leaves encrypted, whatever else this run was asked to do.
         if not secret:
             print(f"Set {KEY_ENV} to a passphrase first.")
             return 1
@@ -272,10 +281,12 @@ def main() -> int:
             print("pip install cryptography")
             return 1
         payload = encrypt_payload(payload, secret)
-        changed = True
+        changed = changed or args.encrypt
 
     if changed and not args.dry_run:
-        path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        from backend.erasure import atomic_write
+
+        atomic_write(path, json.dumps(payload, indent=2))
         print(f"  written -> {path}")
     elif args.dry_run:
         print("  dry run -- nothing written.")

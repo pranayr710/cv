@@ -29,6 +29,7 @@ copy is worse than one that says where it stopped.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -86,6 +87,24 @@ class ErasureReport:
             lines.append("")
             lines.append("  Nothing found under this name.")
         return "\n".join(lines)
+
+
+
+def atomic_write(path: Path, text: str) -> None:
+    """Replace a file's contents without a window where it is half-written.
+
+    A bare write_text truncates first. A crash or a full disk between the
+    truncate and the write leaves a corrupt JSONL or destroys the gallery,
+    with no copy to recover from -- and these are the files holding the data
+    an erasure or a retention sweep is in the middle of protecting.
+
+    os.replace is atomic on POSIX and on Windows, so a reader sees either the
+    old file or the new one.
+    """
+    path = Path(path)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def _person_ids_for(gallery, name: str) -> set[int]:
@@ -151,7 +170,7 @@ def _filter_profiles(path: Path, person_ids: set[int]) -> bool:
     kept = [e for e in entries if e.get("person_id") not in person_ids]
     if len(kept) == len(entries):
         return False
-    path.write_text(json.dumps(kept, indent=2), encoding="utf-8")
+    atomic_write(path, json.dumps(kept, indent=2))
     return True
 
 
@@ -182,22 +201,43 @@ def erase(name: str, *, gallery_path: Path, db_path: Path,
     else:
         report.gallery_removed = bool(person_ids)
 
-    # The database keys on its own person rows, which carry the display name.
+    # The database half, which has two ways of missing records.
+    #
+    # Matching was case-sensitive here while the gallery's is not, so
+    # erase("asha") removed the face record, reported success, and left every
+    # attention score in place.
+    #
+    # And forget_person only reaches students with a person_id. Ingest leaves
+    # that NULL -- linking is a separate, optional step -- so a student who
+    # was never linked survived a deletion request entirely. They are reached
+    # here by the gallery id the pipeline recorded as local_id.
     if Path(db_path).exists():
         from backend.store import connect, forget_person
 
         with connect(db_path) as conn:
             row = conn.execute(
-                "SELECT id FROM person WHERE display_name = ?",
+                "SELECT id FROM person WHERE display_name = ? COLLATE NOCASE",
                 (name,)).fetchone()
             if row is not None:
                 if dry_run:
-                    count = conn.execute(
+                    report.db_sessions = int(conn.execute(
                         "SELECT COUNT(*) FROM student WHERE person_id = ?",
-                        (int(row["id"]),)).fetchone()[0]
-                    report.db_sessions = int(count)
+                        (int(row["id"]),)).fetchone()[0])
                 else:
                     report.db_sessions = forget_person(conn, int(row["id"]))
+
+            if person_ids:
+                placeholders = ",".join("?" * len(person_ids))
+                unlinked = conn.execute(
+                    "SELECT id FROM student WHERE person_id IS NULL "  # noqa: S608
+                    f"AND local_id IN ({placeholders})",
+                    tuple(person_ids)).fetchall()
+                if unlinked and not dry_run:
+                    conn.executemany(
+                        "DELETE FROM student WHERE id = ?",
+                        [(int(r["id"]),) for r in unlinked])
+                    conn.commit()
+                report.db_sessions += len(unlinked)
 
     # Output folders. Without a gallery entry there is no id to match on, so
     # say so rather than reporting a clean sweep that did nothing.

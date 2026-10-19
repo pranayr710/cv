@@ -108,11 +108,6 @@ def install(app, token: str, *, extra_origins: frozenset[str] = frozenset()):
     #: one. They expose no data and change no state.
     PUBLIC = {"/", "/favicon.ico"}
 
-    #: Methods that change something. These additionally require a same-origin
-    #: request, since a token in a header already defeats a cross-origin form
-    #: but belt and braces costs nothing here.
-    UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
-
     class Guard(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
             path = request.url.path
@@ -123,7 +118,7 @@ def install(app, token: str, *, extra_origins: frozenset[str] = frozenset()):
                 return JSONResponse(
                     {"error": "origin not allowed"}, status_code=403)
 
-            if path in PUBLIC or path.startswith("/static"):
+            if path in PUBLIC or path.startswith("/static/"):
                 return await call_next(request)
 
             presented = (request.headers.get(TOKEN_HEADER)
@@ -134,10 +129,10 @@ def install(app, token: str, *, extra_origins: frozenset[str] = frozenset()):
                      "hint": f"send {TOKEN_HEADER} or ?{TOKEN_PARAM}="},
                     status_code=401)
 
-            if request.method in UNSAFE and origin and not origin_allowed(
-                    origin, host, extra_origins):
-                return JSONResponse(
-                    {"error": "cross-origin write refused"}, status_code=403)
+            # The cross-origin check above already rejected a foreign Origin
+            # for every method, so a second check here could never fire. The
+            # protection for unsafe methods is that one plus the token, which
+            # a cross-origin form cannot set.
             return await call_next(request)
 
     app.add_middleware(Guard)

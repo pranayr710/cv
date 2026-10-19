@@ -299,12 +299,19 @@ class EnrolledGallery:
         if secret and vault.available():
             payload = vault.encrypt_payload(payload, secret)
         elif secret:
-            logger.warning(
-                "%s is set but cryptography is not installed; the gallery is "
-                "being written in plain text. pip install cryptography",
-                vault.KEY_ENV)
+            # Fail closed. An operator who set the passphrase believes the
+            # file is encrypted; writing plaintext with a warning at a level
+            # the CLI does not display leaves them believing it while
+            # children's biometrics sit in the clear.
+            raise RuntimeError(
+                f"{vault.KEY_ENV} is set but the cryptography package is not "
+                "installed, so the gallery cannot be encrypted. Install it "
+                "with `pip install 'classgraph[secure]'`, or unset "
+                f"{vault.KEY_ENV} to accept a plaintext gallery.")
 
-        target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        from backend.erasure import atomic_write
+
+        atomic_write(target, json.dumps(payload, indent=2))
         if not vault.restrict_permissions(target):
             logger.warning(
                 "Could not restrict permissions on %s; it may be readable by "
