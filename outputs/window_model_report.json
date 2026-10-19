@@ -1,43 +1,43 @@
 {
- "n_labels": 179,
+ "n_labels": 557,
  "n_students": 27,
  "class_balance": {
-  "on": 85,
-  "off": 94
+  "on": 298,
+  "off": 259
  },
  "evaluation": "out-of-fold, grouped by student",
  "rule_baseline": {
-  "accuracy": 0.4472,
-  "decided": 161,
-  "abstained": 18,
-  "coverage": 0.8994
+  "accuracy": 0.41,
+  "decided": 500,
+  "abstained": 57,
+  "coverage": 0.8977
  },
  "learned_model": {
-  "accuracy": 0.5904,
-  "decided": 166,
-  "abstained": 13,
-  "coverage": 0.9274
+  "accuracy": 0.5639,
+  "decided": 509,
+  "abstained": 48,
+  "coverage": 0.9138
  },
  "better": "the learned model",
  "estimator": "mlp",
  "weights": {
-  "frac_unknown_action": 3.9484,
-  "frac_on_task_action": 3.7564,
-  "action_entropy": 3.1945,
-  "frac_phone": 3.1875,
-  "frac_oriented": -3.0995,
-  "action_switch_rate": -2.596,
-  "peer_count": -1.7923,
-  "frac_eyes_closed": -1.5661,
-  "frac_expr_negative": -1.4841,
-  "frac_expr_uncertain": 1.4621,
-  "coverage": -1.4332,
-  "frac_head_down_pitch": 1.1715,
-  "peer_frac_gaze_attending": 1.1083,
-  "peer_frac_on_task": -0.8494,
-  "frac_gaze_attending": 0.8371,
-  "mean_vertical_lean": -0.4707,
-  "mean_focus_offset_deg": -0.3217,
-  "frac_off_task_action": -0.0716
+  "frac_phone": 3.6863,
+  "frac_gaze_attending": -3.6726,
+  "peer_frac_gaze_attending": 3.5767,
+  "action_switch_rate": -2.6444,
+  "frac_oriented": -2.432,
+  "frac_unknown_action": 1.9717,
+  "frac_on_task_action": 1.8484,
+  "coverage": -1.6725,
+  "frac_expr_uncertain": 1.4087,
+  "frac_off_task_action": -1.1851,
+  "peer_frac_on_task": -1.167,
+  "frac_head_down_pitch": 1.0122,
+  "frac_expr_negative": 0.8023,
+  "peer_count": 0.7409,
+  "frac_eyes_closed": -0.7115,
+  "action_entropy": 0.3519,
+  "mean_vertical_lean": -0.1711,
+  "mean_focus_offset_deg": -0.0562
  }
 }
