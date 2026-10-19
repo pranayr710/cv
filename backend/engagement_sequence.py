@@ -26,8 +26,10 @@ from typing import Any
 
 from backend.config import CONFIG
 from backend.engagement_features import (
+    NEGATIVE_EXPRESSIONS,
     OFF_TASK_ACTIONS,
     ON_TASK_ACTIONS,
+    UNCERTAIN_EXPRESSIONS,
     WINDOW_MS,
 )
 
@@ -56,8 +58,14 @@ SEQ_LEN: int = 48
 #: Head pitch beyond this reads as looking down at a desk or a lap.
 HEAD_DOWN_PITCH_DEG: float = 20.0
 
-_NEGATIVE = frozenset({"sad", "angry", "disgust", "fear"})
-_UNCERTAIN = frozenset({"neutral", "unknown", None})
+# Imported rather than restated. These two modules disagreed: this one
+# counted angry, disgust and fear as negative -- labels the pipeline never
+# emits -- and treated "neutral" as uncertain, which misread 4,035 frames in
+# a single session as unreadable when they had been read successfully. The
+# comparison between the sequence model and the aggregate model is only fair
+# if both see the same thing.
+_NEGATIVE = NEGATIVE_EXPRESSIONS
+_UNCERTAIN = UNCERTAIN_EXPRESSIONS
 
 
 def _num(value: Any) -> float:

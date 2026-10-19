@@ -53,6 +53,17 @@ MIN_COVERAGE: float = 0.30
 
 #: Actions counted as off-task, mirroring backend.actions.OFF_TASK so the
 #: learned features and the rule verdict describe the same behaviours.
+#: Expression labels the pipeline actually emits, measured over a full
+#: session: neutral 4035, uncertain 3993, absent 3642, happy 707, sad 667.
+#: Nothing else appears, so sets naming angry, disgust, fear or unknown are
+#: describing a vocabulary this system does not produce.
+#:
+#: "neutral" is a reading, not an absence -- a student with a composed face
+#: was successfully read. Only a missing or explicitly uncertain label means
+#: the expression could not be determined.
+NEGATIVE_EXPRESSIONS = frozenset({"sad"})
+UNCERTAIN_EXPRESSIONS = frozenset({None, "uncertain"})
+
 OFF_TASK_ACTIONS = frozenset({
     "on_phone", "eyes_closed", "head_down", "looking_away", "slouching",
     "yawning", "drinking", "eating",
@@ -318,8 +329,8 @@ def window_features(frames: Sequence[Mapping[str, Any]],
     mean_lean = sum(leans) / len(leans) if leans else 0.0
 
     expr = [f.get("expression") for f in frames]
-    neg = sum(1 for e in expr if e == "sad")
-    unc = sum(1 for e in expr if e in (None, "uncertain"))
+    neg = sum(1 for e in expr if e in NEGATIVE_EXPRESSIONS)
+    unc = sum(1 for e in expr if e in UNCERTAIN_EXPRESSIONS)
 
     return (
         coverage,
