@@ -41,6 +41,10 @@ dependencies = [
 # without them, and torch is a 2GB install nobody should pay for by accident.
 learned = ["torch>=2.2"]
 gpu = ["onnxruntime-gpu>=1.17"]
+# Encryption at rest for the face gallery. Optional because the
+# system runs without it, and because a passphrase has to come from
+# the operator -- a key stored beside the data secures nothing.
+secure = ["cryptography>=42.0"]
 dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [project.scripts]

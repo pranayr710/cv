@@ -62,6 +62,7 @@ Usage:
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 import logging
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -105,12 +106,17 @@ class EnrolledPerson:
             of several shots suppresses exactly that noise.
         shots: How many enrollment faces the mean was built from. Reported so a
             thin, unreliable enrollment is visible rather than silent.
+        enrolled_at: ISO-8601 UTC timestamp of registration, or ``None`` for
+            records written before dating existed. A retention policy cannot
+            remove what it cannot date, and biometric data kept indefinitely
+            makes every later breach worse.
     """
 
     person_id: int
     name: str
     embedding: np.ndarray
     shots: int
+    enrolled_at: str | None = None
 
 
 class EnrolledGallery:
@@ -188,6 +194,11 @@ class EnrolledGallery:
             name=name,
             embedding=mean,
             shots=len(embeddings),
+            # Dated at registration so a retention policy has something to
+            # act on. Re-registering refreshes the date, which is right: the
+            # consent that justifies holding the data is the recent one.
+            enrolled_at=datetime.now(timezone.utc).isoformat(
+                timespec="seconds"),
         )
         if existing:
             self._people = [
@@ -272,12 +283,32 @@ class EnrolledGallery:
                     "person_id": p.person_id,
                     "name": p.name,
                     "shots": p.shots,
+                    "enrolled_at": p.enrolled_at,
                     "embedding": [round(float(x), 6) for x in p.embedding],
                 }
                 for p in self._people
             ],
         }
+        # Encrypted when a passphrase is configured, because this file is
+        # children's names beside their face embeddings. Permissions are
+        # restricted either way: that costs nothing and needs no setup, so
+        # there is no reason for it to depend on configuration.
+        from backend import vault
+
+        secret = vault.passphrase()
+        if secret and vault.available():
+            payload = vault.encrypt_payload(payload, secret)
+        elif secret:
+            logger.warning(
+                "%s is set but cryptography is not installed; the gallery is "
+                "being written in plain text. pip install cryptography",
+                vault.KEY_ENV)
+
         target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        if not vault.restrict_permissions(target):
+            logger.warning(
+                "Could not restrict permissions on %s; it may be readable by "
+                "other accounts on this machine.", target)
         logger.info("Wrote gallery of %d people to %s", len(self._people), target)
         return target
 
@@ -305,6 +336,19 @@ class EnrolledGallery:
             logger.info("No gallery at %s; starting empty.", source)
             return cls(config=config)
         payload = json.loads(source.read_text(encoding="utf-8"))
+
+        from backend import vault
+
+        if vault.is_encrypted(payload):
+            secret = vault.passphrase()
+            if not secret:
+                raise ValueError(
+                    f"{source} is encrypted; set {vault.KEY_ENV} to read it. "
+                    "Starting empty here would look like a gallery with "
+                    "nobody in it, and the next enrolment would overwrite the "
+                    "real one.")
+            payload = vault.decrypt_payload(payload, secret)
+
         version = payload.get("format_version")
         if version != GALLERY_FORMAT_VERSION:
             raise ValueError(
@@ -317,6 +361,7 @@ class EnrolledGallery:
                 name=str(entry["name"]),
                 embedding=_unit(np.asarray(entry["embedding"], dtype=np.float32)),
                 shots=int(entry.get("shots", 1)),
+                enrolled_at=entry.get("enrolled_at"),
             )
             for entry in payload.get("people", [])
         ]
