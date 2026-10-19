@@ -143,6 +143,12 @@ class EngagementModel:
             c * v for c, v in zip(self.coefficients,
                                   self._standardise(features)))
         # Clamped before exp so a large negative z cannot overflow.
+        # NaN first: min(60.0, nan) returns 60.0 because the comparison
+        # is False, so a single NaN would otherwise clamp to +60 and read
+        # as probability 1.0 -- a confident 10/10 produced by missing
+        # data rather than by evidence.
+        if math.isnan(z):
+            return float("nan")
         return 1.0 / (1.0 + math.exp(-max(-60.0, min(60.0, z))))
 
     def classify(self, features: Sequence[float]) -> Verdict:
@@ -164,6 +170,14 @@ class EngagementModel:
                            f"{MIN_COVERAGE_TO_DECIDE:.0%} floor", True)
 
         p = self.probability(features)
+        # A NaN means a feature could not be computed, which is missing
+        # evidence and so belongs with the other refusals. Falling through
+        # would be worse than wrong: `abs(nan - 0.5) < ABSTAIN_BAND` is False,
+        # so an unreadable window would be reported as a confident verdict.
+        if math.isnan(p):
+            return Verdict(None, p,
+                           "a feature could not be computed for this window",
+                           True)
         if abs(p - 0.5) < ABSTAIN_BAND:
             return Verdict(None, p,
                            f"probability {p:.2f} inside the abstention band",
@@ -230,6 +244,11 @@ class MLPEngagementModel(EngagementModel):
         x = np.asarray(self._standardise(features), dtype=float)
         hidden = np.maximum(0.0, x @ self.w1 + self.b1)   # ReLU, as sklearn
         z = float(hidden @ self.w2 + self.b2)
+        # min(60.0, nan) returns 60.0, so without this a NaN anywhere in
+        # the vector comes back as probability 1.0 -- a confident "fully
+        # on task" produced by missing data.
+        if math.isnan(z):
+            return float("nan")
         return 1.0 / (1.0 + math.exp(-max(-60.0, min(60.0, z))))
 
     def explain(self, features: Sequence[float], top: int = 4) -> str:

@@ -32,10 +32,10 @@ from pathlib import Path
 from typing import Any
 
 from backend.engagement_features import (
-    BASE_FEATURE_NAMES,
     MIN_COVERAGE,
     STRIDE_MS,
     WINDOW_MS,
+    peer_vectors_in_span,
     window_features,
 )
 from backend.engagement_model import EngagementModel, load_or_none
@@ -181,27 +181,20 @@ class AttentionScorer:
                       start_ms: int) -> list[tuple[float, ...]]:
         """Base vectors for the other students visible over the same span.
 
-        Built from the other students' live buffers rather than from their
-        last emitted window, because windows complete at different moments per
-        student and a stale neighbour would describe a different span than the
-        one being scored.
-
-        Only the base columns are taken. Including a peer's own peer columns
-        would make each student's score depend on a summary that already
-        contains them, which is circular.
+        Delegates to the same function the batch path uses, so a window
+        scored live and the same window scored from the log agree. They did
+        not before: this took every student with buffered frames at or after
+        the window start, with no upper bound, which counted students whose
+        frames belonged to a later span and pushed peer_count 1.8 standard
+        deviations above its training distribution -- a systematic offset on
+        one of the features the model leans on most.
         """
-        peers: list[tuple[float, ...]] = []
-        for other, other_state in self._students.items():
-            if other == person_id or not other_state.frames:
-                continue
-            frames = [f for t, f in other_state.frames if t >= start_ms]
-            if not frames:
-                continue
-            base = window_features(frames, self.expected_frames)[
-                :len(BASE_FEATURE_NAMES)]
-            if base[0] >= MIN_COVERAGE:
-                peers.append(base)
-        return peers
+        spans = {other: list(state.frames)
+                 for other, state in self._students.items()
+                 if other != person_id and state.frames}
+        return peer_vectors_in_span(
+            spans, person_id, start_ms, start_ms + self.window_ms,
+            self.expected_frames, MIN_COVERAGE)
 
     def session_score(self, person_id: int) -> int | None:
         """A student's attention over the whole session so far, 1-10.

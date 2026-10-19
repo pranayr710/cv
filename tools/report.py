@@ -30,6 +30,7 @@ a 3.0 minimum) obliges.
 
 from __future__ import annotations
 
+import html
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -467,7 +468,12 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
     if not graph_path.exists() or not profiles_path.exists():
         raise FileNotFoundError(f"No finished session in {out_dir}")
 
-    names = {p.person_id: p.name for p in gallery.people}
+    # Escaped at the source rather than at each of the dozens of places a
+    # name is interpolated into HTML or an SVG <title>. A name reaches here
+    # from the enrolment endpoint, so an unescaped one is stored XSS that runs
+    # in the teacher's browser, on the same origin as every other route.
+    names = {p.person_id: html.escape(p.name, quote=True)
+             for p in gallery.people}
     profiles = json.loads(profiles_path.read_text(encoding="utf-8"))
     students = [p for p in profiles if p.get("is_student")]
     (timeline, _positions, pairs, frames, objects, layouts,

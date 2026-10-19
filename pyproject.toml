@@ -22,7 +22,8 @@ classifiers = [
 dependencies = [
     "numpy>=1.26,<2.0",
     "opencv-python>=4.9,<5.0",
-    "ultralytics>=8.3,<9.0",
+    # 8.3.41 and 8.3.42 shipped a cryptominer in December 2024.
+    "ultralytics>=8.3.43,<9.0",
     "mediapipe>=0.10,<0.11",
     "insightface>=0.7,<0.8",
     "onnxruntime>=1.17",
@@ -31,7 +32,7 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "websockets>=12.0",
-    "python-multipart>=0.0.9",
+    "python-multipart>=0.0.9,<0.1",
     "Pillow>=10.0",
 ]
 

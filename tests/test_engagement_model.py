@@ -135,3 +135,57 @@ def test_zero_scale_does_not_divide_by_zero():
     model = _model(scale=[0.0] * n)
     p = model.probability(_features(coverage=1.0, frac_on_task_action=1.0))
     assert 0.0 <= p <= 1.0
+
+
+class TestMissingDataAbstains:
+    """A NaN must never read as certainty.
+
+    `min(60.0, nan)` returns 60.0, because the comparison is False. Without a
+    guard, a single unreadable feature clamped to +60 and came back as
+    probability 1.0 -- reported to a teacher as a confident "fully on task,
+    10/10" produced entirely by missing data. `abs(nan - 0.5) < ABSTAIN_BAND`
+    is also False, so the abstention band did not catch it either.
+    """
+
+    @staticmethod
+    def _model():
+        import numpy as np
+
+        from backend.engagement_features import FEATURE_NAMES
+        from backend.engagement_model import EngagementModel
+
+        n = len(FEATURE_NAMES)
+        return EngagementModel(
+            coefficients=np.ones(n), intercept=0.0,
+            feature_names=list(FEATURE_NAMES),
+            mean=np.zeros(n), scale=np.ones(n))
+
+    def test_a_nan_feature_produces_an_abstention(self):
+        from backend.engagement_features import FEATURE_NAMES
+
+        model = self._model()
+        features = [0.5] * len(FEATURE_NAMES)
+        features[FEATURE_NAMES.index("mean_focus_offset_deg")] = float("nan")
+
+        verdict = model.classify(features)
+        assert verdict.label is None
+        assert verdict.abstained is True
+
+    def test_a_nan_never_reads_as_full_confidence(self):
+        import math
+
+        from backend.engagement_features import FEATURE_NAMES
+
+        model = self._model()
+        features = [0.5] * len(FEATURE_NAMES)
+        features[FEATURE_NAMES.index("mean_vertical_lean")] = float("nan")
+        assert math.isnan(model.probability(features))
+
+    def test_ordinary_features_still_decide(self):
+        """The guard must not make the model abstain on good data."""
+        from backend.engagement_features import FEATURE_NAMES
+
+        model = self._model()
+        verdict = model.classify([5.0] * len(FEATURE_NAMES))
+        assert verdict.label == "on"
+        assert verdict.abstained is False

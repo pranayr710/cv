@@ -270,3 +270,94 @@ class TestPeerContext:
         # vice versa. If each included itself the two would converge.
         assert windows[2].features[i_peer_on] > 0.9
         assert windows[1].features[i_peer_on] < 0.1
+
+
+class TestCoverageIsBounded:
+    """Coverage gates abstention, so an inflated value disables the refusal."""
+
+    def test_more_frames_than_expected_still_caps_at_one(self):
+        """A 13 fps webcam against a 3 fps assumption gave coverage 4.33.
+
+        Standardised against the shipped model that is +21 sigma -- larger
+        than the 12.8 sigma that n_frames produced when it broke live scoring
+        and pinned every student at 1/10.
+        """
+        feats = window_features([_frame(action="attentive")] * 195,
+                                expected_frames=45)
+        assert feats[FEATURE_NAMES.index("coverage")] == 1.0
+
+    def test_a_half_covered_window_is_unaffected(self):
+        """Clamping must not touch the range the feature actually uses."""
+        feats = window_features([_frame(action="attentive")] * 20,
+                                expected_frames=40)
+        assert feats[FEATURE_NAMES.index("coverage")] == pytest.approx(0.5)
+
+
+class TestPeersAreResolvedBySpan:
+    """Peers used to be grouped by exact window-start equality.
+
+    A student's windows begin at their own first observed frame, so two
+    students present for the same fifteen seconds who entered at different
+    moments never appeared in each other's cohort. On a 14-student recording
+    that left 40 per cent of windows claiming no peers while six to eleven
+    students were visible.
+    """
+
+    def test_a_student_who_arrived_later_is_still_a_peer(self, tmp_path):
+        from backend.engagement_features import iter_windows
+
+        rows = []
+        for i in range(120):
+            nodes = [{"person_id": 1,
+                      "features": _frame(action="attentive")}]
+            # Student 2 appears 10 seconds in, so their windows start on a
+            # different boundary than student 1's.
+            if i >= 30:
+                nodes.append({"person_id": 2,
+                              "features": _frame(action="on_phone")})
+            rows.append(json.dumps({"frame_id": i, "timestamp_ms": i * 333,
+                                    "scene": 0, "nodes": nodes}))
+        path = tmp_path / "graph.jsonl"
+        path.write_text("\n".join(rows), encoding="utf-8")
+
+        windows = list(iter_windows(path))
+        i_count = FEATURE_NAMES.index("peer_count")
+        overlapping = [w for w in windows
+                       if w.person_id == 1 and w.start_ms >= 10_000]
+        assert overlapping, "expected student 1 windows after student 2 arrived"
+        assert any(w.features[i_count] > 0 for w in overlapping), (
+            "student 2 was visible in these windows but counted as no peer")
+
+    def test_a_student_outside_the_span_is_not_a_peer(self, tmp_path):
+        """The opposite failure: counting someone who was not there.
+
+        The live path had this one, taking any student with buffered frames
+        regardless of span.
+        """
+        from backend.engagement_features import iter_windows
+
+        rows = []
+        for i in range(120):
+            # The two never overlap.
+            pid = 1 if i < 45 else 2
+            rows.append(json.dumps({
+                "frame_id": i, "timestamp_ms": i * 333, "scene": 0,
+                "nodes": [{"person_id": pid,
+                           "features": _frame(action="attentive")}]}))
+        path = tmp_path / "graph.jsonl"
+        path.write_text("\n".join(rows), encoding="utf-8")
+
+        i_count = FEATURE_NAMES.index("peer_count")
+        for w in iter_windows(path):
+            assert w.features[i_count] == 0.0, (
+                f"student {w.person_id} at {w.start_ms}ms had a peer who was "
+                "not in frame")
+
+    def test_a_student_is_never_their_own_peer(self):
+        from backend.engagement_features import peer_vectors_in_span
+
+        frames = {1: [(0, _frame(action="attentive"))],
+                  2: [(0, _frame(action="on_phone"))]}
+        peers = peer_vectors_in_span(frames, 1, 0, 15_000, 1,
+                                     min_coverage=0.0)
+        assert len(peers) == 1

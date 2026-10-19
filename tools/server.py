@@ -33,8 +33,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
+import html
 import json
 import logging
+import os
 import threading
 import time
 from collections import Counter, defaultdict, deque
@@ -423,11 +425,20 @@ def create_app(args):
     import cv2
     import numpy as np
 
+    from backend import webauth
     from backend.config import CONFIG
     from backend.enrollment import EnrolledGallery
     from backend.face import FaceAnalyzer
 
     app = FastAPI(title="ClassGraph")
+
+    # Access control before anything else is registered. The dashboard can
+    # start a camera pointed at minors and stream it, so an unauthenticated
+    # route is not a missing feature but a hole.
+    token, generated = webauth.resolve_token()
+    webauth.install(app, token)
+    app.state.classgraph_token = token
+
     state = {"session": None, "config": None}
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -455,7 +466,14 @@ def create_app(args):
 
     @app.get("/", response_class=HTMLResponse)
     async def index():
-        return (STATIC / "index.html").read_text(encoding="utf-8")
+        # The page is served without a token and carries one in a meta tag.
+        # A cross-origin page cannot read this response, so the token stays
+        # out of reach of the sites the Origin check is defending against,
+        # while the dashboard itself keeps working with no login step.
+        page = (STATIC / "index.html").read_text(encoding="utf-8")
+        tag = (f'<meta name="classgraph-token" '
+               f'content="{html.escape(token, quote=True)}">')
+        return page.replace("</head>", f"  {tag}\n</head>", 1)
 
     @app.get("/api/students")
     async def students():
@@ -563,7 +581,16 @@ def create_app(args):
 
     @app.websocket("/ws")
     async def ws(socket: WebSocket):
-        """Push the live frame and analytics to the page."""
+        """Push the live frame and analytics to the page.
+
+        Checked before accepting, not after. The same-origin policy does not
+        apply to WebSocket handshakes, so any page a teacher visits could
+        otherwise open this socket and receive the live video; accepting and
+        then closing would already have completed the handshake it needs.
+        """
+        if not await webauth.websocket_allowed(socket, token):
+            await socket.close(code=1008)
+            return
         await socket.accept()
         try:
             while True:
@@ -624,14 +651,28 @@ def main() -> int:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
 
+    from backend import webauth
+
     import uvicorn
 
+    app = create_app(args)
+    token = app.state.classgraph_token
     print(f"ClassGraph dashboard -> http://{args.host}:{args.port}")
+    if os.environ.get(webauth.TOKEN_ENV, "").strip():
+        print("  access token: taken from " + webauth.TOKEN_ENV)
+    else:
+        print(f"  access token: {token}")
+        print("  (generated for this run; set "
+              f"{webauth.TOKEN_ENV} to keep one across restarts)")
+    if args.host not in ("127.0.0.1", "localhost"):
+        print(f"  WARNING: bound to {args.host}. Anything that can reach this")
+        print("           port can reach the camera. Put it behind TLS and a")
+        print("           reverse proxy before using it on a real network.")
     # websockets 14 removed the legacy API uvicorn's default "websockets"
     # implementation is built on, and the mismatch shows up as every WebSocket
     # handshake being refused with a bare 403 before the route is even reached.
     # The sans-io implementation is the maintained path and works with 14+.
-    uvicorn.run(create_app(args), host=args.host, port=args.port,
+    uvicorn.run(app, host=args.host, port=args.port,
                 log_level="warning", ws="websockets-sansio")
     return 0
 

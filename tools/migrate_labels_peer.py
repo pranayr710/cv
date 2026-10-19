@@ -40,13 +40,19 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true",
                     help="report what would change and write nothing")
+    ap.add_argument("--force", action="store_true",
+                    help="recompute even when the feature NAMES still match. "
+                         "Needed when a feature's definition changed but its "
+                         "name did not -- the staleness check compares names, "
+                         "so a corrected computation is otherwise invisible "
+                         "and the stored vectors stay quietly wrong.")
     args = ap.parse_args()
 
     fresh = {(w.person_id, w.start_ms): w for w in iter_windows(GRAPH)}
     print(f"{len(fresh)} windows recomputed with {len(FEATURE_NAMES)} "
           "features\n")
 
-    def refresh(entries, what: str) -> int:
+    def refresh(entries, what: str) -> int:  # noqa: ANN001
         """Replace stale feature vectors in place; return how many changed."""
         updated = missing = unchanged = 0
         for entry in entries:
@@ -55,7 +61,9 @@ def main() -> int:
             if window is None:
                 missing += 1
                 continue
-            if list(entry.get("feature_names") or []) == list(FEATURE_NAMES):
+            if (not args.force
+                    and list(entry.get("feature_names") or [])
+                    == list(FEATURE_NAMES)):
                 unchanged += 1
                 continue
             entry["features"] = list(window.features)

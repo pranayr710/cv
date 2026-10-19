@@ -195,6 +195,56 @@ def peer_features(peer_vectors: Sequence[Sequence[float]]) -> tuple[float, ...]:
     )
 
 
+def peer_vectors_in_span(
+    frames_by_student: Mapping[int, Sequence[tuple[int, Mapping[str, Any]]]],
+    person_id: int,
+    start_ms: int,
+    end_ms: int,
+    expected_frames: int,
+    min_coverage: float = MIN_COVERAGE,
+) -> list[tuple[float, ...]]:
+    """Base vectors for every other student visible over the same span.
+
+    Shared by the batch and the live paths so the two cannot drift, which they
+    had. The batch path grouped peers by exact equality of window start, and a
+    student's windows begin at their own first observed frame, so students
+    present for the same fifteen seconds who arrived at different moments were
+    invisible to each other. The live path had the opposite defect, counting
+    any student with buffered frames regardless of span, which pushed
+    peer_count 1.8 standard deviations above what the model was trained on.
+
+    Defining peers by the span itself fixes both, and makes a window scored
+    live agree with the same window scored from the log.
+
+    Args:
+        frames_by_student: ``{person_id: [(timestamp_ms, features), ...]}``.
+        person_id: The student being scored, excluded from their own summary.
+        start_ms: Window start, inclusive.
+        end_ms: Window end, exclusive.
+        expected_frames: Frames a fully-present student would contribute.
+        min_coverage: Peers seen less than this are omitted rather than
+            counted, since a student glimpsed for one frame says little about
+            what the room was doing.
+
+    Returns:
+        One base-feature vector per qualifying peer. Only base columns are
+        taken: including a peer's own peer columns would make each student's
+        score depend on a summary that already contains it.
+    """
+    peers: list[tuple[float, ...]] = []
+    for other, rows in frames_by_student.items():
+        if int(other) == int(person_id):
+            continue
+        frames = [f for t, f in rows if start_ms <= t < end_ms]
+        if not frames:
+            continue
+        base = window_features(frames, expected_frames)[
+            :len(BASE_FEATURE_NAMES)]
+        if base[0] >= min_coverage:
+            peers.append(base)
+    return peers
+
+
 def window_features(frames: Sequence[Mapping[str, Any]],
                     expected_frames: int,
                     peer_vectors: Sequence[Sequence[float]] = ()
@@ -217,7 +267,14 @@ def window_features(frames: Sequence[Mapping[str, Any]],
         Values in :data:`FEATURE_NAMES` order.
     """
     n = len(frames)
-    coverage = _safe_div(n, expected_frames)
+    # Clamped at 1.0. expected_frames is estimated from the frame rate, so a
+    # window can legitimately hold a frame or two more than predicted -- but
+    # left unclamped this turns a rate mismatch into an unbounded feature. A
+    # 13 fps webcam against the live scorer's 3 fps default gives coverage
+    # 4.33, standardising to +21 sigma: the defect n_frames had, in another
+    # column. Coverage also gates abstention, so an inflated value silently
+    # disables the refusal that is meant to catch thin evidence.
+    coverage = min(1.0, _safe_div(n, expected_frames))
     if n == 0:
         return tuple([0.0] * len(FEATURE_NAMES))
 
@@ -321,10 +378,16 @@ def iter_windows(graph_path: Path,
     fps = _safe_div(len(set(times)) - 1, span / 1000.0) if span else 0.0
     expected = max(round(fps * window_ms / 1000.0), 1)
 
-    # Two passes. Peer context needs every student's base vector for a given
-    # window start, and that is not known while still walking one student, so
-    # nothing can be yielded until all of them have been summarised.
-    staged: dict[int, list[dict[str, Any]]] = {}
+    # Peers are resolved by time span, not by a shared window-start key. An
+    # earlier version grouped students whose `start` matched exactly, and a
+    # student's windows begin at their own first observed frame -- so two
+    # students present for the identical fifteen seconds, who entered the room
+    # at different moments, never appeared in each other's cohort. On a
+    # 14-student recording that left 40 per cent of windows reporting no peers
+    # while six to eleven students were visible.
+    spans = {pid: [(t, f) for (t, _scene, f, _fid) in rows]
+             for pid, rows in by_student.items()}
+
     for pid, rows in sorted(by_student.items()):
         rows.sort(key=lambda r: r[0])
         first, last = rows[0][0], rows[-1][0]
@@ -338,28 +401,15 @@ def iter_windows(graph_path: Path,
                 base = window_features(frames, expected)[
                     :len(BASE_FEATURE_NAMES)]
                 if base[0] >= min_coverage:
-                    staged.setdefault(start, []).append({
-                        "person_id": pid,
-                        "start_ms": start,
-                        "end_ms": end,
-                        "base": base,
-                        "rule_verdict": _rule_verdict(frames),
-                        "scene": inside[0][0],
-                        "frame_ids": tuple(fid for _, _, fid in inside),
-                    })
+                    peers = peer_vectors_in_span(
+                        spans, pid, start, end, expected, min_coverage)
+                    yield Window(
+                        person_id=pid,
+                        start_ms=start,
+                        end_ms=end,
+                        features=tuple(base) + peer_features(peers),
+                        rule_verdict=_rule_verdict(frames),
+                        scene=inside[0][0],
+                        frame_ids=tuple(fid for _, _, fid in inside),
+                    )
             start += stride_ms
-
-    for start in sorted(staged):
-        cohort = staged[start]
-        for item in cohort:
-            peers = [o["base"] for o in cohort
-                     if o["person_id"] != item["person_id"]]
-            yield Window(
-                person_id=item["person_id"],
-                start_ms=item["start_ms"],
-                end_ms=item["end_ms"],
-                features=tuple(item["base"]) + peer_features(peers),
-                rule_verdict=item["rule_verdict"],
-                scene=item["scene"],
-                frame_ids=item["frame_ids"],
-            )

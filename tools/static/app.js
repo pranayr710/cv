@@ -1,3 +1,17 @@
+// The server requires a token on every route. The page itself is served
+// without one and carries it in a meta tag, so the browser can read it while
+// a cross-origin page cannot -- which is the point: without this a page the
+// teacher happens to visit could call these same endpoints.
+const CG_TOKEN =
+  document.querySelector('meta[name="classgraph-token"]')?.content || "";
+
+/** fetch(), with the token attached. Used in place of fetch() throughout. */
+function cgFetch(url, options = {}) {
+  const headers = { ...(options.headers || {}),
+                    "X-ClassGraph-Token": CG_TOKEN };
+  return fetch(url, { ...options, headers });
+}
+
 /* ClassGraph dashboard: roster, live overlay and enrollment.
  *
  * The page owns presentation only. Every number comes from the WebSocket
@@ -32,7 +46,7 @@ let enrollStream = null;
 /* ---------------------------------------------------------------- roster */
 
 async function loadRoster() {
-  const { students } = await (await fetch("/api/students")).json();
+  const { students } = await (await cgFetch("/api/students")).json();
   const box = $("roster");
   if (!students.length) {
     box.innerHTML = '<p class="empty">Nobody registered yet.</p>';
@@ -180,7 +194,8 @@ function paintOverlay(boxes) {
 /* ---------------------------------------------------------------- socket */
 
 function connect() {
-  socket = new WebSocket(`ws://${location.host}/ws`);
+  socket = new WebSocket(
+    `ws://${location.host}/ws?token=${encodeURIComponent(CG_TOKEN)}`);
   socket.onmessage = (event) => {
     const d = JSON.parse(event.data);
     if (d.idle) return;
@@ -522,7 +537,7 @@ function renderInteractionMatrix(svg, present, pairs, W, H) {
 /* ---------------------------------------------------------------- session */
 
 $("btnStart").onclick = async () => {
-  const res = await fetch("/api/session/start", { method: "POST" });
+  const res = await cgFetch("/api/session/start", { method: "POST" });
   if (!res.ok) { alert((await res.json()).detail); return; }
   running = true;
   $("btnStart").hidden = true;
@@ -532,7 +547,7 @@ $("btnStart").onclick = async () => {
 };
 
 $("btnStop").onclick = async () => {
-  const res = await fetch("/api/session/stop", { method: "POST" });
+  const res = await cgFetch("/api/session/stop", { method: "POST" });
   const d = await res.json();
   running = false;
   $("btnStart").hidden = false;
@@ -593,7 +608,7 @@ $("enrollGo").onclick = async () => {
   }
 
   msg.textContent = "Checking the shots…";
-  const res = await fetch("/api/enroll", {
+  const res = await cgFetch("/api/enroll", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, shots }),
