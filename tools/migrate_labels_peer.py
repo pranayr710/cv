@@ -32,6 +32,7 @@ from backend.engagement_features import FEATURE_NAMES, iter_windows
 
 LABELS = Path("labeling/labels.json")
 GRAPH = Path("outputs/final2/live_graph.jsonl")
+MANIFEST = Path("labeling/manifest.json")
 
 
 def main() -> int:
@@ -41,39 +42,59 @@ def main() -> int:
                     help="report what would change and write nothing")
     args = ap.parse_args()
 
-    store = json.loads(LABELS.read_text(encoding="utf-8"))
     fresh = {(w.person_id, w.start_ms): w for w in iter_windows(GRAPH)}
-    print(f"{len(store)} labels, {len(fresh)} windows recomputed "
-          f"with {len(FEATURE_NAMES)} features")
+    print(f"{len(fresh)} windows recomputed with {len(FEATURE_NAMES)} "
+          "features\n")
 
-    updated = missing = unchanged = 0
-    for entry in store.values():
-        key = (entry["person_id"], entry["start_ms"])
-        window = fresh.get(key)
-        if window is None:
-            missing += 1
-            continue
-        if list(entry.get("feature_names") or []) == list(FEATURE_NAMES):
-            unchanged += 1
-            continue
-        entry["features"] = list(window.features)
-        entry["feature_names"] = list(FEATURE_NAMES)
-        updated += 1
+    def refresh(entries, what: str) -> int:
+        """Replace stale feature vectors in place; return how many changed."""
+        updated = missing = unchanged = 0
+        for entry in entries:
+            key = (entry.get("person_id"), entry.get("start_ms"))
+            window = fresh.get(key)
+            if window is None:
+                missing += 1
+                continue
+            if list(entry.get("feature_names") or []) == list(FEATURE_NAMES):
+                unchanged += 1
+                continue
+            entry["features"] = list(window.features)
+            entry["feature_names"] = list(FEATURE_NAMES)
+            updated += 1
+        print(f"  {what}")
+        print(f"    updated   : {updated}")
+        print(f"    unchanged : {unchanged}")
+        print(f"    no window : {missing}")
+        return updated
 
-    print(f"  updated   : {updated}")
-    print(f"  unchanged : {unchanged}")
-    print(f"  no window : {missing}"
-          + ("  (these keep their old vector and will be skipped in training)"
-             if missing else ""))
+    store = json.loads(LABELS.read_text(encoding="utf-8"))
+    n_labels = refresh(list(store.values()), f"{LABELS} ({len(store)} labels)")
+
+    # The manifest matters as much as the labels, and for a less obvious
+    # reason: the labelling tool copies the feature vector out of it when a
+    # judgement is recorded. A stale manifest therefore writes stale vectors
+    # into every *new* label, and the mismatch only surfaces at training time,
+    # after the labelling session is over.
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    rows = manifest if isinstance(manifest, list) else list(manifest.values())
+    n_manifest = refresh(rows, f"{MANIFEST} ({len(rows)} windows)")
 
     if args.dry_run:
         print("\n  dry run -- nothing written.")
         return 0
 
-    shutil.copy2(LABELS, LABELS.with_suffix(".json.bak"))
-    LABELS.write_text(json.dumps(store, indent=1), encoding="utf-8")
-    print(f"\n  backup  -> {LABELS.with_suffix('.json.bak')}")
-    print(f"  written -> {LABELS}")
+    if n_labels:
+        shutil.copy2(LABELS, LABELS.with_suffix(".json.bak"))
+        LABELS.write_text(json.dumps(store, indent=1), encoding="utf-8")
+        print(f"\n  backup  -> {LABELS.with_suffix('.json.bak')}")
+        print(f"  written -> {LABELS}")
+    if n_manifest:
+        shutil.copy2(MANIFEST, MANIFEST.with_suffix(".json.bak"))
+        MANIFEST.write_text(json.dumps(manifest, indent=1), encoding="utf-8")
+        print(f"  backup  -> {MANIFEST.with_suffix('.json.bak')}")
+        print(f"  written -> {MANIFEST}")
+    if not (n_labels or n_manifest):
+        print("\n  Everything already carries the current feature set.")
     return 0
 
 
