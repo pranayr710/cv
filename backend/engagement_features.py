@@ -87,7 +87,7 @@ BASE_FEATURE_NAMES: tuple[str, ...] = (
     "mean_focus_offset_deg",  # mean angle between facing and room focus
     "action_entropy",        # how varied the actions are across the window
     "action_switch_rate",    # fraction of adjacent frames where action changed
-    "frac_head_down_pitch",  # fraction with head pitch below the down threshold
+    "frac_head_down_action",  # fraction whose action was read as head-down
     "mean_vertical_lean",    # mean nose-to-shoulder offset, normalised
     "frac_expr_negative",    # fraction with a sad expression
     "frac_expr_uncertain",   # fraction where expression could not be read
@@ -114,10 +114,19 @@ PEER_FEATURE_NAMES: tuple[str, ...] = (
 
 FEATURE_NAMES: tuple[str, ...] = BASE_FEATURE_NAMES + PEER_FEATURE_NAMES
 
-#: Divisor that keeps peer_count in roughly unit range. A raw count would
-#: scale with class size and reintroduce exactly the frame-rate style of bug
-#: that n_frames caused.
-PEER_COUNT_SCALE: float = 10.0
+#: Half-saturation point for peer_count: this many peers reads as 0.5.
+#:
+#: An earlier version divided the raw count by 10, which rescales but does not
+#: bound. A class of 30 then gives 2.9 against a training mean of 0.72 and a
+#: scale of 0.138 -- +16.5 standard deviations, the same defect n_frames had,
+#: and it would appear the first time this ran in a bigger room than the one
+#: it was developed in.
+#:
+#: n / (n + K) is bounded in [0, 1) for any class size, so the feature says
+#: "a few peers" or "many peers" rather than carrying the roll number. The
+#: difference between 25 and 30 classmates is not information about whether
+#: one student is paying attention; the difference between 1 and 6 is.
+PEER_COUNT_HALF: float = 8.0
 
 
 @dataclass(frozen=True)
@@ -191,7 +200,7 @@ def peer_features(peer_vectors: Sequence[Sequence[float]]) -> tuple[float, ...]:
     return (
         sum(v[i_on] for v in peer_vectors) / n,
         sum(v[i_gaze] for v in peer_vectors) / n,
-        n / PEER_COUNT_SCALE,
+        n / (n + PEER_COUNT_HALF),
     )
 
 

@@ -218,7 +218,7 @@ class TestPeerContext:
     def test_peer_features_average_the_others(self):
         from backend.engagement_features import (
             BASE_FEATURE_NAMES,
-            PEER_COUNT_SCALE,
+            PEER_COUNT_HALF,
             peer_features,
         )
 
@@ -228,19 +228,38 @@ class TestPeerContext:
         a[i_on], b[i_on] = 1.0, 0.0
         on, _gaze, count = peer_features([a, b])
         assert on == pytest.approx(0.5)
-        assert count == pytest.approx(2 / PEER_COUNT_SCALE)
+        assert count == pytest.approx(2 / (2 + PEER_COUNT_HALF))
 
-    def test_peer_count_is_scaled_not_raw(self):
-        """A raw count would scale with class size.
+    def test_peer_count_saturates_rather_than_scaling(self):
+        """Dividing a raw count rescales it; it does not bound it.
 
-        That is the same defect n_frames had: a magnitude that depends on the
-        recording setup rather than on the student, which shifts far outside
-        the training range when the setup changes.
+        The first version divided by 10, so a class of 30 gave 2.9 against a
+        training mean of 0.72 and a scale of 0.138 -- +16.5 standard
+        deviations, and it would have appeared the first time this ran in a
+        bigger room than the one it was built in. That is the defect n_frames
+        had, with a different divisor.
         """
         from backend.engagement_features import BASE_FEATURE_NAMES, peer_features
 
-        many = [[0.0] * len(BASE_FEATURE_NAMES) for _ in range(30)]
-        assert peer_features(many)[2] <= 5.0
+        def count_for(n):
+            return peer_features(
+                [[0.0] * len(BASE_FEATURE_NAMES)] * n)[2] if n else 0.0
+
+        for n in (1, 5, 11, 30, 60, 200):
+            assert 0.0 <= count_for(n) < 1.0, f"{n} peers escaped [0, 1)"
+
+        # Still ordered, so "a few peers" and "many peers" remain different.
+        assert count_for(1) < count_for(5) < count_for(11) < count_for(30)
+
+        # And the room sizes that differ meaningfully are still separated,
+        # while the ones that do not have converged.
+        assert count_for(5) - count_for(1) > 0.2
+        assert count_for(60) - count_for(30) < 0.1
+
+    def test_a_lone_student_has_no_peers(self):
+        from backend.engagement_features import peer_features
+
+        assert peer_features([])[2] == 0.0
 
     def test_a_students_own_vector_is_not_in_its_peer_summary(self, tmp_path):
         """Including yourself would make the feature partly a copy of another.

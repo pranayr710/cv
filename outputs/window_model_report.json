@@ -13,31 +13,31 @@
   "coverage": 0.8977
  },
  "learned_model": {
-  "accuracy": 0.5706,
-  "decided": 510,
-  "abstained": 47,
-  "coverage": 0.9156
+  "accuracy": 0.5717,
+  "decided": 516,
+  "abstained": 41,
+  "coverage": 0.9264
  },
  "better": "the learned model",
  "estimator": "mlp",
  "weights": {
-  "mean_focus_offset_deg": 4.9242,
-  "frac_phone": 4.3883,
-  "frac_gaze_attending": -3.9166,
-  "action_switch_rate": -3.8675,
-  "frac_oriented": 3.003,
-  "frac_eyes_closed": -2.8875,
-  "action_entropy": 2.8636,
-  "peer_count": -2.2763,
-  "peer_frac_gaze_attending": 2.1637,
-  "frac_off_task_action": -1.9073,
-  "peer_frac_on_task": 1.8512,
-  "frac_unknown_action": 1.6004,
-  "mean_vertical_lean": 1.3941,
-  "frac_head_down_pitch": 1.0094,
-  "frac_expr_negative": -0.4834,
-  "coverage": -0.3449,
-  "frac_expr_uncertain": 0.2257,
-  "frac_on_task_action": -0.1472
+  "frac_phone": 5.1505,
+  "mean_focus_offset_deg": 3.8835,
+  "peer_frac_gaze_attending": 3.7137,
+  "action_entropy": 3.6032,
+  "frac_gaze_attending": -3.0223,
+  "frac_eyes_closed": -2.953,
+  "peer_frac_on_task": 2.6203,
+  "action_switch_rate": -2.5517,
+  "frac_off_task_action": -2.0752,
+  "peer_count": -1.8113,
+  "mean_vertical_lean": 1.7403,
+  "frac_oriented": 1.6827,
+  "frac_head_down_action": 1.5318,
+  "coverage": -1.4459,
+  "frac_expr_uncertain": -0.9153,
+  "frac_on_task_action": 0.3194,
+  "frac_expr_negative": 0.0957,
+  "frac_unknown_action": -0.0061
  }
 }
