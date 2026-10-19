@@ -413,6 +413,20 @@ class Session:
         }
 
 
+def _session_folders(root: Path) -> list[Path]:
+    """Output folders holding a session, found rather than configured.
+
+    A session writes to whichever folder the run chose, so a hand-maintained
+    list would go stale -- and a stale list here means records that survive a
+    deletion request.
+    """
+    base = Path(root).parent if Path(root).name else Path(root)
+    if not base.is_dir():
+        return []
+    return sorted(p for p in base.iterdir()
+                  if p.is_dir() and (p / "live_profiles.json").exists())
+
+
 def create_app(args):
     """Build the FastAPI application.
 
@@ -483,11 +497,30 @@ def create_app(args):
 
     @app.delete("/api/students/{name}")
     async def forget(name: str):
-        g = gallery()
-        if not g.forget(name):
+        """Erase a student from every store, not only from the gallery.
+
+        This used to drop the face record and leave the session database and
+        every output folder untouched -- per-window scores, per-frame boxes
+        and the name rendered into a report all survived, and the call
+        returned ok. A deletion request is one request.
+        """
+        from backend.erasure import erase
+
+        report = erase(name, gallery_path=Path(args.gallery),
+                       db_path=Path(args.db),
+                       output_dirs=_session_folders(out))
+        if not report.anything_found:
             raise HTTPException(404, f"No student named {name!r}")
-        g.save(args.gallery)
-        return {"ok": True}
+        return {
+            "ok": True,
+            "face_record_removed": report.gallery_removed,
+            "database_sessions": report.db_sessions,
+            "files_filtered": len(report.files_rewritten),
+            "files_removed": len(report.files_removed),
+            # Returned rather than hidden: an operator acting on a deletion
+            # request needs to know what this could not reach.
+            "unreachable": report.unreachable,
+        }
 
     @app.post("/api/enroll")
     async def enroll(payload: dict):
@@ -643,6 +676,8 @@ def main() -> int:
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--gallery", default="outputs/enrollment/gallery.json")
     parser.add_argument("--out", default="outputs/live")
+    parser.add_argument("--db", default="outputs/classgraph.db",
+                        help="session database to erase from")
     parser.add_argument("--stride", type=int, default=3)
     parser.add_argument("--imgsz", type=int, default=None)
     parser.add_argument("--min-face-px", type=int, default=60)

@@ -1,0 +1,240 @@
+"""Erase one person from everything this system holds about them.
+
+A deletion request is one request. Until now it needed three, because the data
+lives in three places that knew nothing about each other: the face gallery
+(name and a 512-dimension embedding), the session database (per-window
+attention scores), and the pipeline's output folders (per-frame boxes, derived
+profiles, and the person's name rendered into an HTML report). Deleting via
+the dashboard removed the gallery entry and left the rest; deleting via the
+database CLI did the reverse. Both reported success.
+
+That is the shape of a privacy failure nobody notices, and this system holds
+biometric data about children.
+
+**What erasure means here, precisely.** The person's name and face embedding
+are destroyed. Their derived records -- attention scores, action tallies,
+per-frame boxes -- are destroyed with them, because a per-frame bounding box
+tied to a stable id is still personal data even without a name attached.
+
+**What is deliberately kept.** The *identifier* stays retired rather than
+reused, and session-level aggregates (how many students, class mean) are not
+recomputed. An id that came back as a different child would corrupt every
+historical record that mentions it, and a class mean is about the class.
+
+**What this cannot reach.** Anything copied elsewhere: a report emailed to a
+colleague, a backup, a folder outside the ones named. The report names it
+rather than pretending otherwise, because a deletion that silently missed a
+copy is worse than one that says where it stopped.
+"""
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, field
+from pathlib import Path
+
+#: Files in an output folder that carry per-student records.
+DERIVED_FILES = ("live_graph.jsonl", "live_frames.jsonl", "raw.jsonl")
+
+#: Files rebuilt from the above rather than filtered line by line.
+REBUILT_FILES = ("live_profiles.json", "report.html")
+
+
+@dataclass
+class ErasureReport:
+    """What was removed, and what could not be reached.
+
+    Attributes:
+        name: Who was erased.
+        gallery_removed: Whether a face record was destroyed.
+        db_sessions: Session records deleted from the database.
+        files_rewritten: Paths whose per-student records were filtered out.
+        files_removed: Paths deleted entirely, because they could not be
+            filtered safely.
+        unreachable: Places this could not reach, stated so the operator can
+            act on them.
+    """
+
+    name: str
+    gallery_removed: bool = False
+    db_sessions: int = 0
+    files_rewritten: list[str] = field(default_factory=list)
+    files_removed: list[str] = field(default_factory=list)
+    unreachable: list[str] = field(default_factory=list)
+
+    @property
+    def anything_found(self) -> bool:
+        return bool(self.gallery_removed or self.db_sessions
+                    or self.files_rewritten or self.files_removed)
+
+    def render(self) -> str:
+        lines = [f"Erasure report for {self.name!r}", ""]
+        lines.append(f"  face record removed : {self.gallery_removed}")
+        lines.append(f"  database sessions   : {self.db_sessions}")
+        lines.append(f"  files filtered      : {len(self.files_rewritten)}")
+        for path in self.files_rewritten:
+            lines.append(f"      {path}")
+        if self.files_removed:
+            lines.append(f"  files deleted       : {len(self.files_removed)}")
+            for path in self.files_removed:
+                lines.append(f"      {path}")
+        if self.unreachable:
+            lines.append("")
+            lines.append("  NOT reached -- handle these by hand:")
+            for item in self.unreachable:
+                lines.append(f"      {item}")
+        if not self.anything_found:
+            lines.append("")
+            lines.append("  Nothing found under this name.")
+        return "\n".join(lines)
+
+
+def _person_ids_for(gallery, name: str) -> set[int]:
+    """Every pipeline id the gallery associates with this person."""
+    lowered = name.strip().lower()
+    return {p.person_id for p in gallery.people
+            if p.name.strip().lower() == lowered}
+
+
+def _filter_jsonl(path: Path, person_ids: set[int]) -> bool:
+    """Drop this person's nodes from a JSONL stream, keeping the frames.
+
+    Frames are kept because removing them would change the timeline every
+    other student's windows are measured against -- erasing one person would
+    silently alter everybody else's scores.
+    """
+    if not path.exists() or not person_ids:
+        return False
+
+    out: list[str] = []
+    changed = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            out.append(line)
+            continue
+
+        for key in ("nodes", "persons"):
+            items = row.get(key)
+            if not isinstance(items, list):
+                continue
+            kept = [it for it in items
+                    if it.get("person_id") not in person_ids]
+            if len(kept) != len(items):
+                row[key] = kept
+                changed = True
+
+        edges = row.get("edges")
+        if isinstance(edges, list):
+            kept_edges = [e for e in edges
+                          if e.get("source") not in person_ids
+                          and e.get("target") not in person_ids]
+            if len(kept_edges) != len(edges):
+                row["edges"] = kept_edges
+                changed = True
+
+        out.append(json.dumps(row))
+
+    if changed:
+        path.write_text("\n".join(out) + "\n", encoding="utf-8")
+    return changed
+
+
+def _filter_profiles(path: Path, person_ids: set[int]) -> bool:
+    """Drop this person's profile from a profiles JSON."""
+    if not path.exists() or not person_ids:
+        return False
+    data = json.loads(path.read_text(encoding="utf-8"))
+    entries = data if isinstance(data, list) else list(data.values())
+    kept = [e for e in entries if e.get("person_id") not in person_ids]
+    if len(kept) == len(entries):
+        return False
+    path.write_text(json.dumps(kept, indent=2), encoding="utf-8")
+    return True
+
+
+def erase(name: str, *, gallery_path: Path, db_path: Path,
+          output_dirs: list[Path], dry_run: bool = False) -> ErasureReport:
+    """Remove every record of one person, across all three stores.
+
+    Args:
+        name: The person to erase, matched case-insensitively.
+        gallery_path: The enrolment gallery.
+        db_path: The session database.
+        output_dirs: Pipeline output folders to filter.
+        dry_run: Report what would be removed and change nothing.
+
+    Returns:
+        An :class:`ErasureReport`, including anything that could not be
+        reached.
+    """
+    from backend.enrollment import EnrolledGallery
+
+    report = ErasureReport(name=name)
+
+    gallery = EnrolledGallery.load(gallery_path)
+    person_ids = _person_ids_for(gallery, name)
+    if person_ids and not dry_run:
+        report.gallery_removed = gallery.forget(name)
+        gallery.save(gallery_path)
+    else:
+        report.gallery_removed = bool(person_ids)
+
+    # The database keys on its own person rows, which carry the display name.
+    if Path(db_path).exists():
+        from backend.store import connect, forget_person
+
+        with connect(db_path) as conn:
+            row = conn.execute(
+                "SELECT id FROM person WHERE display_name = ?",
+                (name,)).fetchone()
+            if row is not None:
+                if dry_run:
+                    count = conn.execute(
+                        "SELECT COUNT(*) FROM student WHERE person_id = ?",
+                        (int(row["id"]),)).fetchone()[0]
+                    report.db_sessions = int(count)
+                else:
+                    report.db_sessions = forget_person(conn, int(row["id"]))
+
+    # Output folders. Without a gallery entry there is no id to match on, so
+    # say so rather than reporting a clean sweep that did nothing.
+    if not person_ids:
+        report.unreachable.append(
+            "no gallery entry, so pipeline outputs could not be matched to "
+            "this person by id")
+    else:
+        for folder in output_dirs:
+            folder = Path(folder)
+            if not folder.is_dir():
+                continue
+            for filename in DERIVED_FILES:
+                path = folder / filename
+                if dry_run:
+                    if path.exists():
+                        report.files_rewritten.append(str(path))
+                elif _filter_jsonl(path, person_ids):
+                    report.files_rewritten.append(str(path))
+
+            profiles = folder / "live_profiles.json"
+            if dry_run:
+                if profiles.exists():
+                    report.files_rewritten.append(str(profiles))
+            elif _filter_profiles(profiles, person_ids):
+                report.files_rewritten.append(str(profiles))
+
+            # The report is generated HTML with the name rendered into it.
+            # Filtering it would mean parsing a document that is rebuilt from
+            # the files above anyway, so it is removed and regenerated.
+            html = folder / "report.html"
+            if html.exists():
+                if not dry_run:
+                    html.unlink()
+                report.files_removed.append(str(html))
+
+    report.unreachable.append(
+        "any copy outside these paths -- an emailed report, a backup, or an "
+        "output folder not listed")
+    return report
