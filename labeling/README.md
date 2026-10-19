@@ -10,6 +10,13 @@ the ClassGraph repository, the source video, or a GPU.
 pip install opencv-python numpy
 ```
 
+## Read this first
+
+**[LABELLING_RULE.md](LABELLING_RULE.md)** — how to decide on/off, and what not to treat as evidence. Re-judging 127 windows blind
+agreed with the earlier answer only 64.6% of the time (Cohen's kappa 0.261),
+and that number caps every accuracy figure in the project. The rule exists to
+raise it. Read it before each sitting, not only the first.
+
 ## Label
 
 ```
