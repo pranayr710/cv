@@ -857,43 +857,42 @@ def s09c_attention(prs, page):
                   "performed below chance.", page)
 
     data = [
-        ["Predictor", "Accuracy", "Macro F1", "Decided", "Abstained"],
-        ["Rule (precedence)", "0.447", "0.371", "161", "18"],
-        ["Learned model, all windows", "0.636", "0.634", "179", "0"],
-        ["Learned model, abstaining", "0.650", "0.648", "163", "16"],
+        ["Predictor", "Accuracy", "Macro F1", "Off-task recall"],
+        ["Rule (precedence)", "0.410", "0.371", "-"],
+        ["Majority class ('on task')", "0.671", "0.401", "0.000"],
+        ["Learned model", "0.732", "0.724", "0.867"],
     ]
     tw = 6.95
-    tbl = table(s, ML, y, tw, [2.45, 1.15, 1.15, 1.10, 1.10], data,
+    tbl = table(s, ML, y, tw, [2.45, 1.35, 1.35, 1.80], data,
                 row_h=0.40, head_h=0.38, size=10, head_size=9.5, col_bold={0})
     for r in range(1, len(data)):
-        for c in range(1, 5):
+        for c in range(1, 4):
             run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
             run.font.name = MONO
             run.font.size = Pt(9.5)
-    for c in range(5):
+    for c in range(4):
         tbl.cell(3, c).text_frame.paragraphs[0].runs[0].font.bold = True
 
     caption(s, ML, y + 0.38 + 3 * 0.40 + 0.14, tw, "Table 9.",
-            "Out-of-fold over 179 hand-labelled windows, grouped by student "
-            "(n = 27 students).")
+            "Measured on 82 windows judged identically on two independent "
+            "passes; trained on the remaining 430.")
 
     x2 = ML + tw + 0.32
     w2 = SW - MR - x2
-    note(s, x2, y, w2, 2.10, "Why the rule failed",
-         ["The rule answered 'off task' for 82 per cent of windows where the "
-          "human rater answered so for 53 per cent.",
-          "The dominant cause was a phone check that fired whenever a phone "
-          "appeared anywhere within a student's bounding box, including on a "
-          "neighbouring desk. Correcting it moved accuracy from 0.447 to "
-          "0.451: the rule could not be recovered by tuning."],
+    note(s, x2, y, w2, 2.10, "Why accuracy is not the headline",
+         ["The test windows are 67 per cent on task, so answering 'on task' "
+          "every time scores 0.671 while identifying no disengaged student "
+          "at all. Against that baseline the model's accuracy advantage is "
+          "not significant (p = 0.145, CI [0.622, 0.824]).",
+          "Macro F1 charges a model for never finding the minority class, "
+          "which is the class this system exists to find."],
          accent=AMBER)
-    note(s, x2, y + 2.28, w2, 1.90, "Evaluation protocol",
-         ["Windows overlap by 50 per cent and a student appears in many "
-          "consecutive ones, so splitting at random places near-identical "
-          "windows on both sides of the division.",
-          "Splitting is therefore by student. Abstentions are reported "
-          "separately rather than counted as errors, so a predictor cannot "
-          "appear stronger by declining the difficult cases."])
+    note(s, x2, y + 2.28, w2, 1.90, "Label reliability was measured first",
+         ["127 already-judged windows were re-judged blind. They agreed with "
+          "the earlier judgement 64.6 per cent of the time, Cohen's kappa "
+          "0.261, implying a 23 per cent per-label error rate.",
+          "That caps any model scored against these labels at about 0.77, "
+          "and it is why evaluation uses only the windows confirmed twice."])
 
     note(s, ML, y + 2.82, tw, 1.18, "The change that produced the improvement",
          ["Every feature described one student in isolation. Adding peer "
