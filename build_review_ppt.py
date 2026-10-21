@@ -860,7 +860,7 @@ def s09c_attention(prs, page):
         ["Predictor", "Accuracy", "Macro F1", "Off-task recall"],
         ["Rule (precedence)", "0.410", "0.371", "-"],
         ["Majority class ('on task')", "0.671", "0.401", "0.000"],
-        ["Learned model", "0.732", "0.724", "0.867"],
+        ["Learned model", "0.727", "0.713", "0.778"],
     ]
     tw = 6.95
     tbl = table(s, ML, y, tw, [2.45, 1.35, 1.35, 1.80], data,
@@ -883,7 +883,7 @@ def s09c_attention(prs, page):
          ["The test windows are 67 per cent on task, so answering 'on task' "
           "every time scores 0.671 while identifying no disengaged student "
           "at all. Against that baseline the model's accuracy advantage is "
-          "not significant (p = 0.145, CI [0.622, 0.824]).",
+          "not significant on this split.",
           "Macro F1 charges a model for never finding the minority class, "
           "which is the class this system exists to find."],
          accent=AMBER)
@@ -960,6 +960,114 @@ def s09d_architectures(prs, page):
           "difference to +0.014 ± 0.028, winning 7 of 12 permutations, and "
           "accuracy varied by 16 points across the graph parameter. It was "
           "rejected."])
+    return s
+
+
+def s09e_ceiling(prs, page):
+    """Label reliability was measured, and it caps everything else."""
+    s, y = chrome(prs, "Criterion III - Training and Evaluation",
+                  "Measuring the Ceiling: How Reliable Are the Labels?",
+                  "Every accuracy figure in this project is scored against "
+                  "hand labels. Before trusting any of them, the labels "
+                  "themselves were tested.", page)
+
+    tw = 6.95
+    tile(s, ML, y, 2.18, "64.6%", "agreement with the same rater, "
+         "re-judging blind")
+    tile(s, ML + 2.38, y, 2.18, "0.261", "Cohen's kappa over 127 "
+         "re-judged windows")
+    tile(s, ML + 4.76, y, 2.19, "0.77", "the resulting ceiling on any "
+         "model's accuracy")
+
+    yy = y + 1.36
+    data = [
+        ["Quantity", "Value", "What it means"],
+        ["Windows re-judged blind", "127", "earlier answer hidden"],
+        ["Agreed with the first pass", "82", "the usable test set"],
+        ["Contradicted the first pass", "45", "excluded from training"],
+        ["Implied per-label error", "23.0%", "from the agreement rate"],
+        ["Ceiling on measured accuracy", "0.770", "a perfect model's score"],
+    ]
+    tbl = table(s, ML, yy, tw, [2.55, 1.30, 3.10], data,
+                row_h=0.355, head_h=0.36, size=10, head_size=9.5,
+                col_bold={0})
+    for r in range(1, len(data)):
+        run = tbl.cell(r, 1).text_frame.paragraphs[0].runs[0]
+        run.font.name = MONO
+        run.font.size = Pt(9.5)
+
+    caption(s, ML, yy + 0.36 + 5 * 0.355 + 0.12, tw, "Table 10.",
+            "Intra-rater reliability, measured by replaying already-judged "
+            "windows in random order.")
+
+    x2 = ML + tw + 0.32
+    w2 = SW - MR - x2
+    note(s, x2, y, w2, 2.30, "Why this was measured at all",
+         ["Adding 378 labels to an existing 179 made measured accuracy fall, "
+          "from 0.640 to 0.559. More data making a model worse is a result "
+          "that needs explaining rather than averaging away.",
+          "The explanation is that a model scored against a 23 per cent "
+          "noisy target is penalised for being right whenever the label is "
+          "wrong."],
+         accent=AMBER)
+    note(s, x2, y + 2.48, w2, 1.90, "What follows from it",
+         ["Reported accuracy is compared against 0.77 rather than against "
+          "1.0, and evaluation uses only the 82 windows confirmed twice.",
+          "It also sets the priority: at this reliability, further feature "
+          "engineering cannot be demonstrated to help. Annotation quality is "
+          "the binding constraint, not model capacity."])
+    return s
+
+
+def s14b_engineering(prs, page):
+    """The system as something installable, not a script that ran once."""
+    s, y = chrome(prs, "System Engineering",
+                  "From Working Prototype to Deployable System",
+                  "A classroom system holds biometric data about minors. "
+                  "These are the properties required before it may be "
+                  "installed anywhere.", page)
+
+    data = [
+        ["Property", "Before", "Now"],
+        ["Installation", "clone and guess", "pip install, plus a doctor "
+         "command"],
+        ["Dashboard access", "open to the network", "token on every route "
+         "and the socket"],
+        ["Cross-site requests", "camera startable by any page",
+         "origin-checked, verified live"],
+        ["Face gallery at rest", "plain JSON, kept forever",
+         "encrypted, owner-only, dated"],
+        ["Deleting a person", "three partial deletions",
+         "one command, all stores"],
+        ["Cross-session questions", "unanswerable", "SQLite; history per "
+         "student"],
+        ["Automated tests", "413", "586"],
+    ]
+    tw = 6.95
+    tbl = table(s, ML, y, tw, [2.05, 2.20, 2.70], data,
+                row_h=0.375, head_h=0.36, size=9.5, head_size=9.5,
+                col_bold={0})
+
+    caption(s, ML, y + 0.36 + 7 * 0.375 + 0.12, tw, "Table 12.",
+            "Engineering properties added after the system was functionally "
+            "complete.")
+
+    x2 = ML + tw + 0.32
+    w2 = SW - MR - x2
+    note(s, x2, y, w2, 2.30, "Found by auditing our own work",
+         ["Three independent audits were run against this codebase. They "
+          "found a dashboard with no authentication, a deletion that "
+          "reported success while leaving the data, and a feature whose "
+          "value rose 21 standard deviations above its training range on a "
+          "faster camera.",
+          "Each was reproduced before being fixed, and each is now a test."],
+         accent=AMBER)
+    note(s, x2, y + 2.48, w2, 1.90, "Including a fix that was itself wrong",
+         ["The first access-control implementation served the token inside "
+          "the page, so a single request retrieved it and the protection was "
+          "decorative.",
+          "It was caught by auditing the fix rather than trusting it, which "
+          "is the practice this section is really reporting."])
     return s
 
 
@@ -1047,12 +1155,23 @@ def s11_summary(prs, page):
     yy = caption(s, ML, y + 0.38 + 4 * 0.72 + 0.14, CW, "Table 12.",
                  "Findings and limitations by criterion.")
 
-    note(s, ML, yy + 0.06, CW, 1.10, "Reproducibility",
-         ["Every quantity reported in this deck is produced by a command in the "
-          "repository: tools/model_facts.py --validate for model and per-class "
-          "metrics, tools/make_review_charts.py for Figures 1 to 3, and "
-          "tools/train_behaviour.py for the training run itself. Quantities that "
-          "could not be measured are reported as unmeasured."])
+    half = (CW - 0.30) / 2
+    note(s, ML, yy + 0.04, half, 1.54, "Principal difficulties encountered",
+         ["Adding 378 labels lowered measured accuracy, because the target "
+          "itself carries 23 per cent error.",
+          "Two features passed review and later broke on different hardware: "
+          "a frame count at 13 fps, and a peer count in a larger room.",
+          "Identity reports 36 ids for 8 people. Duplicate detection and "
+          "short tracks were both measured and excluded; no id survives more "
+          "than 43 per cent of a session."],
+         accent=AMBER)
+    note(s, ML + half + 0.30, yy + 0.04, half, 1.54, "Next, in priority order",
+         ["Raise annotation reliability using the written labelling rule. At "
+          "kappa 0.261 nothing else can be demonstrated to help.",
+          "Re-identify students across temporal gaps, which is what the "
+          "headcount error has been narrowed to.",
+          "Re-measure the twelve candidate features once the ceiling moves; "
+          "they are implemented and take minutes to evaluate."])
     return s
 
 
@@ -1179,11 +1298,13 @@ def main():
     s09_perclass(prs, 10)
     s09b_scorer(prs, 11)
     s09c_attention(prs, 12)
-    s09d_architectures(prs, 13)
-    s10_comparison(prs, 14)
-    s11_summary(prs, 15)
-    s12_appendix_a(prs, 16)
-    s13_appendix_b(prs, 17)
+    s09e_ceiling(prs, 13)
+    s09d_architectures(prs, 14)
+    s10_comparison(prs, 15)
+    s14b_engineering(prs, 16)
+    s11_summary(prs, 17)
+    s12_appendix_a(prs, 18)
+    s13_appendix_b(prs, 19)
 
     prs.save(str(OUT))
     print(f"wrote {OUT}  ({len(prs.slides.__iter__.__self__._sldIdLst)} slides)")
