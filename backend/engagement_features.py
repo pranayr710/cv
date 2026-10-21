@@ -30,6 +30,8 @@ from __future__ import annotations
 
 import json
 import math
+
+import numpy as np
 from collections import Counter
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -117,13 +119,41 @@ BASE_FEATURE_NAMES: tuple[str, ...] = (
 #: Lagged features (the same student one window earlier) were tried alongside
 #: these and *hurt*, dropping accuracy to 0.562, so they are deliberately
 #: absent.
+#: Body-geometry features, added after a scan of 2022-2026 engagement work
+#: found that this set was almost entirely central tendencies -- fractions
+#: and means of per-frame classifications -- with no measure of posture or of
+#: how steady it was. EngageNet, the largest recent benchmark, computes mean
+#: *and* standard deviation of head pose and gaze per clip.
+#:
+#: Twelve candidates were implemented and measured one at a time against the
+#: same baseline over eight seeds (tools/try_features.py). These three were
+#: the only ones positive on both the full label set and the 82 labels
+#: confirmed on two passes:
+#:
+#:     facing_variability    raw +0.015   trusted +0.020
+#:     hands_visible         raw +0.010   trusted +0.006
+#:     head_torso_misalign   raw +0.005   trusted +0.021
+#:
+#: Stated plainly: none of these clears the seed spread on its own, so at
+#: kappa 0.261 they cannot be *demonstrated* to help. They are adopted
+#: because they are positive under both label sets, cost nothing at
+#: inference, and measure an axis -- body geometry and its steadiness -- that
+#: the other eighteen are blind to. They should be re-measured once the
+#: labelling rule raises the ceiling.
+BODY_FEATURE_NAMES: tuple[str, ...] = (
+    "facing_variability",    # spread of torso facing angle, in turns
+    "hands_visible",         # fraction of frames with a wrist detected
+    "head_torso_misalign",   # head direction against body direction
+)
+
 PEER_FEATURE_NAMES: tuple[str, ...] = (
     "peer_frac_on_task",      # mean on-task fraction across other students
     "peer_frac_gaze_attending",  # mean attending-gaze fraction across others
     "peer_count",             # how many others were visible, scaled
 )
 
-FEATURE_NAMES: tuple[str, ...] = BASE_FEATURE_NAMES + PEER_FEATURE_NAMES
+FEATURE_NAMES: tuple[str, ...] = (
+    BASE_FEATURE_NAMES + BODY_FEATURE_NAMES + PEER_FEATURE_NAMES)
 
 #: Half-saturation point for peer_count: this many peers reads as 0.5.
 #:
@@ -213,6 +243,84 @@ def peer_features(peer_vectors: Sequence[Sequence[float]]) -> tuple[float, ...]:
         sum(v[i_gaze] for v in peer_vectors) / n,
         n / (n + PEER_COUNT_HALF),
     )
+
+
+def _landmark(posture: Any, name: str) -> tuple[float, float] | None:
+    """One pose landmark as (x, y), or None when it was not detected."""
+    if not isinstance(posture, Mapping):
+        return None
+    value = posture.get(name)
+    if not value or len(value) < 2:
+        return None
+    try:
+        return float(value[0]), float(value[1])
+    except (TypeError, ValueError):
+        return None
+
+
+def body_features(frames: Sequence[Mapping[str, Any]]) -> tuple[float, ...]:
+    """Posture geometry over a window, in :data:`BODY_FEATURE_NAMES` order.
+
+    Every spatial quantity is divided by a distance taken from the same body,
+    so none of them carries how far the student sits from the camera. A pixel
+    measurement is not comparable between the front row and the back, and a
+    feature that is has broken this project twice.
+
+    Args:
+        frames: Per-frame node ``features`` dicts for one student.
+
+    Returns:
+        ``(facing_variability, hands_visible, head_torso_misalign)``. All zero
+        when no frame carried a usable pose, which is honest: absent geometry
+        is not the same as symmetric geometry, and the coverage feature
+        already tells the model how much of the window was readable.
+    """
+    angles: list[float] = []
+    misalign: list[float] = []
+    hands = posed = 0
+
+    for frame in frames:
+        posture = frame.get("posture")
+        if not isinstance(posture, Mapping):
+            continue
+        posed += 1
+
+        if _landmark(posture, "left_wrist") or _landmark(posture, "right_wrist"):
+            hands += 1
+
+        facing = posture.get("facing_direction")
+        if facing and len(facing) >= 2:
+            try:
+                # In turns rather than radians, so the spread of a quantity
+                # that wraps stays in a comparable range to the fractions
+                # around it.
+                angles.append(math.atan2(float(facing[1]), float(facing[0]))
+                              / (2.0 * math.pi))
+            except (TypeError, ValueError):
+                pass
+
+        left = _landmark(posture, "left_shoulder")
+        right = _landmark(posture, "right_shoulder")
+        shoulder = _landmark(posture, "shoulder_mid")
+        hip = _landmark(posture, "hip_mid")
+        offset = frame.get("focus_offset_deg")
+        if (left and right and shoulder and hip and offset is not None):
+            width = math.dist(left, right)
+            torso = math.dist(shoulder, hip)
+            if width > 1.0 and torso > 1.0:
+                # Shoulders narrow against torso length as the body turns
+                # away. Built from 2D separation rather than MediaPipe's z,
+                # which is unreliable at the distance these crops come from.
+                body_turn = 1.0 - min(width / torso, 1.0)
+                head_turn = min(abs(float(offset)) / 90.0, 1.0)
+                misalign.append(abs(head_turn - body_turn))
+
+    return (
+        float(np.std(angles)) if len(angles) > 1 else 0.0,
+        _safe_div(hands, posed),
+        float(np.mean(misalign)) if misalign else 0.0,
+    )
+
 
 
 def peer_vectors_in_span(
@@ -348,7 +456,7 @@ def window_features(frames: Sequence[Mapping[str, Any]],
         mean_lean,
         _safe_div(neg, n),
         _safe_div(unc, n),
-    ) + peer_features(peer_vectors)
+    ) + body_features(frames) + peer_features(peer_vectors)
 
 
 def _rule_verdict(frames: Sequence[Mapping[str, Any]]) -> str | None:
@@ -418,16 +526,20 @@ def iter_windows(graph_path: Path,
                       if start <= t < end]
             if inside:
                 frames = [f for _, f, _ in inside]
-                base = window_features(frames, expected)[
-                    :len(BASE_FEATURE_NAMES)]
-                if base[0] >= min_coverage:
+                # Everything except the peer block, which needs the cohort.
+                # Sliced by name count rather than by a literal, so adding a
+                # feature cannot silently drop it here -- which it did when
+                # the body block was introduced.
+                own = window_features(frames, expected)[
+                    :len(BASE_FEATURE_NAMES) + len(BODY_FEATURE_NAMES)]
+                if own[0] >= min_coverage:
                     peers = peer_vectors_in_span(
                         spans, pid, start, end, expected, min_coverage)
                     yield Window(
                         person_id=pid,
                         start_ms=start,
                         end_ms=end,
-                        features=tuple(base) + peer_features(peers),
+                        features=tuple(own) + peer_features(peers),
                         rule_verdict=_rule_verdict(frames),
                         scene=inside[0][0],
                         frame_ids=tuple(fid for _, _, fid in inside),

@@ -970,7 +970,7 @@ def s09c_attention(prs, page):
         ["Predictor", "Accuracy", "Macro F1", "Off-task recall"],
         ["Rule (precedence)", "0.410", "0.371", "-"],
         ["Majority class ('on task')", "0.671", "0.401", "0.000"],
-        ["Learned model", "0.727", "0.713", "0.778"],
+        ["Learned model", "0.732", "0.720", "0.804"],
     ]
     tw = 6.95
     tbl = table(s, ML, y, tw, [2.45, 1.35, 1.35, 1.80], data,
@@ -1022,7 +1022,8 @@ def s09d_architectures(prs, page):
 
     data = [
         ["Candidate", "Accuracy", "Macro F1", "Outcome"],
-        ["Peer context (adopted)", "0.636", "0.634", "Adopted"],
+        ["Peer context", "0.636", "0.634", "Adopted"],
+        ["Body geometry (3 features)", "0.732", "0.720", "Adopted"],
         ["Mamba, sequence model", "0.574", "0.572", "Tied with baseline"],
         ["MLP baseline", "0.575", "0.569", "Reference"],
         ["Lagged window features", "0.562", "0.558", "Degraded"],
@@ -1032,17 +1033,18 @@ def s09d_architectures(prs, page):
     ]
     tw = 6.95
     tbl = table(s, ML, y, tw, [2.60, 1.15, 1.15, 2.05], data,
-                row_h=0.355, head_h=0.36, size=9.5, head_size=9.5,
+                row_h=0.315, head_h=0.34, size=9, head_size=9,
                 col_bold={0})
     for r in range(1, len(data)):
         for c in (1, 2):
             run = tbl.cell(r, c).text_frame.paragraphs[0].runs[0]
             run.font.name = MONO
             run.font.size = Pt(9.5)
-    for c in range(4):
-        tbl.cell(1, c).text_frame.paragraphs[0].runs[0].font.bold = True
+    for row in (1, 2):
+        for c in range(4):
+            tbl.cell(row, c).text_frame.paragraphs[0].runs[0].font.bold = True
 
-    caption(s, ML, y + 0.36 + 7 * 0.355 + 0.12, tw, "Table 10.",
+    caption(s, ML, y + 0.34 + 8 * 0.315 + 0.12, tw, "Table 11.",
             "Mean over 5-10 seeds, out-of-fold, grouped by student.")
 
     x2 = ML + tw + 0.32
@@ -1054,12 +1056,13 @@ def s09d_architectures(prs, page):
           "Vision Mamba over image patches (348,289 parameters) reached 0.618 "
           "against 0.664 for frozen ResNet18 features on 12,582 images."],
          accent=AMBER)
-    note(s, x2, y + 2.28, w2, 1.90, "Why a larger model does not help",
-         ["A 10,000-parameter network scored below a 300-parameter one at "
-          "every training-set size examined.",
-          "A learning curve fitted to the measured points indicates "
-          "approximately 364 labels for 0.70 accuracy. The constraint is the "
-          "quantity of human annotation, not model capacity."])
+    note(s, x2, y + 2.28, w2, 1.90, "Features drawn from recent work",
+         ["Twelve features from 2022-2026 engagement literature were "
+          "implemented and measured one at a time: motion energy, bout "
+          "structure, gaze and posture dispersion, peer synchrony.",
+          "Three were positive under both the full label set and the labels "
+          "confirmed twice, and were adopted: body-facing variability, hand "
+          "visibility, and head-against-torso alignment."])
 
     note(s, ML, y + 2.86, tw, 1.34, "On the apparent gain from label spreading",
          ["Label spreading initially returned 0.676, an apparent improvement "

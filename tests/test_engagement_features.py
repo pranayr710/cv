@@ -380,3 +380,129 @@ class TestPeersAreResolvedBySpan:
         peers = peer_vectors_in_span(frames, 1, 0, 15_000, 1,
                                      min_coverage=0.0)
         assert len(peers) == 1
+
+
+class TestBodyFeatures:
+    """Posture geometry: the axis the original eighteen were blind to.
+
+    Every quantity here is divided by a distance taken from the same body, so
+    none of them carries how far the student sits from the camera. That is the
+    property two earlier features lacked, and both broke the model when the
+    recording setup changed.
+    """
+
+    @staticmethod
+    def _posed(**kw):
+        """A frame with a complete, upright pose."""
+        posture = {
+            "left_shoulder": [100.0, 200.0],
+            "right_shoulder": [180.0, 200.0],
+            "shoulder_mid": [140.0, 200.0],
+            "hip_mid": [140.0, 300.0],
+            "facing_direction": [0.0, 1.0],
+            "left_wrist": [110.0, 280.0],
+            "right_wrist": [170.0, 280.0],
+        }
+        posture.update(kw.pop("posture", {}))
+        kw.setdefault("focus_offset_deg", 0.0)
+        return _frame(posture=posture, **kw)
+
+    def test_the_vector_has_one_value_per_name(self):
+        from backend.engagement_features import BODY_FEATURE_NAMES, body_features
+
+        assert len(body_features([self._posed()])) == len(BODY_FEATURE_NAMES)
+
+    def test_distance_from_the_camera_does_not_change_them(self):
+        """A student at the back must score the same as one at the front.
+
+        Everything is a ratio of two distances on the same body, so scaling
+        the whole pose must leave every value unchanged. A feature that fails
+        this looks fine on one recording and drifts on the next.
+        """
+        from backend.engagement_features import body_features
+
+        near = self._posed()
+        far = self._posed(posture={
+            k: [v[0] * 0.4, v[1] * 0.4]
+            for k, v in self._posed()["posture"].items()
+            if k != "facing_direction"})
+        far["posture"]["facing_direction"] = [0.0, 1.0]
+
+        for a, b in zip(body_features([near] * 5), body_features([far] * 5)):
+            assert a == pytest.approx(b, abs=1e-6)
+
+    def test_hands_visible_counts_only_frames_with_a_pose(self):
+        from backend.engagement_features import BODY_FEATURE_NAMES, body_features
+
+        i = BODY_FEATURE_NAMES.index("hands_visible")
+        with_hands = self._posed()
+        without = self._posed()
+        without["posture"] = {k: v for k, v in without["posture"].items()
+                              if "wrist" not in k}
+        assert body_features([with_hands] * 4)[i] == pytest.approx(1.0)
+        assert body_features([without] * 4)[i] == pytest.approx(0.0)
+        assert body_features([with_hands, without])[i] == pytest.approx(0.5)
+
+    def test_facing_variability_is_zero_when_the_body_does_not_turn(self):
+        from backend.engagement_features import BODY_FEATURE_NAMES, body_features
+
+        i = BODY_FEATURE_NAMES.index("facing_variability")
+        assert body_features([self._posed()] * 6)[i] == pytest.approx(0.0)
+
+    def test_facing_variability_rises_when_the_body_turns(self):
+        from backend.engagement_features import BODY_FEATURE_NAMES, body_features
+
+        i = BODY_FEATURE_NAMES.index("facing_variability")
+        turning = []
+        for direction in ([0.0, 1.0], [1.0, 0.0], [0.0, -1.0], [-1.0, 0.0]):
+            frame = self._posed()
+            frame["posture"]["facing_direction"] = direction
+            turning.append(frame)
+        assert body_features(turning)[i] > 0.2
+
+    def test_misalignment_is_low_when_head_and_body_agree(self):
+        """Square shoulders and a forward gaze is an aligned student."""
+        from backend.engagement_features import BODY_FEATURE_NAMES, body_features
+
+        i = BODY_FEATURE_NAMES.index("head_torso_misalign")
+        assert body_features([self._posed()] * 4)[i] < 0.3
+
+    def test_misalignment_rises_when_the_head_turns_but_the_body_does_not(self):
+        """The case frac_oriented cannot see: compliance rather than attention."""
+        from backend.engagement_features import BODY_FEATURE_NAMES, body_features
+
+        i = BODY_FEATURE_NAMES.index("head_torso_misalign")
+        square = body_features([self._posed()] * 4)[i]
+        turned = body_features([self._posed(focus_offset_deg=80.0)] * 4)[i]
+        assert turned > square
+
+    def test_a_window_with_no_pose_is_all_zero(self):
+        """Absent geometry is not symmetric geometry.
+
+        Coverage already tells the model how much of the window was readable,
+        so these must not invent a value for the part that was not.
+        """
+        from backend.engagement_features import body_features
+
+        assert body_features([_frame(), _frame()]) == (0.0, 0.0, 0.0)
+        assert body_features([]) == (0.0, 0.0, 0.0)
+
+    def test_they_are_bounded(self):
+        """Nothing here may grow with class size, frame rate or resolution."""
+        from backend.engagement_features import body_features
+
+        many = [self._posed(focus_offset_deg=90.0)] * 200
+        for value in body_features(many):
+            assert 0.0 <= value <= 2.0
+
+    def test_the_window_vector_places_them_between_base_and_peer(self):
+        """Order is the contract between the model's weights and the columns."""
+        from backend.engagement_features import (
+            BASE_FEATURE_NAMES,
+            BODY_FEATURE_NAMES,
+            FEATURE_NAMES,
+        )
+
+        start = len(BASE_FEATURE_NAMES)
+        end = start + len(BODY_FEATURE_NAMES)
+        assert FEATURE_NAMES[start:end] == BODY_FEATURE_NAMES
