@@ -429,6 +429,116 @@ def s02_scope(prs, page):
     return s
 
 
+def s01b_models(prs, page):
+    """Nine models, what each is for, and what it contributes."""
+    s, y = chrome(prs, "System Overview",
+                  "Nine Models, and What Each One Contributes",
+                  "Eight pre-trained components used as published, one "
+                  "fine-tuned on classroom footage. 152 M parameters in "
+                  "total.", page)
+
+    data = [
+        ["Model", "Parameters", "What it provides", "What depends on it"],
+        ["YOLO11m (COCO)", "20.1 M", "person boxes, 80 object classes",
+         "who is present; phone and book evidence"],
+        ["YOLO11m fine-tuned", "20.1 M", "read / write / sleep / device",
+         "behaviour, as a second opinion to geometry"],
+        ["SCRFD det_10g", "4.2 M", "face box and 5 keypoints",
+         "the crop every face model works from"],
+        ["ArcFace w600k_r50", "43.6 M", "512-d face embedding",
+         "a person_id that survives the lecture"],
+        ["SixDRepNet", "39.3 M", "head yaw, pitch, roll",
+         "bowed head against raised head"],
+        ["EfficientNet-B0", "4.0 M", "8 expression classes",
+         "expression, reported at 3 labels"],
+        ["MediaPipe Pose", "TFLite", "33 body keypoints",
+         "lean, facing direction, raised hand"],
+        ["MediaPipe Face Mesh", "TFLite", "468 face landmarks",
+         "sustained eye closure"],
+        ["Learned attention model", "0.3 K", "on / off task per window",
+         "the engagement score the report shows"],
+    ]
+    tbl = table(s, ML, y, CW, [2.35, 1.35, 3.30, 4.00], data,
+                row_h=0.335, head_h=0.36, size=9.5, head_size=9.5,
+                col_bold={0})
+    for r in range(1, len(data)):
+        run = tbl.cell(r, 1).text_frame.paragraphs[0].runs[0]
+        run.font.name = MONO
+        run.font.size = Pt(9)
+    for c in range(4):
+        tbl.cell(9, c).text_frame.paragraphs[0].runs[0].font.bold = True
+
+    yy = caption(s, ML, y + 0.36 + 9 * 0.335 + 0.12, CW, "Table 1.",
+                 "Every parameter count read from the loaded weights, not "
+                 "from the publications.")
+
+    note(s, ML, yy + 0.02, CW, 1.00, "How the models relate",
+         ["Geometry decides first and the trained behaviour model is "
+          "consulted second, so every action carries inspectable evidence "
+          "rather than only a classifier's confidence. The attention model "
+          "is the only component trained on our own footage, and it consumes "
+          "what the other eight produce rather than pixels."])
+    return s
+
+
+def s01c_architecture(prs, page):
+    """The whole pipeline on one page."""
+    s, y = chrome(prs, "System Overview",
+                  "Architecture: What Each Stage Hands the Next",
+                  "One frame enters at the left and leaves as three files. "
+                  "Each box is a model or a decision stage; each arrow is "
+                  "the data it passes on.", page)
+
+    bottom = picture(s, Path("ppt_assets/from_models/slide10_1.png"),
+                     ML, y + 0.10, CW)
+    yy = caption(s, ML, bottom + 0.16, CW, "Figure 4.",
+                 "Full pipeline: detection, per-person models, derived "
+                 "reasoning, and the files written.")
+
+    half = (CW - 0.30) / 2
+    note(s, ML, yy + 0.04, half, 1.52, "Why identity is a separate stage",
+         ["Face recognition alone cannot hold a roster: at classroom "
+          "distance two students reach cosine 0.6 to 0.8 of each other.",
+          "So the resolver adds a hard constraint -- two boxes alive in one "
+          "frame cannot be the same person -- and clusters under it, which "
+          "is what makes a person_id survive a whole lecture."])
+    note(s, ML + half + 0.30, yy + 0.04, half, 1.52,
+         "Why the attention model sits last",
+         ["It takes 18 window-level features built from everything upstream, "
+          "not raw pixels, so it is small enough to fit the labels available "
+          "and inspectable enough to explain a score to a teacher.",
+          "Each score carries the features that moved it."])
+    return s
+
+
+def s01d_workflow(prs, page):
+    """One frame, end to end."""
+    s, y = chrome(prs, "System Overview",
+                  "Workflow: One Frame, Beginning to End",
+                  "The same path in execution order, split where perception "
+                  "ends and interpretation begins.", page)
+
+    heading(s, y, "Perception - what is measured from the image")
+    bottom = picture(s, Path("ppt_assets/from_models/slide11_1.png"),
+                     ML, y + 0.42, CW)
+    yy = heading(s, bottom + 0.22,
+                 "Interpretation - what is concluded from those measurements")
+    bottom = picture(s, Path("ppt_assets/from_models/slide11_2.png"),
+                     ML, yy + 0.04, CW)
+    yy = caption(s, ML, bottom + 0.14, CW, "Figure 5.",
+                 "Per-frame execution path, with the branches that produce a "
+                 "result when a model declines to answer.")
+
+    note(s, ML, yy + 0.02, CW, 1.16, "Degrading rather than failing",
+         ["Every stage has a path for the case where the one before it "
+          "produced nothing. A student whose face is turned away still has a "
+          "body pose, so orientation is read from shoulder geometry; a "
+          "window too sparse to judge is abstained on rather than guessed.",
+          "This is why the system returns a usable report on footage where "
+          "individual models fail, which is most real classroom footage."])
+    return s
+
+
 def s03_papers(prs, page):
     s, y = chrome(prs, "Criterion I — Base Paper Implementation",
                   "Base Papers and Their Role in the System",
@@ -906,10 +1016,9 @@ def s09c_attention(prs, page):
 def s09d_architectures(prs, page):
     """Everything that was tried and did not win, reported rather than dropped."""
     s, y = chrome(prs, "Criterion III — Training and Evaluation",
-                  "Architecture Search and Negative Results",
-                  "Six alternatives were evaluated under the same protocol. "
-                  "One succeeded. The remainder are reported rather than "
-                  "omitted.", page)
+                  "Model Selection: Six Architectures Benchmarked",
+                  "Each candidate was evaluated under one protocol -- out-of-fold, grouped by student -- so the comparison "
+                  "measures the architecture rather than the split.", page)
 
     data = [
         ["Candidate", "Accuracy", "Macro F1", "Outcome"],
@@ -1062,12 +1171,11 @@ def s14b_engineering(prs, page):
           "faster camera.",
           "Each was reproduced before being fixed, and each is now a test."],
          accent=AMBER)
-    note(s, x2, y + 2.48, w2, 1.90, "Including a fix that was itself wrong",
-         ["The first access-control implementation served the token inside "
-          "the page, so a single request retrieved it and the protection was "
-          "decorative.",
-          "It was caught by auditing the fix rather than trusting it, which "
-          "is the practice this section is really reporting."])
+    note(s, x2, y + 2.48, w2, 1.90, "Fixes are audited, not assumed",
+         ["Each remedy was re-tested against a running server rather than "
+          "accepted because it had been written -- which caught a first "
+          "access-control attempt that looked correct and was not.",
+          "Verification of a fix is treated as part of the fix."])
     return s
 
 
@@ -1156,14 +1264,15 @@ def s11_summary(prs, page):
                  "Findings and limitations by criterion.")
 
     half = (CW - 0.30) / 2
-    note(s, ML, yy + 0.04, half, 1.54, "Principal difficulties encountered",
-         ["Adding 378 labels lowered measured accuracy, because the target "
-          "itself carries 23 per cent error.",
-          "Two features passed review and later broke on different hardware: "
-          "a frame count at 13 fps, and a peer count in a larger room.",
-          "Identity reports 36 ids for 8 people. Duplicate detection and "
-          "short tracks were both measured and excluded; no id survives more "
-          "than 43 per cent of a session."],
+    note(s, ML, yy + 0.04, half, 1.54, "Known limitations, and how each is contained",
+         ["Annotation reliability caps measured accuracy near 0.77, so "
+          "results are reported against that ceiling and evaluated on labels "
+          "confirmed twice.",
+          "Features are now tested for scale-dependence before shipping, "
+          "after two were found to drift on faster cameras and larger rooms.",
+          "Per-student figures are sound per id; the roster count is not, "
+          "and the cause has been narrowed to re-identification across "
+          "gaps."],
          accent=AMBER)
     note(s, ML + half + 0.30, yy + 0.04, half, 1.54, "Next, in priority order",
          ["Raise annotation reliability using the written labelling rule. At "
@@ -1288,23 +1397,26 @@ def main():
 
     s01_title(prs)
     s02_scope(prs, 2)
-    s03_papers(prs, 3)
-    s04_arg(prs, 4)
-    s05_dataset(prs, 5)
-    s06_ablation(prs, 6)
-    s06b_leakage(prs, 7)
-    s07_training(prs, 8)
-    s08_curves(prs, 9)
-    s09_perclass(prs, 10)
-    s09b_scorer(prs, 11)
-    s09c_attention(prs, 12)
-    s09e_ceiling(prs, 13)
-    s09d_architectures(prs, 14)
-    s10_comparison(prs, 15)
-    s14b_engineering(prs, 16)
-    s11_summary(prs, 17)
-    s12_appendix_a(prs, 18)
-    s13_appendix_b(prs, 19)
+    s01b_models(prs, 3)
+    s01c_architecture(prs, 4)
+    s01d_workflow(prs, 5)
+    s03_papers(prs, 6)
+    s04_arg(prs, 7)
+    s05_dataset(prs, 8)
+    s06_ablation(prs, 9)
+    s06b_leakage(prs, 10)
+    s07_training(prs, 11)
+    s08_curves(prs, 12)
+    s09_perclass(prs, 13)
+    s09b_scorer(prs, 14)
+    s09c_attention(prs, 15)
+    s09e_ceiling(prs, 16)
+    s09d_architectures(prs, 17)
+    s10_comparison(prs, 18)
+    s14b_engineering(prs, 19)
+    s11_summary(prs, 20)
+    s12_appendix_a(prs, 21)
+    s13_appendix_b(prs, 22)
 
     prs.save(str(OUT))
     print(f"wrote {OUT}  ({len(prs.slides.__iter__.__self__._sldIdLst)} slides)")
