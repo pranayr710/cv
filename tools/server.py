@@ -562,7 +562,7 @@ class VideoJob:
         from backend.enrollment import EnrolledGallery
 
         try:
-            batch_session.run(job_args)
+            batch_session.run(job_args, on_frame=self._preview)
             self.gallery = (EnrolledGallery.load(self.gallery_path)
                             if self.gallery_path else EnrolledGallery())
             self.stop_reason = self._completion_note()
@@ -571,6 +571,57 @@ class VideoJob:
             logger.exception("video job failed for %s", self.video)
         finally:
             self.running = False
+
+    def _preview(self, frame, record, kept: int) -> None:
+        """Publish the frame being analysed, for the page to display.
+
+        Called from pass 1, where detections exist but identity has not been
+        resolved and the action rules have not run. So boxes carry no name and
+        no action, and the page is told as much rather than being handed empty
+        strings that would render as though nothing was happening.
+
+        Downscaled before encoding. A 1080p JPEG per frame is several hundred
+        kilobytes through a WebSocket that is only driving a preview.
+        """
+        import cv2
+
+        height, width = frame.shape[:2]
+        if width > 960:
+            frame = cv2.resize(frame, (960, int(height * 960 / width)))
+        ok, buffer = cv2.imencode(".jpg", frame,
+                                  [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+        if not ok:
+            return
+
+        scale = frame.shape[1] / width
+        boxes = []
+        for person in record.get("persons", []):
+            box = person.get("bbox")
+            if not box:
+                continue
+            face = (person.get("face") or {}).get("bbox")
+            boxes.append({
+                "bbox": [int(v * scale) for v in box[:4]],
+                "person_id": None,          # resolved in pass 2
+                "name": None,
+                "action": None,
+                "gaze": None,
+                "face_px": (int(min(face[2], face[3]) * scale)
+                            if face else None),
+            })
+
+        with self._lock:
+            self.frame_jpeg = buffer.tobytes()
+            self.payload = {
+                "boxes": boxes,
+                "students": [],
+                "pairs": [],
+                "frames": kept,
+                "phase": "detecting",
+                "note": ("Detecting. Identity and actions are resolved in a "
+                         "second pass once the whole recording has been "
+                         "seen."),
+            }
 
     def _completion_note(self) -> str:
         """What to tell the operator, including when the file was damaged."""

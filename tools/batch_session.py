@@ -213,11 +213,20 @@ def plan_scenes(clips, sample_rate):
     return [order[canonical[s]] for s in scenes]
 
 
-def run(args) -> int:
+def run(args, on_frame=None) -> int:
     """Process every clip as one session and write the report.
 
     Args:
         args: Parsed CLI arguments.
+        on_frame: Optional ``(frame, record, kept) -> None``, called for each
+            frame pass 1 keeps. Exists so the dashboard can show the video
+            being analysed instead of a blank panel; a run from the command
+            line passes nothing and is unaffected.
+
+            Pass 1 is before identity is resolved and before the action rules
+            run, so a caller sees detections and nothing else. That is the
+            honest extent of what is known at this point, and showing it is
+            still better than showing nothing for several minutes.
 
     Returns:
         A process exit code.
@@ -368,6 +377,13 @@ def run(args) -> int:
                     sink.write(json.dumps(record) + "\n")
                     frame_id += 1
                     kept += 1
+                    if on_frame is not None:
+                        # Never let a display problem stop the analysis: the
+                        # run is the point and the preview is not.
+                        try:
+                            on_frame(frame, record, kept)
+                        except Exception:  # noqa: BLE001
+                            logger.exception("preview callback failed")
                 index += 1
             capture.release()
             if number % 10 == 0 or number == len(clips):

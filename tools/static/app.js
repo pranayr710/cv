@@ -592,6 +592,10 @@ function renderInteractionMatrix(svg, present, pairs, W, H) {
 /* ---------------------------------------------------------------- session */
 
 $("btnStart").onclick = async () => {
+  // Cleared first. Otherwise the previous run's outcome -- "Finished: 59
+  // frames analysed" from a video -- sits above a live camera feed, which
+  // reads as a statement about what is on screen now.
+  $("hdr").textContent = "";
   const res = await cgFetch("/api/session/start", { method: "POST" });
   if (!res.ok) { alert(await cgReason(res)); return; }
   running = true;
