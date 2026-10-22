@@ -221,12 +221,22 @@ function paintOverlay(boxes) {
   ctx.font = "600 13px 'Segoe UI',sans-serif";
   for (const b of boxes) {
     const [x, y, bw, bh] = b.bbox;
-    const colour = b.name ? (ACTION_COLOUR[b.action] || "#4ea36b") : "#c9553d";
+    // Three states, not two. A registered student has a name. An unregistered
+    // one still has a stable person_id -- the tracker is following them and
+    // every score in the report is keyed on it -- and calling that "unknown"
+    // throws away the identity the system did establish. Only a person the
+    // resolver could not place at all is unknown.
+    const tracked = b.person_id && b.person_id > 0;
+    const colour = b.name ? (ACTION_COLOUR[b.action] || "#4ea36b")
+                  : tracked ? "#c9a14d"
+                  : "#c9553d";
     ctx.strokeStyle = colour;
     ctx.strokeRect(ox + x * scale, oy + y * scale, bw * scale, bh * scale);
-    const label = b.name
-      ? `${b.name} · ${ACTION_LABEL[b.action] || ""}`
-      : (b.face_px ? `unknown · face ${b.face_px}px` : "unknown");
+    const who = b.name || (tracked ? `Student ${b.person_id}` : "unidentified");
+    const what = ACTION_LABEL[b.action] || "";
+    const label = b.name || tracked
+      ? (what ? `${who} · ${what}` : who)
+      : (b.face_px ? `unidentified · face ${b.face_px}px` : "unidentified");
     const tw = ctx.measureText(label).width + 14;
     const ty = Math.max(0, oy + y * scale - 22);
     ctx.fillStyle = colour;
