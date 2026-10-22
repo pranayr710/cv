@@ -121,20 +121,23 @@ class DetectionConfig:
         # ever name -- there is no pen, pencil, eraser, ruler, notebook or
         # paper in it, and no threshold reaches a class that does not exist.
         #
-        # Filtered by "can a hand hold it", not by "does it belong in a
-        # classroom": a held object is evidence about a person whatever it is,
-        # and DetectionConfig.object_conf_near_person already restricts the
-        # relaxed threshold to things actually touching somebody. Fixed
-        # furniture, vehicles and animals are excluded because holding one is
-        # not a thing that happens.
-        "cell phone", "laptop", "book", "bottle", "cup", "wine glass",
-        "keyboard", "mouse", "remote", "scissors", "toothbrush", "hair drier",
-        "backpack", "handbag", "suitcase", "umbrella", "tie",
-        "fork", "knife", "spoon", "bowl",
-        "sandwich", "apple", "banana", "orange", "donut", "pizza", "cake",
-        "carrot", "broccoli", "hot dog",
-        "sports ball", "frisbee", "baseball bat", "baseball glove",
-        "tennis racket", "skateboard", "teddy bear", "clock", "vase",
+        # Was filtered by "can a hand hold it", on the reasoning that a held
+        # object is evidence whatever it is. That admitted 40 classes, and
+        # measuring them across every recorded session showed what the
+        # reasoning missed: 23 of them had never been detected once, and no
+        # rule consumed them either. They were not evidence, they were places
+        # for the detector to be wrong -- and on a webcam it was, naming a
+        # knife in 13 frames and a cell phone in 2 with neither present.
+        #
+        # Kept: the twelve an action rule reads, plus the bags, which do get
+        # detected and are plausible in a classroom.
+        #
+        # There is still no pen, pencil, eraser, ruler, notebook or paper
+        # anywhere in COCO, so no threshold reaches them.
+        "cell phone", "laptop", "book", "bottle", "cup",
+        "keyboard", "mouse", "remote",
+        "backpack", "handbag",
+        "sandwich", "apple", "banana", "donut", "pizza",
     )
 
     # Inference resolution. YOLO resizes the frame to this before inference, so

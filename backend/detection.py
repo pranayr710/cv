@@ -409,7 +409,7 @@ class Detector:
                 if confidence >= threshold:
                     objects.append(Obj(cls=name, bbox=bbox, confidence=confidence))
                 elif confidence >= self.config.object_conf_near_person and _touches_any(
-                    bbox, persons
+                    bbox, _selective_persons(persons, frame.shape)
                 ):
                     # Held, and above the relaxed floor: an object on somebody's
                     # hands is a stronger proposition than the same box in empty
@@ -417,6 +417,52 @@ class Detector:
                     objects.append(Obj(cls=name, bbox=bbox, confidence=confidence))
 
         return persons, objects
+
+
+#: A person covering more of the frame than this cannot narrow anything down.
+#:
+#: The relaxed object threshold exists because an object on somebody's hands is
+#: stronger evidence than the same box in empty space. That reasoning holds in
+#: a classroom, where a student occupies a few per cent of the frame and
+#: touching them is genuinely selective. It collapses on a webcam, where one
+#: person fills the view: every box in the image touches them, so the relaxed
+#: floor applies everywhere and the detector's weakest guesses are admitted.
+#:
+#: Measured on a 280-frame webcam session, that admitted a "knife" at 0.25
+#: confidence in 13 frames and a "cell phone" at 0.26 in two -- neither
+#: present -- and the phone flipped the student to off-task.
+#:
+#: The two cases separate cleanly, with no overlap to trade off against:
+#:
+#:     classroom students   median 0.044 of the frame, max 0.201
+#:     webcam sitter        median 0.368,              min 0.353
+#:
+#: 0.28 is the midpoint of that gap. Every classroom detection keeps the
+#: relaxed threshold; every webcam one loses it.
+MAX_PERSON_FRAME_SHARE: float = 0.28
+
+
+def _selective_persons(persons, frame_shape) -> list:
+    """The persons whose proximity actually carries information.
+
+    Args:
+        persons: Detected people in this frame.
+        frame_shape: ``frame.shape``; only the first two values are read.
+
+    Returns:
+        Those covering less than :data:`MAX_PERSON_FRAME_SHARE` of the frame.
+        Returning fewer people makes the relaxed threshold apply to fewer
+        objects, which is the point: proximity to someone who fills the view
+        is not evidence of anything.
+    """
+    if not persons:
+        return []
+    height, width = frame_shape[:2]
+    area = float(height * width)
+    if area <= 0:
+        return list(persons)
+    return [p for p in persons
+            if (p.bbox[2] * p.bbox[3]) / area < MAX_PERSON_FRAME_SHARE]
 
 
 def _touches_any(obj_bbox, persons) -> bool:
