@@ -512,6 +512,7 @@ class VideoJob:
         self.analysed = 0
         self.total_frames = 0
         self.is_file = True
+        self.started = time.time()
         # The page reads these; a batch run has no live frame to show.
         self.frame_jpeg = None
         self.payload: dict = {}
@@ -612,17 +613,30 @@ class VideoJob:
                             if face else None),
             })
 
+        elapsed = max(time.time() - self.started, 1e-6)
         with self._lock:
             self.frame_jpeg = buffer.tobytes()
+            # Every field the page reads, including the ones a batch run has
+            # no answer for. A partial payload is worse than a dull one: the
+            # page reads d.objects.length, which throws on a missing key, and
+            # the handler then aborts before repainting -- leaving the last
+            # live session's boxes drawn over the video, labelled with its
+            # names. Absent data has to be present and empty.
             self.payload = {
                 "boxes": boxes,
                 "students": [],
                 "pairs": [],
+                "objects": [],
+                "layout": None,
+                "in_frame": len(boxes),
+                "frame": kept,
                 "frames": kept,
+                "fps": round(kept / elapsed, 1),
+                "seconds": int(elapsed),
                 "phase": "detecting",
-                "note": ("Detecting. Identity and actions are resolved in a "
-                         "second pass once the whole recording has been "
-                         "seen."),
+                "hint": ("Detecting people. Identity and actions are "
+                         "resolved in a second pass, once the whole "
+                         "recording has been seen."),
             }
 
     def _completion_note(self) -> str:

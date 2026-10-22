@@ -259,24 +259,33 @@ function connect() {
       $("ph").hidden = true;
       feed.src = `data:image/jpeg;base64,${d.image}`;
     }
-    $("tInFrame").textContent = d.in_frame;
-    $("tKnown").textContent = d.students.filter((s) => s.present).length;
-    $("tFrames").textContent = d.frame;
-    $("tFps").textContent = d.fps;
-    $("hdr").textContent = `${d.seconds}s · ${d.fps} fps`;
+    // Defaulted, because a sender that omits a field must not freeze the
+    // display. Reading d.objects.length on a payload without it threw, the
+    // handler aborted before repainting, and the previous session's boxes
+    // stayed on screen over the new video -- still carrying its names.
+    const students = d.students || [];
+    const objects = d.objects || [];
+    const pairs = d.pairs || [];
+
+    $("tInFrame").textContent = d.in_frame ?? "";
+    $("tKnown").textContent = students.filter((s) => s.present).length;
+    $("tFrames").textContent = d.frame ?? "";
+    $("tFps").textContent = d.fps ?? "";
+    $("hdr").textContent = d.seconds == null
+      ? "" : `${d.seconds}s · ${d.fps ?? "?"} fps`;
     paintRoom(d.layout);
     const hint = $("hint");
     if (d.hint) { hint.textContent = d.hint; hint.hidden = false; }
     else hint.hidden = true;
-    $("objects").innerHTML = d.objects.length
-      ? d.objects.map((o) => `<span class="chip">${escape(o)}</span>`).join("")
+    $("objects").innerHTML = objects.length
+      ? objects.map((o) => `<span class="chip">${escape(o)}</span>`).join("")
       : '<span class="empty">none</span>';
-    window.lastStudents = d.students;
-    window.lastObjects = d.objects;
-    window.lastPairs = d.pairs;
-    paintRoster(d.students);
-    paintPairs(d.pairs, d.students);
-    paintLiveGraph(d.students, d.objects, d.pairs);
+    window.lastStudents = students;
+    window.lastObjects = objects;
+    window.lastPairs = pairs;
+    paintRoster(students);
+    paintPairs(pairs, students);
+    paintLiveGraph(students, objects, pairs);
     window._layout = d.layout;
     requestAnimationFrame(() => paintOverlay(d.boxes));
   };
@@ -592,10 +601,9 @@ function renderInteractionMatrix(svg, present, pairs, W, H) {
 /* ---------------------------------------------------------------- session */
 
 $("btnStart").onclick = async () => {
-  // Cleared first. Otherwise the previous run's outcome -- "Finished: 59
-  // frames analysed" from a video -- sits above a live camera feed, which
-  // reads as a statement about what is on screen now.
-  $("hdr").textContent = "";
+  // Cleared first, or the previous run's boxes, results and counters stay on
+  // screen beside a new one's picture.
+  resetDisplay();
   const res = await cgFetch("/api/session/start", { method: "POST" });
   if (!res.ok) { alert(await cgReason(res)); return; }
   running = true;
@@ -604,6 +612,29 @@ $("btnStart").onclick = async () => {
   $("btnEnroll").disabled = true;
   $("dot").classList.add("live");
 };
+
+
+/** Clear what the previous run left on screen.
+ *
+ * Without this a new run inherits the last one's boxes, results and stats,
+ * and the only thing that changes is the picture behind them -- which is how
+ * a classroom video came to show one box labelled with a webcam session's
+ * name across six students.
+ */
+function resetDisplay() {
+  $("hdr").textContent = "";
+  $("resultsCard").hidden = true;
+  $("results").innerHTML = "";
+  $("btnReport").hidden = true;
+  for (const id of ["tInFrame", "tKnown", "tFrames", "tFps"]) {
+    $(id).textContent = "";
+  }
+  window.lastStudents = [];
+  window.lastObjects = [];
+  window.lastPairs = [];
+  paintOverlay([]);
+  paintLiveGraph([], [], []);
+}
 
 /* ------------------------------------------------------------ video file */
 
@@ -622,6 +653,7 @@ $("videoFile").onchange = async () => {
   // information -- the same rate the batch tool and the published figures use.
   body.append("sample_rate", "5");
 
+  resetDisplay();
   $("btnVideo").disabled = true;
   $("btnStart").disabled = true;
   $("hdr").textContent = `Uploading ${file.name}...`;
