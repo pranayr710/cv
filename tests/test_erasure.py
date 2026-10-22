@@ -229,3 +229,68 @@ class TestReporting:
                 "ON s.id = w.student_id WHERE s.id IS NULL").fetchone()[0]
         assert after == 0
         assert orphan_windows == 0
+
+
+class TestAtomicWriteSurvivesWindows:
+    """os.replace fails transiently on Windows when anything holds the file.
+
+    Defender and the search indexer both touch a file moments after it is
+    written, and the resulting PermissionError is rare enough to look like an
+    unreproducible test failure rather than a real defect. It surfaced twice
+    that way before being understood.
+    """
+
+    def test_a_transient_permission_error_is_retried(self, tmp_path,
+                                                     monkeypatch):
+        import os as os_module
+
+        from backend import erasure
+
+        target = tmp_path / "gallery.json"
+        target.write_text("old", encoding="utf-8")
+
+        calls = {"n": 0}
+        real_replace = os_module.replace
+
+        def flaky(src, dst):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise PermissionError("held by another process")
+            return real_replace(src, dst)
+
+        monkeypatch.setattr(erasure.os, "replace", flaky)
+        erasure.atomic_write(target, "new")
+
+        assert calls["n"] == 3
+        assert target.read_text(encoding="utf-8") == "new"
+
+    def test_a_persistent_failure_is_raised(self, tmp_path, monkeypatch):
+        """Retrying forever would hang; the caller must learn it failed."""
+        from backend import erasure
+
+        def always_fails(src, dst):
+            raise PermissionError("still held")
+
+        monkeypatch.setattr(erasure.os, "replace", always_fails)
+        with pytest.raises(PermissionError):
+            erasure.atomic_write(tmp_path / "x.json", "data")
+
+    def test_the_target_is_never_half_written(self, tmp_path, monkeypatch):
+        """The point of the temp file: a reader sees old or new, never part.
+
+        A bare write truncates first, so a crash between truncate and write
+        destroys the file it was protecting -- and these hold the gallery.
+        """
+        from backend import erasure
+
+        target = tmp_path / "gallery.json"
+        target.write_text('{"people": ["original"]}', encoding="utf-8")
+
+        def fails(src, dst):
+            raise PermissionError("never completes")
+
+        monkeypatch.setattr(erasure.os, "replace", fails)
+        with pytest.raises(PermissionError):
+            erasure.atomic_write(target, '{"people": []}')
+
+        assert target.read_text(encoding="utf-8") == '{"people": ["original"]}'

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -104,7 +105,20 @@ def atomic_write(path: Path, text: str) -> None:
     path = Path(path)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+
+    # Retried, because on Windows os.replace fails with PermissionError when
+    # anything else holds either file open for an instant -- Defender and the
+    # search indexer both do, on a file that was just written. The failure is
+    # transient and rare, which is the worst combination: it surfaced twice as
+    # an unreproducible test failure before it was understood.
+    for attempt in range(5):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            time.sleep(0.05 * (attempt + 1))
 
 
 def _person_ids_for(gallery, name: str) -> set[int]:
