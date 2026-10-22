@@ -216,6 +216,18 @@ dialog::backdrop { background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); }
       <h2>Face Re-ID Roster</h2>
       <div class="roster" id="roster"><p class="empty">Loading…</p></div>
     </div>
+    <!-- Results from a finished run. The roster above lists registered
+         students, so a recording of people nobody enrolled had nowhere to
+         appear: the analysis finished and the page still showed the same
+         "not seen" names it started with. Hidden until there is something
+         in it. -->
+    <div class="card" id="resultsCard" style="margin-top:16px" hidden>
+      <h2>Session Results</h2>
+      <div id="results"></div>
+      <button id="btnReport" style="margin-top:12px;width:100%" hidden>
+        📄 Open the full report
+      </button>
+    </div>
     <div class="card" style="margin-top:16px">
       <h2>Collaborative Behaviors</h2>
       <div id="pairs"><p class="empty">Needs two students engaging in mutual interaction.</p></div>

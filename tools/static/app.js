@@ -677,7 +677,7 @@ async function trackVideoProgress(filename) {
     $("btnEnroll").disabled = false;
     $("dot").classList.remove("live");
     $("hdr").textContent = s.stop_reason || `${d.frames || 0} frames analysed`;
-    if (d.report) await openReport(d.report);
+    await showResults(d.report);
     return;
   }
 }
@@ -691,8 +691,54 @@ $("btnStop").onclick = async () => {
   $("btnEnroll").disabled = false;
   $("dot").classList.remove("live");
   $("hdr").textContent = `${d.frames} frames captured`;
+  await showResults(d.report);
   if (d.report) await openReport(d.report);
 };
+
+/** Show what a finished run found, and offer its report.
+ *
+ * The roster panel lists registered students, so an unenrolled recording had
+ * nowhere to report: the run completed, the report was written, and the page
+ * looked exactly as it had before it started.
+ *
+ * The report is behind a button rather than opened automatically. window.open
+ * from a polling callback is not a user gesture, so browsers block it as a
+ * popup -- which is silent, and indistinguishable from the analysis having
+ * produced nothing.
+ */
+async function showResults(reportUrl) {
+  const res = await cgFetch("/api/session/results");
+  if (!res.ok) return;
+  const { students } = await res.json();
+
+  const card = $("resultsCard");
+  const box = $("results");
+  if (!students.length) {
+    box.innerHTML = '<p class="empty">No student was resolved in this run.</p>';
+  } else {
+    box.innerHTML = students.map((s) => {
+      const who = s.name || `Student ${s.id}`;
+      const score = s.attention == null ? "—" : `${s.attention}/10`;
+      const onTask = s.on_task_pct == null
+        ? "" : ` · ${Math.round(s.on_task_pct)}% on task`;
+      const did = s.top_action ? ` · mostly ${ACTION_LABEL[s.top_action]
+        || s.top_action}` : "";
+      return `<div class="student present">
+          <div class="row"><b>${escape(who)}</b><span>${score}</span></div>
+          <div class="sub">${s.frames || 0} frames${onTask}${did}</div>
+        </div>`;
+    }).join("");
+  }
+  card.hidden = false;
+
+  const button = $("btnReport");
+  if (reportUrl) {
+    button.hidden = false;
+    button.onclick = () => openReport(reportUrl);
+  } else {
+    button.hidden = true;
+  }
+}
 
 /** Open the finished report in a new tab.
  *

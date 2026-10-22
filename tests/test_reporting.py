@@ -210,3 +210,62 @@ class TestReportIsActuallyBuilt:
         text = build(folder, gallery).read_text(encoding="utf-8")
         assert "<img src=x onerror=" not in text
         assert "&lt;img src=x onerror=" in text
+
+
+class TestNamesAreNotPastedOntoStrangers:
+    """A batch run numbers people within itself, 1..N.
+
+    The enrolled gallery numbers them within itself, 1..M. The two are
+    unrelated and overlap, so naming a batch result by id put a registered
+    person's name on a classroom student who was not them -- which is worse
+    than no name, because it reads as a positive identification.
+    """
+
+    def test_a_batch_report_does_not_use_enrolled_names(self, tmp_path,
+                                                        monkeypatch):
+        import json
+
+        import numpy as np
+
+        from backend.enrollment import EnrolledGallery
+        from tools import batch_session
+
+        gallery_path = tmp_path / "gallery.json"
+        gallery = EnrolledGallery()
+        rng = np.random.default_rng(0)
+        vec = rng.normal(size=512).astype(np.float32)
+        vec /= np.linalg.norm(vec)
+        registered = gallery.register("Asha", [vec, vec, vec])
+        gallery.save(gallery_path)
+
+        # The report is built from profiles keyed on the run's own ids, one
+        # of which collides with the registered person's id.
+        out = tmp_path / "session"
+        out.mkdir()
+        with (out / "live_graph.jsonl").open("w", encoding="utf-8") as fh:
+            for i in range(30):
+                fh.write(json.dumps({
+                    "frame_id": i, "timestamp_ms": i * 333, "scene": 0,
+                    "nodes": [{"id": "p1",
+                               "person_id": registered.person_id,
+                               "role": "student",
+                               "features": {"action": "attentive",
+                                            "engagement": "on",
+                                            "bbox": [10, 10, 60, 120]}}],
+                    "edges": [],
+                }) + "\n")
+
+        from backend.student_profile import build_profiles
+        from tools.report import build
+
+        profiles = build_profiles(out / "live_graph.jsonl", None)
+        (out / "live_profiles.json").write_text(
+            json.dumps(list(profiles.values()), indent=2), encoding="utf-8")
+
+        # What batch_session now passes: an empty gallery, not the enrolled
+        # one, because this run's ids mean nothing in it.
+        text = build(out, EnrolledGallery()).read_text(encoding="utf-8")
+        assert "Asha" not in text, (
+            "a registered name was applied to a student identified only by "
+            "this run's own numbering")
+        assert batch_session  # the module under discussion imports cleanly

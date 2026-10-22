@@ -563,8 +563,10 @@ class VideoJob:
 
         try:
             batch_session.run(job_args, on_frame=self._preview)
-            self.gallery = (EnrolledGallery.load(self.gallery_path)
-                            if self.gallery_path else EnrolledGallery())
+            # Empty for the same reason batch_session uses an empty one:
+            # this run's person ids are local to it and mean nothing in the
+            # enrolled gallery.
+            self.gallery = EnrolledGallery()
             self.stop_reason = self._completion_note()
         except Exception as exc:  # noqa: BLE001 - surfaced, never swallowed
             self.stop_reason = f"Processing failed: {exc}"
@@ -922,6 +924,56 @@ def create_app(args):
         if not path.exists():
             return HTMLResponse("<p>No report yet — run a session first.</p>", 404)
         return path.read_text(encoding="utf-8")
+
+    @app.get("/api/session/results")
+    async def session_results():
+        """Per-student results from the finished session.
+
+        The roster panel lists registered students, so a recording of people
+        nobody has enrolled had nowhere to appear: the analysis completed, the
+        report was written, and the page showed the same three "not seen"
+        names it started with. This returns what the run actually found.
+        """
+        profiles_path = out / "live_profiles.json"
+        if not profiles_path.exists():
+            return JSONResponse({"students": [], "ready": False})
+
+        data = json.loads(profiles_path.read_text(encoding="utf-8"))
+        entries = data if isinstance(data, list) else list(data.values())
+
+        # Gallery names apply only when identity was resolved against the
+        # gallery, which is the live path. A batch run numbers people within
+        # itself, so looking its ids up in the gallery names a stranger after
+        # whoever happens to hold that number -- and the numbers overlap.
+        session = state["session"]
+        from_gallery = session is not None and not getattr(
+            session, "is_file", False)
+        names = ({p.person_id: p.name for p in gallery().people}
+                 if from_gallery else {})
+
+        students = []
+        for entry in entries:
+            pid = entry.get("person_id")
+            # Negative ids are tracks the resolver could not turn into a
+            # person, and a rejected profile was explicitly refused. Neither
+            # is a student to report on.
+            if pid is None or int(pid) <= 0 or entry.get("rejected_reason"):
+                continue
+            if entry.get("role") not in (None, "student"):
+                continue
+            actions = (entry.get("actions") or {}).get("counts") or {}
+            top = max(actions.items(), key=lambda kv: kv[1])[0] if actions else None
+            students.append({
+                "id": int(pid),
+                "name": names.get(int(pid)),
+                "attention": entry.get("attention_score"),
+                "on_task_pct": entry.get("on_task_pct"),
+                "engagement_pct": entry.get("engagement_pct"),
+                "frames": entry.get("frames_seen"),
+                "top_action": top,
+            })
+        students.sort(key=lambda s: (s["attention"] is None, s["attention"] or 0))
+        return JSONResponse({"students": students, "ready": bool(students)})
 
     @app.get("/api/status")
     async def status():

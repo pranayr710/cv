@@ -451,8 +451,18 @@ def run(args, on_frame=None) -> int:
         json.dumps(list(profiles.values()), indent=2), encoding="utf-8")
     students = [p for p in profiles.values() if p.get("is_student")]
 
-    gallery = EnrolledGallery.load(args.gallery) if args.gallery else EnrolledGallery()
-    report = build_report(out, gallery, title=args.title or directory.name)
+    # Deliberately NOT the enrolled gallery. TwoPassIdentityResolver numbers
+    # people 1..N within this run, and the enrolled gallery numbers them
+    # 1..M within itself; the two are unrelated and overlap. Naming by id
+    # therefore put "pranay" on a stranger in classroom footage -- real
+    # students labelled with other people's names, which is worse than no
+    # name at all.
+    #
+    # Naming a batch run correctly means resolving its identities against the
+    # gallery rather than relabelling them afterwards. Until that exists, a
+    # batch report says Student 1..N, which is true.
+    report = build_report(out, EnrolledGallery(),
+                          title=args.title or directory.name)
 
     print(f"\n{kept} frames in {time.time() - started:.0f}s | "
           f"{len(students)} students profiled")
