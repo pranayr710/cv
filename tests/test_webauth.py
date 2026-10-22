@@ -88,3 +88,32 @@ class TestOrigin:
         """Substring matching would admit 127.0.0.1:8000.evil.example."""
         assert not origin_allowed("http://127.0.0.1:8000.evil.example",
                                   "127.0.0.1:8000")
+
+
+class TestWhatAGatedPageReturns:
+    """A browser cannot send a custom header on a navigation.
+
+    window.open() on the report URL therefore arrived without the token, and
+    the user clicking Stop was shown a raw JSON 401 instead of their report.
+    The page now fetches it with the token, and anyone who reaches a gated URL
+    directly gets something readable.
+    """
+
+    def test_a_browser_is_answered_with_a_page(self):
+        from starlette.requests import Request
+
+        from backend.webauth import _LOCKED_PAGE
+
+        assert "<!doctype html>" in _LOCKED_PAGE.lower()
+        assert "access token" in _LOCKED_PAGE.lower()
+        # It must not leak the thing it is guarding.
+        assert "X-ClassGraph-Token:" not in _LOCKED_PAGE
+        assert Request  # imported to show the module loads under test
+
+    def test_the_locked_page_points_somewhere_useful(self):
+        """Telling someone they are unauthorised without saying what to do
+        next is the same as saying nothing."""
+        from backend.webauth import _LOCKED_PAGE
+
+        assert 'href="/"' in _LOCKED_PAGE
+        assert "CLASSGRAPH_TOKEN" in _LOCKED_PAGE

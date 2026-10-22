@@ -600,8 +600,32 @@ $("btnStop").onclick = async () => {
   $("btnEnroll").disabled = false;
   $("dot").classList.remove("live");
   $("hdr").textContent = `${d.frames} frames captured`;
-  if (d.report) window.open(d.report, "_blank");
+  if (d.report) await openReport(d.report);
 };
+
+/** Open the finished report in a new tab.
+ *
+ * Fetched rather than navigated to. A browser navigation cannot carry the
+ * X-ClassGraph-Token header, so window.open() on the report URL arrived
+ * without one and the page showed a JSON 401 instead of the report.
+ *
+ * Putting the token in the query string would work and is the wrong trade:
+ * it would then sit in browser history and in the logs of any reverse proxy
+ * in front of this. A blob URL carries no token at all.
+ */
+async function openReport(url) {
+  const res = await cgFetch(url);
+  if (!res.ok) {
+    alert(await cgReason(res));
+    return;
+  }
+  const blob = new Blob([await res.text()], { type: "text/html" });
+  const href = URL.createObjectURL(blob);
+  window.open(href, "_blank");
+  // Released once the new tab has had time to load it; revoking immediately
+  // races the open and yields a blank tab.
+  setTimeout(() => URL.revokeObjectURL(href), 60000);
+}
 
 /* ---------------------------------------------------------------- enroll */
 

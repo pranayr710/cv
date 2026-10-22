@@ -94,6 +94,30 @@ def origin_allowed(origin: str | None, host_header: str | None,
     return netloc in {urlsplit(e).netloc.lower() for e in extra}
 
 
+#: Shown when a browser reaches a gated URL directly. Deliberately says what
+#: to do and nothing about the token itself: anyone who can read this page
+#: has not been authenticated.
+_LOCKED_PAGE = """<!doctype html>
+<meta charset="utf-8"><title>ClassGraph - access token needed</title>
+<style>
+ body{font:15px/1.6 system-ui,sans-serif;background:#14171a;color:#dfe3e6;
+      margin:0;display:grid;place-items:center;min-height:100vh}
+ main{max-width:34rem;padding:2rem}
+ h1{font-size:1.25rem;margin:0 0 .75rem}
+ p{color:#9aa3ab;margin:.5rem 0}
+ code{background:#1e2227;padding:.15rem .4rem;border-radius:3px;color:#dfe3e6}
+ a{color:#4aa3a2}
+</style>
+<main>
+ <h1>This page needs an access token</h1>
+ <p>ClassGraph prints one in the terminal each time it starts. It changes on
+    every restart unless <code>CLASSGRAPH_TOKEN</code> is set.</p>
+ <p>Open the dashboard at <a href="/">the main page</a> and paste the token
+    when it asks. Reports open from there, with the token attached.</p>
+</main>
+"""
+
+
 def install(app, token: str, *, extra_origins: frozenset[str] = frozenset()):
     """Attach token and origin enforcement to a FastAPI app.
 
@@ -102,7 +126,7 @@ def install(app, token: str, *, extra_origins: frozenset[str] = frozenset()):
     is exactly how this class of hole reappears.
     """
     from starlette.middleware.base import BaseHTTPMiddleware
-    from starlette.responses import JSONResponse
+    from starlette.responses import HTMLResponse, JSONResponse
 
     #: Served without a token so a browser can load the page and then ask for
     #: one. They expose no data and change no state.
@@ -124,6 +148,12 @@ def install(app, token: str, *, extra_origins: frozenset[str] = frozenset()):
             presented = (request.headers.get(TOKEN_HEADER)
                          or request.query_params.get(TOKEN_PARAM))
             if not token_ok(presented, token):
+                # A person who typed or bookmarked a gated URL gets words; a
+                # program gets JSON. Answering a browser with a raw JSON body
+                # tells the reader nothing about what to do, and this is a
+                # tool whose users are teachers rather than developers.
+                if "text/html" in request.headers.get("accept", ""):
+                    return HTMLResponse(_LOCKED_PAGE, status_code=401)
                 return JSONResponse(
                     {"error": "missing or invalid token",
                      "hint": f"send {TOKEN_HEADER} or ?{TOKEN_PARAM}="},
