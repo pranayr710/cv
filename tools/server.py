@@ -513,6 +513,9 @@ class VideoJob:
         self.total_frames = 0
         self.is_file = True
         self.started = time.time()
+        #: Set when the first preview frame is downscaled, so the
+        #: resolved redraw lands on the same pixels.
+        self._preview_scale = 1.0
         # The page reads these; a batch run has no live frame to show.
         self.frame_jpeg = None
         self.payload: dict = {}
@@ -568,6 +571,7 @@ class VideoJob:
             # this run's person ids are local to it and mean nothing in the
             # enrolled gallery.
             self.gallery = EnrolledGallery()
+            self._publish_resolved()
             self.stop_reason = self._completion_note()
         except Exception as exc:  # noqa: BLE001 - surfaced, never swallowed
             self.stop_reason = f"Processing failed: {exc}"
@@ -596,7 +600,8 @@ class VideoJob:
         if not ok:
             return
 
-        scale = frame.shape[1] / width
+        self._preview_scale = frame.shape[1] / width
+        scale = self._preview_scale
         boxes = []
         for person in record.get("persons", []):
             box = person.get("bbox")
@@ -637,6 +642,63 @@ class VideoJob:
                 "hint": ("Detecting people. Identity and actions are "
                          "resolved in a second pass, once the whole "
                          "recording has been seen."),
+            }
+
+    def _publish_resolved(self) -> None:
+        """Redraw the last frame with what pass 2 concluded.
+
+        Every box the page showed during a run said "unidentified", because
+        pass 1 is before identity exists. Pass 2 then resolves five students
+        and the picture is never updated, so the analysis appears to have
+        found nobody even though the results panel lists them -- the two
+        halves of the screen disagree, and the one the eye goes to is wrong.
+
+        The last graph row describes the same frame as the last preview, so
+        the existing JPEG can be relabelled rather than re-encoded.
+        """
+        graph = self.out / "live_graph.jsonl"
+        if not graph.exists() or self.frame_jpeg is None:
+            return
+        try:
+            last = None
+            for line in graph.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    last = line
+            if last is None:
+                return
+            row = json.loads(last)
+        except (OSError, json.JSONDecodeError):
+            return
+
+        boxes = []
+        for node in row.get("nodes", []):
+            features = node.get("features") or {}
+            box = features.get("bbox")
+            pid = node.get("person_id")
+            if not box or pid is None or int(pid) <= 0:
+                continue
+            boxes.append({
+                "bbox": [int(v * self._preview_scale) for v in box[:4]],
+                "person_id": int(pid),
+                # Still no name: a batch run numbers people within itself, so
+                # the gallery cannot say who they are.
+                "name": None,
+                "action": features.get("action"),
+                "gaze": features.get("gaze_label"),
+                "face_px": None,
+            })
+        if not boxes:
+            return
+
+        with self._lock:
+            self.payload = {
+                **self.payload,
+                "boxes": boxes,
+                "in_frame": len(boxes),
+                "phase": "resolved",
+                "hint": (f"Resolved {len(boxes)} students. Names need faces "
+                         "of about 60px; these are smaller, so they are "
+                         "numbered instead."),
             }
 
     def _completion_note(self) -> str:
@@ -1031,7 +1093,14 @@ def create_app(args):
         try:
             while True:
                 session = state["session"]
-                if session and session.running:
+                # Not `session.running`. A video job publishes its resolved
+                # frame -- the one where the boxes finally carry student ids
+                # instead of "unidentified" -- after the run ends, so gating
+                # on running meant the page never received the only frame
+                # that showed what the analysis concluded. It also blanked
+                # the feed the instant a session stopped, discarding the last
+                # thing anyone was looking at.
+                if session is not None and session.frame_jpeg:
                     with session._lock:
                         jpeg, payload = session.frame_jpeg, session.payload
                     if jpeg and payload:
