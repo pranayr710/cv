@@ -49,11 +49,19 @@ from pathlib import Path
 # invisible there, so FastAPI silently reclassifies the parameter as a missing
 # query field and closes every handshake with a bare 403 -- no traceback, no
 # log line, and the route still listed in app.routes.
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 logger = logging.getLogger(__name__)
+
+#: Video containers OpenCV reads reliably. Anything else is
+#: rejected with its name rather than failing inside the decoder.
+VIDEO_SUFFIXES = frozenset({".mp4", ".avi", ".mov", ".mkv", ".webm"})
+
+#: Upload ceiling. Above this the browser round trip is the wrong
+#: tool -- `classgraph video` streams from disk with no copy.
+MAX_UPLOAD_BYTES = 512 * 1024 * 1024
 
 STATIC = Path(__file__).resolve().parent / "static"
 UNKNOWN = -1
@@ -62,23 +70,37 @@ UNKNOWN = -1
 class Session:
     """One live capture, owning the camera and every model."""
 
-    def __init__(self, config, gallery, out: Path, camera: int, stride: int,
-                 min_face_px: int = 60):
-        """Prepare a session without opening the camera yet.
+    def __init__(self, config, gallery, out: Path, camera, stride: int,
+                 min_face_px: int = 60, sample_rate: int = 1):
+        """Prepare a session without opening its source yet.
 
         Args:
             config: Live-tuned pipeline config.
             gallery: Registered students.
             out: Directory for the per-frame records, graph and profiles.
-            camera: Camera index.
+            camera: A camera index, or the path to a video file. The capture
+                loop is identical either way -- a recording is a camera that
+                runs out -- so the only differences are that a file needs no
+                warm-up frames and that reaching its end is success rather
+                than the failure it would be on a camera.
             stride: Run expression / head pose / posture every Nth frame.
             min_face_px: Face size below which identification is not expected
                 to work, used only to warn the operator.
+            sample_rate: Process every Nth frame. 1 for a camera, which is
+                already slow enough to keep up with; higher for a file, where
+                30 fps of near-identical frames is work with no new
+                information in it.
         """
         self.config = config
         self.gallery = gallery
         self.out = out
         self.camera = camera
+        #: True when reading a file rather than a camera.
+        self.is_file = not isinstance(camera, int)
+        self.sample_rate = max(1, sample_rate)
+        #: Total frames in the source, when it is a file and says so. Lets the
+        #: page show progress instead of an unbounded count.
+        self.total_frames = 0
         self.stride = max(1, stride)
         self.min_face_px = min_face_px
         self.running = False
@@ -87,7 +109,14 @@ class Session:
         self.frame_jpeg: bytes | None = None
         self.payload: dict = {}
         self.started = 0.0
+        #: Frames read from the source. On a sampled file this is the
+        #: position in the recording, which is what progress is measured
+        #: against -- not how many were analysed.
         self.frames = 0
+        #: Frames actually put through the models. Lower than `frames`
+        #: whenever sample_rate skips any, and the number that matches
+        #: the rows in live_graph.jsonl.
+        self.analysed = 0
         self.fps = 0.0
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
@@ -140,11 +169,23 @@ class Session:
 
         capture = cv2.VideoCapture(self.camera)
         if not capture.isOpened():
-            logger.error("Could not open camera %s", self.camera)
+            self.stop_reason = (
+                f"Could not open {self.camera}."
+                if self.is_file else
+                f"Could not open camera {self.camera}. Another program is "
+                "most likely using it.")
+            logger.error("%s", self.stop_reason)
             self.running = False
             return
-        for _ in range(20):
-            capture.read()
+        if self.is_file:
+            self.total_frames = int(
+                capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        else:
+            # Webcams return dark or malformed frames while exposure settles.
+            # A file has no such warm-up, and discarding its first 20 frames
+            # would silently drop the opening second of the recording.
+            for _ in range(20):
+                capture.read()
 
         detector = _build_detector(self.config)
         headpose = _build_headpose_estimator(self.config)
@@ -181,18 +222,49 @@ class Session:
                     tick = time.perf_counter()
                     ok, frame = capture.read()
                     if not ok:
-                        # Almost always another process holding the camera --
-                        # a server left running from an earlier session. On
-                        # Windows those survive Ctrl+C in a way that is easy to
-                        # miss, and the symptom is a session that stops on its
-                        # own with nothing on screen explaining it.
-                        self.stop_reason = (
-                            "The camera stopped returning frames after "
-                            f"{index} frames. Another program is most likely "
-                            "using it -- check for a server left running from "
-                            "an earlier session.")
-                        logger.warning("%s", self.stop_reason)
+                        if self.is_file:
+                            # The end of a recording is usually the job
+                            # finishing. It is not when the decoder gave up
+                            # early: a damaged file stops returning frames
+                            # exactly as a finished one does, and reporting
+                            # both as "finished" would let somebody believe
+                            # they had analysed a whole lecture when they had
+                            # analysed its first few seconds.
+                            short = (self.total_frames
+                                     and index < self.total_frames * 0.9)
+                            if short:
+                                self.stop_reason = (
+                                    f"The video ended after {index} of about "
+                                    f"{self.total_frames} frames, so it is "
+                                    "most likely damaged. The results below "
+                                    "cover only the part that could be read.")
+                                logger.warning("%s", self.stop_reason)
+                            else:
+                                self.stop_reason = (
+                                    f"Finished the video: {index} frames "
+                                    "read.")
+                                logger.info("%s", self.stop_reason)
+                        else:
+                            # Almost always another process holding the camera
+                            # -- a server left running from an earlier session.
+                            # On Windows those survive Ctrl+C in a way that is
+                            # easy to miss, and the symptom is a session that
+                            # stops on its own with nothing explaining it.
+                            self.stop_reason = (
+                                "The camera stopped returning frames after "
+                                f"{index} frames. Another program is most "
+                                "likely using it -- check for a server left "
+                                "running from an earlier session.")
+                            logger.warning("%s", self.stop_reason)
                         break
+
+                    # Sampling a file: a 30 fps recording holds thirty nearly
+                    # identical frames per second, and processing all of them
+                    # costs thirty times as long for no extra information.
+                    if self.sample_rate > 1 and index % self.sample_rate:
+                        index += 1
+                        continue
+                    self.analysed += 1
 
                     persons, objects = detector.detect(frame)
                     boxes = [p.bbox for p in persons]
@@ -598,6 +670,57 @@ def create_app(args):
         state["session"] = session
         return {"ok": True}
 
+    @app.post("/api/video/analyse")
+    async def analyse_video(file: UploadFile = File(...),
+                            sample_rate: int = Form(5)):
+        """Analyse an uploaded recording through the live pipeline.
+
+        The same Session that drives the camera, pointed at a file. That is
+        deliberate: a second code path would drift from the first, and the
+        value of showing a video in this page is that it is processed exactly
+        as a live session would be.
+
+        One job at a time, for the same reason a camera session is: the
+        models are loaded per session and two at once would contend for the
+        GPU and produce two sets of output in one folder.
+        """
+        if state["session"] and state["session"].running:
+            raise HTTPException(409, "A session is already running.")
+
+        suffix = Path(file.filename or "upload.mp4").suffix.lower()
+        if suffix not in VIDEO_SUFFIXES:
+            raise HTTPException(
+                400, f"{suffix or 'that file'} is not a video. Accepted: "
+                     + ", ".join(sorted(VIDEO_SUFFIXES)))
+
+        uploads = out / "uploads"
+        uploads.mkdir(parents=True, exist_ok=True)
+        # Named from the upload rather than reusing one path, so a second
+        # analysis cannot overwrite a file the first is still reading.
+        target = uploads / f"{int(time.time())}{suffix}"
+        size = 0
+        with target.open("wb") as handle:
+            while chunk := await file.read(1 << 20):
+                size += len(chunk)
+                if size > MAX_UPLOAD_BYTES:
+                    handle.close()
+                    target.unlink(missing_ok=True)
+                    raise HTTPException(
+                        413, f"That video is larger than "
+                             f"{MAX_UPLOAD_BYTES // (1 << 20)} MB. Process it "
+                             "with `classgraph video` instead, which streams "
+                             "from disk.")
+                handle.write(chunk)
+
+        session = Session(live_config((1080, 1920)), gallery(), out,
+                          str(target), args.stride, args.min_face_px,
+                          sample_rate=max(1, min(sample_rate, 30)))
+        state["session"] = session
+        session.start()
+        return {"ok": True, "filename": file.filename,
+                "megabytes": round(size / (1 << 20), 1),
+                "sample_rate": session.sample_rate}
+
     @app.post("/api/session/stop")
     async def stop():
         session = state["session"]
@@ -618,10 +741,23 @@ def create_app(args):
     @app.get("/api/status")
     async def status():
         session = state["session"]
+        # A file knows how long it is, so progress is reportable; a camera
+        # does not, and a progress bar that cannot end would be a lie.
+        total = getattr(session, "total_frames", 0) if session else 0
+        # Measured on frames READ, not frames analysed. Multiplying the
+        # analysed count by the sample rate reached 1.0 a fifth of the way in,
+        # because it was reconstructing the read position from a number that
+        # already was it.
+        done = min(1.0, session.frames / total) if session and total else 0
         return JSONResponse({
             "running": bool(session and session.running),
             "stop_reason": session.stop_reason if session else None,
             "frames": session.frames if session else 0,
+            "analysed": session.analysed if session else 0,
+            "source": ("video" if session and session.is_file
+                       else "camera" if session else None),
+            "total_frames": total,
+            "progress": round(done, 3) if total else None,
         })
 
     @app.websocket("/ws")

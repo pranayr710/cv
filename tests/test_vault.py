@@ -30,6 +30,15 @@ class TestEncryption:
                                                          monkeypatch):
         """The point of encrypting is that the file stops being readable."""
         monkeypatch.setenv(vault.KEY_ENV, "a-term-passphrase")
+        # Asserted rather than assumed: if another test leaves `available`
+        # patched to False, this test fails with "Asha is in the file", which
+        # says nothing about the cause. Checking the precondition turns that
+        # into a failure that names it.
+        assert vault.available(), (
+            "cryptography reports unavailable, so nothing would be encrypted "
+            "and this test would fail for a reason unrelated to encryption")
+        assert vault.passphrase() == "a-term-passphrase"
+
         path = tmp_path / "gallery.json"
         _gallery().save(path)
 

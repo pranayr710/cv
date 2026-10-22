@@ -591,6 +591,83 @@ $("btnStart").onclick = async () => {
   $("dot").classList.add("live");
 };
 
+/* ------------------------------------------------------------ video file */
+
+$("btnVideo").onclick = () => $("videoFile").click();
+
+$("videoFile").onchange = async () => {
+  const file = $("videoFile").files[0];
+  if (!file) return;
+  // Cleared immediately so choosing the same file twice still fires change.
+  $("videoFile").value = "";
+
+  const body = new FormData();
+  body.append("file", file);
+  // 1 frame in 5. A recording holds many near-identical frames per second,
+  // and analysing all of them costs five times as long for no new
+  // information -- the same rate the batch tool and the published figures use.
+  body.append("sample_rate", "5");
+
+  $("btnVideo").disabled = true;
+  $("btnStart").disabled = true;
+  $("hdr").textContent = `Uploading ${file.name}...`;
+
+  const res = await cgFetch("/api/video/analyse", { method: "POST", body });
+  if (!res.ok) {
+    $("hdr").textContent = "";
+    $("btnVideo").disabled = false;
+    $("btnStart").disabled = false;
+    alert(await cgReason(res));
+    return;
+  }
+
+  running = true;
+  $("btnStart").hidden = true;
+  $("btnStop").hidden = false;
+  $("btnEnroll").disabled = true;
+  $("dot").classList.add("live");
+  trackVideoProgress(file.name);
+};
+
+/** Show how far through the recording we are, and finish by itself.
+ *
+ * A video ends on its own, unlike a camera, so nobody should have to watch
+ * for that and press Stop. Polling rather than using the WebSocket because
+ * the socket carries frames for display and goes quiet between them, which
+ * would look identical to the analysis having stalled.
+ */
+async function trackVideoProgress(filename) {
+  while (running) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const res = await cgFetch("/api/status");
+    if (!res.ok) break;
+    const s = await res.json();
+
+    if (s.running) {
+      const pct = s.progress == null ? null : Math.round(s.progress * 100);
+      $("hdr").textContent = pct == null
+        ? `${filename} — ${s.analysed} frames analysed`
+        : `${filename} — ${pct}% (${s.analysed} frames analysed)`;
+      continue;
+    }
+
+    // Finished. stop() writes the profiles and builds the report, so it is
+    // still the right way to end, even though the loop has already exited.
+    const done = await cgFetch("/api/session/stop", { method: "POST" });
+    const d = done.ok ? await done.json() : {};
+    running = false;
+    $("btnStart").hidden = false;
+    $("btnStart").disabled = false;
+    $("btnStop").hidden = true;
+    $("btnVideo").disabled = false;
+    $("btnEnroll").disabled = false;
+    $("dot").classList.remove("live");
+    $("hdr").textContent = s.stop_reason || `${d.frames || 0} frames analysed`;
+    if (d.report) await openReport(d.report);
+    return;
+  }
+}
+
 $("btnStop").onclick = async () => {
   const res = await cgFetch("/api/session/stop", { method: "POST" });
   const d = await res.json();

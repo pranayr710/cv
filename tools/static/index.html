@@ -201,6 +201,12 @@ dialog::backdrop { background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); }
   <span class="spacer"></span>
   <button id="btnEnroll">👤 Register student</button>
   <button id="btnStart" class="primary">⚡ Start session</button>
+  <!-- A recording goes through the same pipeline as the camera, so the
+       controls sit together. The input is hidden because a bare file input
+       cannot be styled to match, and the button forwards the click. -->
+  <input id="videoFile" type="file" hidden
+         accept="video/mp4,video/x-msvideo,video/quicktime,video/x-matroska,video/webm">
+  <button id="btnVideo">🎬 Analyse a video</button>
   <button id="btnStop" class="danger" hidden>⏹ Stop &amp; report</button>
 </header>
 
