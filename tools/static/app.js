@@ -23,6 +23,26 @@ function cgForgetToken() {
   sessionStorage.removeItem(CG_TOKEN_KEY);
 }
 
+/** Why a request failed, in words a person can act on.
+ *
+ * The server answers a rejected token with {error, hint} and a rejected
+ * request with {detail}. Reading only one of them showed "undefined" in an
+ * alert box, which tells the operator nothing about what to do next.
+ */
+async function cgReason(response) {
+  if (response.status === 401) {
+    return "That access token was not accepted.\n\n" +
+           "ClassGraph prints the current one in the terminal each time it " +
+           "starts.\nReload the page to enter it again.";
+  }
+  try {
+    const body = await response.json();
+    return body.detail || body.error || `Request failed (${response.status}).`;
+  } catch {
+    return `Request failed (${response.status}).`;
+  }
+}
+
 /** fetch(), with the token attached. Used in place of fetch() throughout. */
 async function cgFetch(url, options = {}) {
   const headers = { ...(options.headers || {}),
@@ -563,7 +583,7 @@ function renderInteractionMatrix(svg, present, pairs, W, H) {
 
 $("btnStart").onclick = async () => {
   const res = await cgFetch("/api/session/start", { method: "POST" });
-  if (!res.ok) { alert((await res.json()).detail); return; }
+  if (!res.ok) { alert(await cgReason(res)); return; }
   running = true;
   $("btnStart").hidden = true;
   $("btnStop").hidden = false;

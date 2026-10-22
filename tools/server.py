@@ -36,6 +36,7 @@ import base64
 import json
 import logging
 import os
+import re
 import threading
 import time
 from collections import Counter, defaultdict, deque
@@ -485,7 +486,20 @@ def create_app(args):
         # classgraph-token` hands any device on the network full API access,
         # which is the threat the token exists to stop. The operator pastes
         # the token printed at startup; the page keeps it in sessionStorage.
-        return (STATIC / "index.html").read_text(encoding="utf-8")
+        page = (STATIC / "index.html").read_text(encoding="utf-8")
+
+        # The cache-busting query was a hand-maintained "?v=2", so editing
+        # app.js without remembering to bump it served every browser the old
+        # file. That is indistinguishable from the fix not working, and it
+        # cost a debugging session. Stamped from the file's own modification
+        # time instead, which cannot drift from its contents.
+        for asset in ("app.js", "style.css"):
+            path = STATIC / asset
+            if path.exists():
+                stamp = int(path.stat().st_mtime)
+                page = re.sub(rf"/static/{re.escape(asset)}(\?v=[^\"']*)?",
+                              f"/static/{asset}?v={stamp}", page)
+        return page
 
     @app.get("/api/students")
     async def students():
