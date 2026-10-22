@@ -144,3 +144,69 @@ def test_render_html_carries_caveat_and_no_individual_rows() -> None:
     assert "Individual students are intentionally absent" in html
     # aggregated numbers may appear; individual ids must not
     assert ">1<" not in html.split("<caption>")[0]
+
+
+class TestReportIsActuallyBuilt:
+    """The report module was tested only through its helpers.
+
+    build() itself was never called, so when `import html` was added beside a
+    local variable of the same name -- making html.escape a reference to an
+    unassigned local -- every report raised NameError and the suite stayed
+    green. Ending a live session failed with a 500 and nothing caught it.
+    """
+
+    @staticmethod
+    def _session(tmp_path, name="Asha"):
+        import json
+
+        import numpy as np
+
+        from backend.enrollment import EnrolledGallery
+
+        folder = tmp_path / "session"
+        folder.mkdir()
+        with (folder / "live_graph.jsonl").open("w", encoding="utf-8") as fh:
+            for i in range(40):
+                fh.write(json.dumps({
+                    "frame_id": i, "timestamp_ms": i * 333, "scene": 0,
+                    "nodes": [{"id": "p1", "person_id": 1, "role": "student",
+                               "features": {
+                        "action": "attentive", "engagement": "on",
+                        "gaze_label": "teacher", "expression": "neutral",
+                        "bbox": [10, 10, 60, 120]}}],
+                    "edges": [],
+                }) + "\n")
+
+        from backend.student_profile import build_profiles
+
+        profiles = build_profiles(folder / "live_graph.jsonl", None)
+        (folder / "live_profiles.json").write_text(
+            json.dumps(list(profiles.values()), indent=2), encoding="utf-8")
+
+        gallery = EnrolledGallery()
+        vec = np.ones(512, dtype=np.float32)
+        vec /= np.linalg.norm(vec)
+        gallery.register(name, [vec, vec, vec])
+        return folder, gallery
+
+    def test_a_report_is_produced(self, tmp_path):
+        from tools.report import build
+
+        folder, gallery = self._session(tmp_path)
+        path = build(folder, gallery, title="Test session")
+        assert path.exists()
+        assert path.stat().st_size > 0
+
+    def test_a_hostile_name_is_escaped(self, tmp_path):
+        """A name reaches the gallery from an enrolment endpoint.
+
+        Unescaped, it is stored XSS running in the teacher's browser on the
+        same origin as every API route.
+        """
+        from tools.report import build
+
+        folder, gallery = self._session(
+            tmp_path, name="<img src=x onerror=alert(1)>")
+        text = build(folder, gallery).read_text(encoding="utf-8")
+        assert "<img src=x onerror=" not in text
+        assert "&lt;img src=x onerror=" in text

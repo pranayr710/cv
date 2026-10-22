@@ -11,11 +11,8 @@ function cgToken() {
   let token = sessionStorage.getItem(CG_TOKEN_KEY);
   if (!token) {
     token = window.prompt(
-      "Access token
-
-ClassGraph printed one in the terminal when it " +
-      "started.
-Paste it here to use this dashboard.");
+      "Access token\n\nClassGraph prints one in the terminal when it " +
+      "starts.\nPaste it here to use this dashboard.");
     if (token) sessionStorage.setItem(CG_TOKEN_KEY, token.trim());
   }
   return (token || "").trim();
