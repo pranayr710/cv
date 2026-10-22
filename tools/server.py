@@ -543,6 +543,15 @@ class VideoJob:
         if not staged.exists():
             self.video.replace(staged)
 
+        # A folder used for a live session and then a batch run holds one
+        # per-frame file from each, with different person ids in them. Every
+        # tool that reads the folder then has to guess which is current, and
+        # one of them guessed wrong. Removing the live file makes the folder
+        # describe a single run.
+        stale = self.out / "live_frames.jsonl"
+        if stale.exists():
+            stale.unlink()
+
         job_args = _argparse.Namespace(
             dir=str(folder), pattern=self.video.name,
             out=str(self.out), sample_rate=self.sample_rate, limit=None,
