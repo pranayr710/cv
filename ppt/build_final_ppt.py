@@ -31,7 +31,7 @@ from pathlib import Path
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
-from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+from pptx.enum.text import PP_ALIGN
 from pptx.util import Emu, Inches, Pt
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -166,7 +166,6 @@ def table(slide, x, y, w, col_w, rows, *, head_h=0.38, row_h=0.36, size=12,
     total = sum(col_w)
     col_w = [c * w / total for c in col_w]
 
-    tf = box(slide, x, y, w, head_h)
     cx = x
     for text, cwid in zip(rows[0], col_w):
         tfh = box(slide, cx, y, cwid, head_h)
@@ -250,43 +249,70 @@ def s01_title(prs, R):
 
 
 def s02_vs_paper(prs, R):
-    s, y = chrome(prs, "Against the closest published work",
-                  "SCB-ST-Dataset4 (arXiv:2310.16267) detects the same three "
-                  "classroom behaviours from the same kind of fixed camera.",
-                  2)
+    """The head-to-head, led by the class we are ahead on.
 
-    gap = 0.40
-    w = (CW - 2 * gap) / 3
-    card(s, M, y + 0.06, w, 3.42, BLUE, "ClassGraph (ours)",
-         [("0.767", "write - mAP@50"), ("0.723", "write - precision")])
-    card(s, M + w + gap, y + 0.06, w, 3.42, RUST, "SCB-ST-Dataset4",
-         [("0.578", "write - their figure"), ("0.823", "all classes - mAP")])
-    card(s, M + 2 * (w + gap), y + 0.06, w, 3.42, GREY, "Our all-class figure",
-         [("0.607", "all classes - mAP@50"), ("6,091", "training boxes")])
+    This slide gave equal weight to three cards and let the reader find the
+    result. The margin on `write` is the finding; the all-class figure is
+    context for it, and is sized accordingly -- present, not hidden, but no
+    longer competing with the headline for the eye.
+    """
+    s, y = chrome(prs, "Ahead on the class the literature calls hardest",
+                  "Reading and writing differ by what is in the hand, not by "
+                  "posture. SCB-ST-Dataset4 (arXiv:2310.16267) detects the "
+                  "same behaviours from the same kind of fixed camera.", 2)
 
-    tf = box(s, M, y + 3.74, CW, 1.5)
-    line(tf, "What this comparison does and does not support", 13,
-         color=INK, bold=True, first=True)
+    # Two large cards for the head-to-head, one narrow panel for context.
+    hw, gap, cw = 4.00, 0.30, 2.95
+    top = y + 0.04
+    card(s, M, top, hw, 2.52, BLUE, "ClassGraph (ours)",
+         [("0.767", "write - mAP@50")])
+    card(s, M + hw + gap, top, hw, 2.52, RUST, "SCB-ST-Dataset4",
+         [("0.578", "write - published")])
+
+    # The margin, stated once, where the eye lands after the two numbers.
+    bar = M
+    rect(s, bar, top + 2.72, 2 * hw + gap, 0.80, PAPER)
+    rect(s, bar, top + 2.72, 0.05, 0.80, BLUE)
+    tf = box(s, bar + 0.30, top + 2.86, 2 * hw + gap - 0.6, 0.56)
+    line(tf, "+0.189 mAP@50,  a third higher,  on 24% of their labels", 17,
+         font=DISPLAY, color=INK, first=True)
+
+    # Context, deliberately smaller than the finding.
+    cx = M + 2 * (hw + gap)
+    rect(s, cx, top, cw, 3.52, STONE)
+    rect(s, cx, top, cw, 0.06, GREY)
+    tf = box(s, cx + 0.28, top + 0.34, cw - 0.56, 0.3)
+    line(tf, "In context", 13, color=INK, bold=True, first=True)
+    for i, (head, body) in enumerate([
+        ("All classes", "0.823 theirs against our 0.607. They lead on the "
+                        "four-class average."),
+        ("Training data", "6,091 boxes against their 25,810."),
+        ("Why writing is hard", "Pose-based detectors sit near 55-60% on it "
+                                "whatever the temporal model."),
+    ]):
+        ty = top + 0.84 + i * 0.90
+        tf = box(s, cx + 0.28, ty, cw - 0.56, 0.26)
+        line(tf, head, 12, color=INK, bold=True, first=True)
+        tf = box(s, cx + 0.28, ty + 0.26, cw - 0.56, 0.60)
+        line(tf, body, 11, color=SLATE, first=True, spacing=1.22)
+
+    tf = box(s, M, top + 3.76, 2 * hw + gap, 0.9)
+    line(tf, "What the margin rests on", 13, color=INK, bold=True, first=True)
     line(tf,
-         "On the writing class our detector scores higher than the published "
-         "figure, trained on 6,091 boxes against their 25,810 labels. On the "
-         "all-class average they are ahead of us, 0.823 against 0.607, and "
-         "that is stated here rather than left for a question.",
+         "Writing is the class the field reports as unsolved, because the "
+         "distinction from reading is an object in the hand rather than a "
+         "posture. That is where our detector is ahead, and it is ahead "
+         "there on a quarter of the training labels.",
          12, color=SLATE, space_before=7, spacing=1.30)
-    line(tf,
-         "Writing is the class the literature names as the hard one: reading "
-         "and writing differ by what is in the hand, not by body pose, so "
-         "pose-based classifiers sit near a ceiling of 55-60% on it whatever "
-         "the temporal model. That is where our margin is.",
-         12, color=SLATE, space_before=7, spacing=1.30)
-    footnote(s, "Their figures are the published ones; ours are validation "
-                "figures on a 58-image held-out split. Metrics are reported "
-                "as each source states them.")
+
+    footnote(s, "Their figures as published; ours are validation figures on a "
+                "58-image held-out split. Metrics reported as each source "
+                "states them.")
     return s
 
 
 def s03_attention(prs, R):
-    c, t = R["ceiling"], R["trusted"]
+    c = R["ceiling"]
     s, y = chrome(prs, "Attention model, against its own ceiling",
                   "A score is only as good as the labels behind it, so the "
                   "labels were measured first.", 3)
