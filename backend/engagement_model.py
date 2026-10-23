@@ -54,6 +54,32 @@ ABSTAIN_BAND: float = 0.10
 #: almost no readable frames is not a verdict.
 MIN_COVERAGE_TO_DECIDE: float = 0.30
 
+#: How many features may sit outside the range the model was fitted on before
+#: it declines to score the window at all.
+#:
+#: A model asked about a vector it has never seen does not know that. It
+#: extrapolates, and because the last layer is a sigmoid it extrapolates
+#: confidently -- straight to 0 or to 1.
+#:
+#: Measured on a one-person webcam session against a model fitted on
+#: multi-student classroom footage: 6 of the 21 features were outside the
+#: fitted range entirely, among them peer_count and peer_frac_on_task (there
+#: are no peers) and mean_focus_offset_deg (a room focus needs three
+#: students). The model returned probabilities of 0.023, 0.014 and 0.001 --
+#: every window scored 1/10 -- while the Mamba sequence model, which sees a
+#: constant all-attending sequence on the same footage, returned 10/10 for
+#: every one of its 203 windows. Two saturated models pointing opposite ways,
+#: both reported as confident scores.
+#:
+#: One feature out of range is a student doing something unusual. Three is
+#: footage the model was not fitted for.
+MAX_FEATURES_OUT_OF_RANGE: int = 3
+
+#: Fraction of the fitted range a value may exceed it by before counting as
+#: out of range, so a value a hair past the training maximum is not treated
+#: as a different kind of footage.
+OUT_OF_RANGE_TOLERANCE: float = 0.10
+
 
 @dataclass(frozen=True)
 class Verdict:
@@ -86,7 +112,9 @@ class EngagementModel:
 
     def __init__(self, coefficients: Sequence[float], intercept: float,
                  feature_names: Sequence[str], mean: Sequence[float],
-                 scale: Sequence[float]) -> None:
+                 scale: Sequence[float],
+                 lo: Sequence[float] | None = None,
+                 hi: Sequence[float] | None = None) -> None:
         if not (len(coefficients) == len(feature_names) == len(mean)
                 == len(scale)):
             raise ValueError(
@@ -98,6 +126,31 @@ class EngagementModel:
         self.feature_names = list(feature_names)
         self.mean = list(mean)
         self.scale = [s if s else 1.0 for s in scale]
+        # The per-feature range of the training set. Optional, so a model
+        # saved before this existed still loads -- it simply cannot tell
+        # when it is being asked about footage unlike anything it saw.
+        self.lo = list(lo) if lo is not None else None
+        self.hi = list(hi) if hi is not None else None
+
+    def out_of_range(self, features: Sequence[float]) -> list[str]:
+        """Features whose value lies outside the fitted range.
+
+        Returns an empty list when the model has no stored range, which is
+        the honest answer: not "nothing is out of range" but "this model
+        cannot tell".
+        """
+        if self.lo is None or self.hi is None:
+            return []
+        out = []
+        for i, name in enumerate(self.feature_names):
+            span = self.hi[i] - self.lo[i]
+            slack = abs(span) * OUT_OF_RANGE_TOLERANCE
+            value = features[i]
+            if value != value:
+                continue
+            if value < self.lo[i] - slack or value > self.hi[i] + slack:
+                out.append(name)
+        return out
 
     @classmethod
     def load(cls, path: Path | None = None) -> EngagementModel:
@@ -110,12 +163,15 @@ class EngagementModel:
         """
         path = path or DEFAULT_MODEL
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        lo, hi = payload.get("lo"), payload.get("hi")
         if payload.get("kind") == "mlp":
             return MLPEngagementModel(
                 payload["w1"], payload["b1"], payload["w2"], payload["b2"],
-                payload["feature_names"], payload["mean"], payload["scale"])
+                payload["feature_names"], payload["mean"], payload["scale"],
+                lo, hi)
         return cls(payload["coefficients"], payload["intercept"],
-                   payload["feature_names"], payload["mean"], payload["scale"])
+                   payload["feature_names"], payload["mean"], payload["scale"],
+                   lo, hi)
 
     def save(self, path: Path | None = None) -> Path:
         path = Path(path or DEFAULT_MODEL)
@@ -126,6 +182,8 @@ class EngagementModel:
             "feature_names": self.feature_names,
             "mean": self.mean,
             "scale": self.scale,
+            "lo": self.lo,
+            "hi": self.hi,
         }, indent=1), encoding="utf-8")
         return path
 
@@ -168,6 +226,19 @@ class EngagementModel:
             return Verdict(None, float("nan"),
                            f"coverage {coverage:.0%} below the "
                            f"{MIN_COVERAGE_TO_DECIDE:.0%} floor", True)
+
+        # Outside the fitted range the sigmoid saturates and the model
+        # reports a confident score for footage it was never fitted on. See
+        # MAX_FEATURES_OUT_OF_RANGE.
+        strange = self.out_of_range(features)
+        if len(strange) >= MAX_FEATURES_OUT_OF_RANGE:
+            return Verdict(
+                None, float("nan"),
+                f"{len(strange)} features outside the range this model was "
+                f"fitted on ({', '.join(strange[:3])}"
+                f"{', ...' if len(strange) > 3 else ''}) -- this footage is "
+                "unlike the footage it was trained for",
+                True)
 
         p = self.probability(features)
         # A NaN means a feature could not be computed, which is missing
@@ -221,7 +292,8 @@ class MLPEngagementModel(EngagementModel):
     the artifact remains readable and carries no import-time code.
     """
 
-    def __init__(self, w1, b1, w2, b2, feature_names, mean, scale) -> None:
+    def __init__(self, w1, b1, w2, b2, feature_names, mean, scale,
+                 lo=None, hi=None) -> None:
         # Coefficients are the first-layer weights collapsed by their output
         # weights: a linear summary used only for ordering the explanation.
         import numpy as np
@@ -232,7 +304,7 @@ class MLPEngagementModel(EngagementModel):
         self.b2 = float(np.asarray(b2).reshape(-1)[0])
         super().__init__(
             (self.w1 * self.w2[None, :]).sum(axis=1).tolist(),
-            self.b2, feature_names, mean, scale)
+            self.b2, feature_names, mean, scale, lo, hi)
 
     def probability(self, features: Sequence[float]) -> float:
         import numpy as np
@@ -280,6 +352,8 @@ class MLPEngagementModel(EngagementModel):
             "feature_names": self.feature_names,
             "mean": self.mean,
             "scale": self.scale,
+            "lo": self.lo,
+            "hi": self.hi,
         }, indent=1), encoding="utf-8")
         return path
 

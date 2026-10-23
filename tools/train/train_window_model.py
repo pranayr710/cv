@@ -129,7 +129,16 @@ def main() -> int:
         return 1
 
     def make(scaler, xs, ys):
-        """Fit the chosen estimator and wrap it in the shipping artifact."""
+        """Fit the chosen estimator and wrap it in the shipping artifact.
+
+        The per-feature range of `xs` is stored with the weights. Outside it
+        the model extrapolates, and a sigmoid extrapolates confidently -- on
+        a one-person webcam session, where six of the twenty-one features are
+        structurally absent, the fitted model returned probabilities of 0.001
+        to 0.023 and scored every window 1/10. It now declines instead.
+        """
+        lo = xs.min(axis=0).tolist()
+        hi = xs.max(axis=0).tolist()
         if args.model == "mlp":
             net = MLPClassifier(hidden_layer_sizes=(16,), max_iter=3000,
                                 random_state=args.seed)
@@ -137,12 +146,12 @@ def main() -> int:
             return MLPEngagementModel(
                 net.coefs_[0], net.intercepts_[0], net.coefs_[1],
                 net.intercepts_[1], list(FEATURE_NAMES), scaler.mean_,
-                scaler.scale_)
+                scaler.scale_, lo, hi)
         clf = LogisticRegression(max_iter=2000, C=1.0)
         clf.fit(scaler.transform(xs), ys)
         return EngagementModel(clf.coef_[0], float(clf.intercept_[0]),
                                list(FEATURE_NAMES), scaler.mean_,
-                               scaler.scale_)
+                               scaler.scale_, lo, hi)
 
     n_folds = min(5, len(set(groups)))
     oof: list[str | None] = [None] * len(y)

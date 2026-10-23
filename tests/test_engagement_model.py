@@ -110,11 +110,16 @@ def test_round_trip_through_json_preserves_behaviour(tmp_path: Path):
 
 
 def test_saved_model_is_readable_json_not_a_pickle(tmp_path: Path):
-    """The artifact must carry no code and stay diffable."""
+    """The artifact must carry no code and stay diffable.
+
+    `lo` and `hi` are the per-feature range the model was fitted on, added
+    so it can refuse footage unlike anything it saw rather than extrapolate
+    a confident score. They are plain numbers like the rest.
+    """
     path = _model().save(tmp_path / "m.json")
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert set(payload) == {"coefficients", "intercept", "feature_names",
-                            "mean", "scale"}
+                            "mean", "scale", "lo", "hi"}
     assert payload["feature_names"] == list(FEATURE_NAMES)
 
 

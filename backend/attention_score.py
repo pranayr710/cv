@@ -293,12 +293,31 @@ def annotate_attention(graph: dict, scorer: AttentionScorer,
         # starve its buffer and leave the second score permanently blank.
         mamba_window = (mamba.update(int(person_id), timestamp, features)
                         if mamba is not None and mamba.available else None)
-        if mamba is not None and mamba.available:
+
+        reading = scorer.update(int(person_id), timestamp, features)
+
+        # Out-of-range footage silences both scorers, not one.
+        #
+        # The check lives on the aggregate model because that is where the
+        # fitted range is stored, but it is a property of the window rather
+        # than of either model: the two are built from the same signals, so a
+        # window unlike anything the one was fitted on is unlike anything the
+        # other was fitted on either.
+        #
+        # Suppressing only the aggregate would be worse than suppressing
+        # neither. On a one-person webcam session the aggregate saturated to
+        # 1/10 and the sequence model to 10/10, and leaving the second number
+        # alone would have left the saturated one on screen by itself,
+        # reading as a confident verdict instead of as half of an obvious
+        # contradiction.
+        unfit = reading is not None and reading.label is None and (
+            "outside the range" in (reading.reason or ""))
+        if mamba is not None and mamba.available and not unfit:
             session = mamba.session_score(int(person_id))
             features["attention_score_mamba"] = (
                 mamba_window if mamba_window is not None else session)
-
-        reading = scorer.update(int(person_id), timestamp, features)
+        elif unfit:
+            features["attention_score_mamba"] = None
         if reading is None:
             # Mid-window: hold the previous score rather than blanking it, so
             # the number on screen is steady instead of flickering off between
