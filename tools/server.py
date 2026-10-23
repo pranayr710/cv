@@ -78,6 +78,55 @@ RECOGNISABLE_FACE_PX = 60
 #: detector, is where they have to be marked as weak.
 REPORTABLE_OBJECT_CONF = 0.50
 
+#: How many analysed recordings to keep alongside their results.
+#:
+#: Every upload used to be kept forever. Two days of testing left 20 copies
+#: of 14 videos in outputs/live/uploads -- 219 MB, and far more to the point,
+#: 219 MB of classroom footage of children with no retention policy at all,
+#: in a project that has a retention sweep for the face gallery and a
+#: unified erasure path for everything else. The analysis is what the upload
+#: was for; keeping the input after it is a copy nobody asked for.
+#:
+#: Not zero. `tools/export_faces_to_enrol.py` needs the source video to pull
+#: face crops for enrolment, and that is the obvious next step after watching
+#: a run, so the last few stay.
+KEEP_RECENT_UPLOADS = 3
+
+
+def prune_uploads(uploads: Path, keep: int = KEEP_RECENT_UPLOADS) -> int:
+    """Delete all but the most recent ``keep`` analysed recordings.
+
+    Args:
+        uploads: The uploads directory.
+        keep: How many of the newest entries to leave in place.
+
+    Returns:
+        How many entries were removed.
+
+    Entries are named from the upload time and each run stages its video into
+    a folder of the same name, so both a bare file and its staged folder are
+    handled. A failure to delete is logged and skipped rather than raised:
+    a video still open in a reader must not stop the next analysis starting.
+    """
+    import shutil
+
+    if not uploads.is_dir():
+        return 0
+    entries = sorted(uploads.iterdir(),
+                     key=lambda p: p.stat().st_mtime, reverse=True)
+    removed = 0
+    for entry in entries[keep:]:
+        try:
+            shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
+        except OSError as exc:
+            logger.warning("could not remove old upload %s: %s", entry, exc)
+            continue
+        removed += 1
+    if removed:
+        logger.info("removed %d recording(s) older than the last %d",
+                    removed, keep)
+    return removed
+
 STATIC = Path(__file__).resolve().parent / "static"
 UNKNOWN = -1
 
@@ -1047,6 +1096,7 @@ def create_app(args):
 
         uploads = out / "uploads"
         uploads.mkdir(parents=True, exist_ok=True)
+        prune_uploads(uploads)
         # Named from the upload rather than reusing one path, so a second
         # analysis cannot overwrite a file the first is still reading.
         target = uploads / f"{int(time.time())}{suffix}"

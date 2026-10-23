@@ -22,9 +22,11 @@ recomputed. An id that came back as a different child would corrupt every
 historical record that mentions it, and a class mean is about the class.
 
 **What this cannot reach.** Anything copied elsewhere: a report emailed to a
-colleague, a backup, a folder outside the ones named. The report names it
-rather than pretending otherwise, because a deletion that silently missed a
-copy is worse than one that says where it stopped.
+colleague, a backup, a folder outside the ones named. And the uploaded
+recording itself, which shows this person but is also every other student's
+source and so cannot be filtered without destroying their records too. The
+report names all of it rather than pretending otherwise, because a deletion
+that silently missed a copy is worse than one that says where it stopped.
 """
 from __future__ import annotations
 
@@ -188,6 +190,30 @@ def _filter_profiles(path: Path, person_ids: set[int]) -> bool:
     return True
 
 
+#: Containers an uploaded recording may arrive in. Mirrors VIDEO_SUFFIXES in
+#: tools/server.py.
+RECORDING_SUFFIXES = (".mp4", ".avi", ".mov", ".mkv", ".webm")
+
+
+def _recordings_in(folder: Path) -> list[str]:
+    """Source recordings under this output folder, as warnings to the caller.
+
+    The dashboard stages each analysed upload under ``uploads/``, so the
+    video a session was built from sits beside its results. That file is the
+    richest biometric record this system holds and nothing in the erasure
+    path had ever looked at it.
+    """
+    uploads = folder / "uploads"
+    if not uploads.is_dir():
+        return []
+    found = sorted(
+        str(p) for p in uploads.rglob("*")
+        if p.is_file() and p.suffix.lower() in RECORDING_SUFFIXES)
+    return [f"the recording this session was built from, which shows this "
+            f"person and cannot be filtered without destroying every other "
+            f"student's source: {path}" for path in found]
+
+
 def erase(name: str, *, gallery_path: Path, db_path: Path,
           output_dirs: list[Path], dry_run: bool = False) -> ErasureReport:
     """Remove every record of one person, across all three stores.
@@ -287,6 +313,21 @@ def erase(name: str, *, gallery_path: Path, db_path: Path,
                 if not dry_run:
                     html.unlink()
                 report.files_removed.append(str(html))
+
+            # The uploaded recording this folder was produced from.
+            #
+            # It is named rather than deleted. A video cannot be filtered the
+            # way a JSONL can: this student's frames are the same frames as
+            # everyone else's, so removing them means removing the recording,
+            # and that destroys the source for every other student in the
+            # room. Deleting it is a decision about other people's records
+            # and belongs to the operator.
+            #
+            # Saying nothing was the previous behaviour and it was the worse
+            # of the two: a deletion request reported success having scrubbed
+            # the derived rows while leaving the child's face, in full, in a
+            # video file this module knew the path of.
+            report.unreachable.extend(_recordings_in(folder))
 
     report.unreachable.append(
         "any copy outside these paths -- an emailed report, a backup, or an "
