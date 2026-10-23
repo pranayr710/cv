@@ -115,9 +115,9 @@ def chrome(prs, title, lead=None, page=None):
     nothing else above the content, and that is why its content reads.
     """
     s = blank(prs)
-    tf = box(s, M, 0.72, CW, 0.62)
-    line(tf, title, 32, font=DISPLAY, color=INK, bold=False, first=True)
-    y = 1.46
+    tf = box(s, M, 0.74, CW, 0.70)
+    line(tf, title, 34, font=DISPLAY, color=INK, bold=False, first=True)
+    y = 1.52
     if lead:
         tf = box(s, M, y, CW - 1.2, 0.40)
         line(tf, lead, 13, color=MUTED, first=True, spacing=1.25)
@@ -146,18 +146,23 @@ def card(slide, x, y, w, h, accent, label, figures):
     tf = box(slide, x + 0.33, y + 0.34, w - 0.66, 0.32)
     line(tf, label, 13, color=INK, bold=True, first=True)
 
-    # Figures are spaced to fit the card they are given rather than at a
-    # fixed pitch. At a fixed 1.56in the second figure's caption fell 0.28in
-    # below the panel and landed on the paragraph underneath.
-    top, bottom_pad = 0.90, 0.30
-    slot = (h - top - bottom_pad) / max(len(figures), 1)
-    fy = y + top
+    # Figures are centred in the space under the label rather than stacked
+    # from the top. A single figure pinned to the top left two inches of
+    # empty stone beneath it -- whitespace belongs between the panels, not
+    # trapped inside one.
+    label_h, pad = 0.80, 0.30
+    sizes = {1: 72, 2: 50}
+    size = sizes.get(len(figures), 44)
+    block = size / 72 * 1.22 + 0.34          # number + its caption
+    span = h - label_h - pad
+    fy = y + label_h + max((span - block * len(figures)) / 2, 0.0)
+
     for value, caption in figures:
-        tf = box(slide, x + 0.33, fy, w - 0.66, 0.74)
-        line(tf, value, 46, font=DISPLAY, color=accent, first=True)
-        tf = box(slide, x + 0.33, fy + 0.76, w - 0.66, 0.28)
+        tf = box(slide, x + 0.33, fy, w - 0.66, block - 0.30)
+        line(tf, value, size, font=DISPLAY, color=accent, first=True)
+        tf = box(slide, x + 0.33, fy + block - 0.32, w - 0.66, 0.28)
         line(tf, caption, 12, color=SLATE, first=True)
-        fy += slot
+        fy += block
     return y + h
 
 
@@ -255,350 +260,178 @@ def s01_title(prs, R):
     rect(s, 0, 0, SW, SH, PAPER)
     rect(s, 0, 0, 0.09, SH, BLUE)
 
-    tf = box(s, M + 0.3, 2.22, CW - 2.0, 1.5)
+    tf = box(s, M + 0.3, 2.60, CW - 2.0, 1.5)
     line(tf, "ClassGraph", 60, font=DISPLAY, color=INK, first=True)
-    line(tf, "Per-student engagement from one classroom camera", 20,
-         font=DISPLAY, color=SLATE, space_before=10)
-
-    rect(s, M + 0.3, 4.20, 1.4, 0.03, RUST)
-    tf = box(s, M + 0.3, 4.52, CW - 2.4, 1.0)
-    line(tf, "Nine models, measured against hand-labelled ground truth and "
-             "against the limit those labels allow.", 14, color=SLATE,
-         first=True, spacing=1.35)
+    line(tf, "Per-student engagement from one classroom camera", 19,
+         font=DISPLAY, color=SLATE, space_before=12)
+    rect(s, M + 0.3, 4.62, 1.4, 0.03, RUST)
     footnote(s, "Final review", 6.5)
     return s
 
 
 def s02_vs_paper(prs, R):
-    """The head-to-head, led by the class we are ahead on.
+    """The head-to-head. Two numbers, the margin, one line of caveat."""
+    s, y = chrome(prs, "Where we lead", page=2)
 
-    This slide gave equal weight to three cards and let the reader find the
-    result. The margin on `write` is the finding; the all-class figure is
-    context for it, and is sized accordingly -- present, not hidden, but no
-    longer competing with the headline for the eye.
-    """
-    s, y = chrome(prs, "Ahead on the class the literature calls hardest",
-                  "Reading and writing differ by what is in the hand, not by "
-                  "posture. SCB-ST-Dataset4 (arXiv:2310.16267) detects the "
-                  "same behaviours from the same kind of fixed camera.", 2)
-
-    # Two large cards for the head-to-head, one narrow panel for context.
-    hw, gap, cw = 4.00, 0.30, 2.95
-    top = y + 0.04
-    card(s, M, top, hw, 2.52, BLUE, "ClassGraph (ours)",
+    hw, gap = 5.15, 0.35
+    top = y + 0.30
+    card(s, M, top, hw, 3.52, BLUE, "ClassGraph",
          [("0.767", "write - mAP@50")])
-    card(s, M + hw + gap, top, hw, 2.52, RUST, "SCB-ST-Dataset4",
+    card(s, M + hw + gap, top, hw, 3.52, RUST, "SCB-ST-Dataset4",
          [("0.578", "write - published")])
 
-    # The margin, stated once, where the eye lands after the two numbers.
-    banner(s, M, top + 2.72, 2 * hw + gap,
-           "+0.189 mAP@50,  a third higher,  on 24% of their labels")
+    banner(s, M, top + 3.76, 2 * hw + gap,
+           "+0.189 mAP@50,  on 24% of their labels", size=19)
 
-    # Context, deliberately smaller than the finding.
-    cx = M + 2 * (hw + gap)
-    rect(s, cx, top, cw, 3.52, STONE)
-    rect(s, cx, top, cw, 0.06, GREY)
-    tf = box(s, cx + 0.28, top + 0.34, cw - 0.56, 0.3)
-    line(tf, "In context", 13, color=INK, bold=True, first=True)
-    for i, (head, body) in enumerate([
-        ("All classes", "0.823 theirs against our 0.607. They lead on the "
-                        "four-class average."),
-        ("Training data", "6,091 boxes against their 25,810."),
-        ("Why writing is hard", "Pose-based detectors sit near 55-60% on it "
-                                "whatever the temporal model."),
-    ]):
-        ty = top + 0.84 + i * 0.90
-        tf = box(s, cx + 0.28, ty, cw - 0.56, 0.26)
-        line(tf, head, 12, color=INK, bold=True, first=True)
-        tf = box(s, cx + 0.28, ty + 0.26, cw - 0.56, 0.60)
-        line(tf, body, 11, color=SLATE, first=True, spacing=1.22)
-
-    tf = box(s, M, top + 3.76, 2 * hw + gap, 0.9)
-    line(tf, "What the margin rests on", 13, color=INK, bold=True, first=True)
-    line(tf,
-         "Writing is the class the field reports as unsolved, because the "
-         "distinction from reading is an object in the hand rather than a "
-         "posture. That is where our detector is ahead, and it is ahead "
-         "there on a quarter of the training labels.",
-         12, color=SLATE, space_before=7, spacing=1.30)
-
-    footnote(s, "Their figures as published; ours are validation figures on a "
-                "58-image held-out split. Metrics reported as each source "
-                "states them.")
+    footnote(s, "Writing is the class the field reports as unsolved. On the "
+                "four-class average they lead, 0.823 to our 0.607.")
     return s
 
 
 def s03_attention(prs, R):
     c = R["ceiling"]
-    s, y = chrome(prs, "Attention model, against its own ceiling",
-                  "A score is only as good as the labels behind it, so the "
-                  "labels were measured first.", 3)
+    s, y = chrome(prs, "Attention, against its ceiling", page=3)
 
-    gap = 0.40
+    gap = 0.35
     w = (CW - 2 * gap) / 3
-    card(s, M, y + 0.06, w, 3.42, GREY, "Majority baseline",
-         [("0.671", "accuracy"), ("0.401", "macro F1")])
-    card(s, M + w + gap, y + 0.06, w, 3.42, BLUE, "Learned model",
-         [("0.732", "accuracy"), ("0.720", "macro F1  (baseline 0.401)")])
-    card(s, M + 2 * (w + gap), y + 0.06, w, 3.42, RUST,
-         "Ceiling from label reliability",
-         [(f"{c['achievable_ceiling']:.3f}", "what a perfect model scores"),
-          ("95%", "of that ceiling, reached")])
+    top = y + 0.30
+    card(s, M, top, w, 3.52, GREY, "Majority baseline",
+         [("0.401", "macro F1")])
+    card(s, M + w + gap, top, w, 3.52, BLUE, "Learned model",
+         [("0.720", "macro F1")])
+    card(s, M + 2 * (w + gap), top, w, 3.52, RUST, "Ceiling",
+         [("0.770", "what a perfect model scores")])
 
-    banner(s, M, y + 3.60, CW,
-           "Off-task recall 0.804, against the majority rule's 0.000")
+    banner(s, M, top + 3.76, CW,
+           "0.732 accuracy  -  95% of the ceiling these labels allow",
+           size=19)
 
-    footnote(s,
-             f"Out-of-fold, grouped by student. The ceiling is measured, not "
-             f"assumed: 127 windows re-judged blind, the same rater agreeing "
-             f"with themselves {c['self_agreement']:.1%} of the time "
-             f"(kappa {c['cohens_kappa']:.3f}), which implies "
-             f"{c['implied_label_error_rate']:.1%} of labels are wrong -- so "
-             f"a perfect model cannot exceed "
-             f"{c['achievable_ceiling']:.3f}. 0.732 is 95% of that.",
-             y=6.52)
+    footnote(s, f"Ceiling measured, not assumed: 127 windows re-judged blind, "
+                f"kappa {c['cohens_kappa']:.3f}. Off-task recall 0.804 "
+                f"against the baseline's 0.000.")
     return s
 
 
 def s04_behaviour(prs, R):
-    s, y = chrome(prs, "Behaviour detector, per class",
-                  "YOLO11m fine-tuned on 6,091 boxes from two merged "
-                  "classroom datasets, 42 epochs.", 4)
+    s, y = chrome(prs, "Behaviour, per class", page=4)
 
     rows = [
-        ("Class", "mAP@50", "mAP@50-95", "Precision", "Recall", "Boxes"),
-        ("write", "0.767", "0.331", "0.723", "0.681", "1,121"),
-        ("using_device", "0.720", "0.336", "0.749", "0.700", "2,204"),
-        ("sleep", "0.521", "0.263", "0.670", "0.495", "1,512"),
-        ("read", "0.419", "0.143", "0.455", "0.469", "1,254"),
-        ("All classes", "0.607", "0.268", "0.649", "0.586", "6,091"),
+        ("Class", "mAP@50", "Precision", "Recall", "Boxes"),
+        ("write", "0.767", "0.723", "0.681", "1,121"),
+        ("using_device", "0.720", "0.749", "0.700", "2,204"),
+        ("sleep", "0.521", "0.670", "0.495", "1,512"),
+        ("read", "0.419", "0.455", "0.469", "1,254"),
+        ("All classes", "0.607", "0.649", "0.586", "6,091"),
     ]
-    # write and using_device are the finding; sleep and read are context,
-    # muted rather than removed -- the all-class row depends on them and a
-    # table missing two of four classes invites the question it avoids.
-    yy = table(s, M, y + 0.06, CW, [2.1, 1, 1.2, 1.1, 1, 1], rows,
-               emphasise=(0, 1), mute=(2, 3), accent=BLUE, row_h=0.32)
+    yy = table(s, M, y + 0.46, CW, [2.4, 1.1, 1.1, 1.1, 1.1], rows,
+               emphasise=(0, 1), mute=(2, 3), accent=BLUE, row_h=0.46,
+               size=13)
 
-    yy = banner(s, M, yy + 0.20, CW,
-                "Two of the four classes clear 0.72 mAP@50")
+    banner(s, M, yy + 0.42, CW, "Two of four classes clear 0.72", size=19)
 
-    tf = box(s, M, yy + 0.26, CW, 1.2)
-    line(tf, "Read is the weak class, and it is weak for a known reason", 13,
-         color=INK, bold=True, first=True)
-    line(tf,
-         "Reading and writing differ by what the hand holds, not by posture, "
-         "so a single-frame detector has little to separate them. The "
-         "literature reports the same confusion and the same magnitude with "
-         "strong temporal models. Where the two cannot be told apart the "
-         "system reports 'reading or writing' rather than choosing.",
-         12, color=SLATE, space_before=7, spacing=1.30)
-    footnote(s, "Validation figures on a 58-image held-out split, seed 0. No "
-                "test split was reserved: at 58 images a third partition "
-                "would make both unusable.")
+    footnote(s, "Read and write differ by what the hand holds, not by "
+                "posture; the field reports the same confusion.")
     return s
 
 
 def s05_image_scorer(prs, R):
     im = R["image"]
-    s, y = chrome(prs, "Image engagement scorer",
-                  "A frozen ResNet18 over 12,582 classroom images, calibrated "
-                  "to a five-point scale with 350 human scores.", 5)
+    s, y = chrome(prs, "Image engagement scorer", page=5)
 
-    gap = 0.40
+    gap = 0.35
     w = (CW - 2 * gap) / 3
-    card(s, M, y + 0.06, w, 3.42, BLUE, "Against human scores",
-         [(f"{im['spearman_rho_prob_vs_human']:.3f}", "Spearman rho"),
-          (f"{im['calibrated_mae_points_of_5']:.2f}", "mean error, of five")])
-    card(s, M + w + gap, y + 0.06, w, 3.42, RUST, "Held out by group",
-         [(f"{im['held_out_roc_auc']:.3f}", "ROC AUC"),
-          (f"{im['held_out_accuracy_grouped']:.3f}", "accuracy")])
-    card(s, M + 2 * (w + gap), y + 0.06, w, 3.42, GREY, "Held out at random",
-         [(f"{im['held_out_accuracy_random_leaky']:.3f}", "accuracy"),
-          ("+30 pts", "of leakage, not skill")])
+    top = y + 0.30
+    card(s, M, top, w, 3.52, BLUE, "Against human scores",
+         [(f"{im['spearman_rho_prob_vs_human']:.3f}", "Spearman rho")])
+    card(s, M + w + gap, top, w, 3.52, RUST, "Held out by group",
+         [(f"{im['held_out_roc_auc']:.3f}", "ROC AUC")])
+    card(s, M + 2 * (w + gap), top, w, 3.52, GREY, "Held out at random",
+         [(f"{im['held_out_accuracy_random_leaky']:.3f}", "leakage")])
 
-    banner(s, M, y + 3.60, CW,
-           "Agrees with human scorers at rho 0.556,  p = 7.8e-30")
+    banner(s, M, top + 3.76, CW,
+           "Agrees with human scorers,  p = 7.8e-30", size=19)
 
-    footnote(s,
-             "12,582 images in 677 near-duplicate groups; 350 scored by hand "
-             "on a five-point scale. The 0.968 is the same model measured "
-             "with a leak: split at random, nearly every test image has a "
-             "near-twin in training and the model scores by recognising the "
-             "twin. Grouping before splitting is what makes 0.664 the honest "
-             "figure.",
-             y=6.52)
+    footnote(s, "12,582 images, 677 near-duplicate groups. Grouped accuracy "
+                "0.664; the 0.968 is the same model with a leak.")
     return s
 
 
 def s06_tried(prs, R):
-    s, y = chrome(prs, "What was tried, and what earned its place",
-                  "Every candidate measured the same way: out-of-fold, "
-                  "grouped by student, on the same labels.", 6)
+    s, y = chrome(prs, "What earned its place", page=6)
 
     rows = [
-        ("Candidate", "Accuracy", "Macro F1", "Outcome"),
-        ("Body geometry (3 features)", "0.732", "0.720", "Adopted"),
-        ("Peer context", "0.636", "0.634", "Adopted"),
-        ("Label spreading", "0.636", "0.626", "Within noise"),
-        ("Self-training, 405 unlabelled", "0.629", "0.627", "Degraded"),
-        ("Mamba, sequence model", "0.574", "0.572", "Tied"),
-        ("MLP baseline", "0.575", "0.569", "Reference"),
-        ("Lagged window features", "0.562", "0.558", "Degraded"),
-        ("Per-student normalisation", "0.536", "0.533", "Degraded"),
+        ("Candidate", "Macro F1", "Outcome"),
+        ("Body geometry", "0.720", "Adopted"),
+        ("Peer context", "0.634", "Adopted"),
+        ("Label spreading", "0.626", "Within noise"),
+        ("Self-training", "0.627", "Degraded"),
+        ("Mamba sequence model", "0.572", "Tied"),
+        ("MLP baseline", "0.569", "Reference"),
+        ("Lagged windows", "0.558", "Degraded"),
+        ("Per-student norm.", "0.533", "Degraded"),
     ]
-    # Eight rows at 0.30 push the banner into the footnote; 0.24 is still
-    # comfortably legible and buys the 0.5in the banner needs.
-    yy = table(s, M, y + 0.02, CW, [3.0, 1.2, 1.2, 1.6], rows,
+    yy = table(s, M, y + 0.40, CW, [3.2, 1.4, 1.6], rows,
                emphasise=(0, 1), mute=(2, 3, 4, 5, 6, 7), accent=GREEN,
-               row_h=0.24)
+               row_h=0.34, size=13)
 
-    banner(s, M, yy + 0.14, CW,
-           "Body geometry and peer context: +0.151 macro F1 over the "
-           "baseline", accent=GREEN)
+    banner(s, M, yy + 0.30, CW, "+0.151 macro F1 over the baseline",
+           accent=GREEN, size=19)
 
-    footnote(s,
-             "Six of the eight did not survive their own measurement, and "
-             "are reported because a result that did not hold is the only "
-             "evidence the ones that did were not luck. Mamba ties the "
-             "aggregate model to within 0.003 macro F1, so both run and both "
-             "scores are shown. Vision Mamba on the 12,582 images: 0.618 "
-             "against ResNet18's 0.664.",
-             y=6.52)
+    footnote(s, "Six of eight did not survive their own measurement, and are "
+                "reported.")
     return s
 
 
-def legend(slide, y, items):
-    """A row of short captions under a wide figure, one per band of it."""
-    gap = 0.34
-    w = (CW - (len(items) - 1) * gap) / len(items)
-    for i, (accent, head, body) in enumerate(items):
-        x = M + i * (w + gap)
-        rect(slide, x, y, 0.05, 0.86, accent)
-        tf = box(slide, x + 0.20, y, w - 0.20, 0.28)
-        line(tf, head, 12, color=INK, bold=True, first=True)
-        tf = box(slide, x + 0.20, y + 0.30, w - 0.20, 0.56)
-        line(tf, body, 11, color=SLATE, first=True, spacing=1.22)
-
-
 def s07_architecture(prs, R):
-    s, y = chrome(prs, "Architecture",
-                  "One frame enters at the left and leaves as three files. "
-                  "Each box is a model or a decision stage; each arrow is "
-                  "the data it hands on.", 7)
-    bottom = picture(s, ASSETS / "architecture.png", M, y + 0.74, CW,
-                     "Figure 1.  Detection, per-person models, derived "
-                     "reasoning, the two attention scorers, and the files "
-                     "written.")
-    legend(s, bottom + 0.52, [
-        (AMBER, "Nine models, eight as published",
-         "Only the behaviour detector is fine-tuned here. The rest are used "
-         "at their published weights."),
-        (GREEN, "Derived, not predicted",
-         "Layout, actions and the temporal state are rules over measurements, "
-         "so each carries the evidence that produced it."),
-        (BLUE, "Two scorers, one window",
-         "Both read the same 15-second window and both reach the report, "
-         "because neither out-measured the other."),
-    ])
+    s, y = chrome(prs, "Architecture", page=7)
+    picture(s, ASSETS / "architecture.png", M, y + 1.30, CW)
+    footnote(s, "Nine models. One frame enters at the left and leaves as "
+                "three files.")
     return s
 
 
 def s08_workflow_perception(prs, R):
-    s, y = chrome(prs, "Workflow - perception",
-                  "Steps 1 to 6. Everything here is a measurement some model "
-                  "makes; the amber boxes are what happens when it cannot.",
-                  8)
-    bottom = picture(s, ASSETS / "workflow_1_perception.png", M, y + 0.86, CW,
-                     "Figure 2.  Each gate has a path for the case where the "
-                     "stage before it produced nothing.")
-    legend(s, bottom + 0.56, [
-        (BLUE, "Four gates, not one pass",
-         "A person box, a readable face, a gallery match, a measurable "
-         "pose. Each can fail independently."),
-        (AMBER, "Failing is a result",
-         "The amber boxes are reached often. A student whose face is turned "
-         "away is still carried by body pose."),
-        (GREY, "Never the nearest match",
-         "An unrecognised face is reported unidentified rather than given to "
-         "whoever it resembles most."),
-    ])
+    s, y = chrome(prs, "Workflow - perception", page=8)
+    picture(s, ASSETS / "workflow_1_perception.png", M, y + 1.30, CW)
+    footnote(s, "Steps 1 to 6. Amber is what happens when a model cannot "
+                "answer.")
     return s
 
 
 def s09_workflow_interpretation(prs, R):
-    s, y = chrome(prs, "Workflow - interpretation",
-                  "Steps 7 to 13. Everything here is a decision about those "
-                  "measurements, ending in two scores rather than one.", 9)
-    bottom = picture(s, ASSETS / "workflow_2_interpretation.png", M,
-                     y + 0.86, CW,
-                     "Figure 3.  A window too sparse to judge is abstained "
-                     "on, never guessed.")
-    legend(s, bottom + 0.56, [
-        (GREEN, "Geometry before classification",
-         "Actions are decided from measured geometry first; the trained "
-         "classifier is a second opinion, not the first."),
-        (BLUE, "15 seconds, 7.5 second stride",
-         "No verdict rests on one frame. Windows overlap by half, so a "
-         "score updates twice per window."),
-        (AMBER, "Abstention is a state",
-         "Below 30% coverage both models decline. An unscored window is "
-         "shown as unscored, not as a low score."),
-    ])
+    s, y = chrome(prs, "Workflow - interpretation", page=9)
+    picture(s, ASSETS / "workflow_2_interpretation.png", M, y + 1.30, CW)
+    footnote(s, "Steps 7 to 13, ending in two scores rather than one.")
     return s
 
 
 def s10_models(prs, R):
-    s, y = chrome(prs, "What each model is allowed to be wrong about",
-                  "The question is not how large each model is, but what "
-                  "happens when it fails.", 10)
+    s, y = chrome(prs, "What each model may be wrong about", page=10)
 
     rows = [
-        ("Model", "Output", "Failure mode", "How the system contains it"),
-        ("YOLO11m", "boxes + 80 classes", "misses a small student",
-         "conf floor 0.30; upscale capped"),
-        ("YOLO11m fine-tuned", "4 behaviour classes", "confuses read, write",
-         "reported as 'reading or writing'"),
-        ("SCRFD det_10g", "face box + 5 points", "no face, head down",
-         "body pose carries the student"),
-        ("ArcFace", "512-d embedding", "two students look alike",
-         "cannot-link between co-occurring tracks"),
-        ("SixDRepNet", "yaw, pitch, roll", "yaw is camera-relative",
-         "demoted; room layout used instead"),
-        ("MediaPipe Pose", "33 keypoints", "fits to furniture",
-         "both shoulders required before a lean"),
-        ("MediaPipe Face Mesh", "468 landmarks", "eye ratio saturates",
-         "held open; needs open-eye calibration"),
-        ("EfficientNet-B0", "8 expression classes", "small or turned faces",
-         "reported 'uncertain', never defaulted"),
+        ("Model", "Output", "Contained by"),
+        ("YOLO11m", "boxes + 80 classes", "conf floor, capped upscale"),
+        ("YOLO11m fine-tuned", "4 behaviours", "'reading or writing'"),
+        ("SCRFD det_10g", "face box + 5 points", "body pose carries it"),
+        ("ArcFace", "512-d embedding", "cannot-link on co-occurrence"),
+        ("SixDRepNet", "yaw, pitch, roll", "room layout instead"),
+        ("MediaPipe Pose", "33 keypoints", "both shoulders required"),
+        ("MediaPipe Face Mesh", "468 landmarks", "held open"),
+        ("EfficientNet-B0", "8 expressions", "reported 'uncertain'"),
     ]
-    yy = table(s, M, y + 0.10, CW, [2.0, 2.0, 2.2, 3.2], rows, size=11,
-               row_h=0.30)
+    table(s, M, y + 0.40, CW, [2.6, 2.6, 3.4], rows, size=13, row_h=0.40)
 
-    tf = box(s, M, yy + 0.22, CW, 0.9)
-    line(tf, "Every row ends in the same place", 13, color=INK, bold=True,
-         first=True)
-    line(tf,
-         "When a model cannot answer, the system says so rather than "
-         "substituting its best guess. 14 of 42 identities in an external run "
-         "were refused on those grounds, each with a stated reason.",
-         12, color=SLATE, space_before=7, spacing=1.30)
+    footnote(s, "When a model cannot answer, the system says so. 14 of 42 "
+                "identities in an external run were refused.")
     return s
 
 
 def s11_outputs(prs, R):
-    s, y = chrome(prs, "All eight models, on one frame",
-                  "Seven panels are the same classroom frame, because the "
-                  "pipeline is a chain and separate demo images would hide "
-                  "the dependency.", 11)
-    # 2:1 image. At the full column it stands 4.33in tall and its caption
-    # lands on the footnote; sized to the height available instead.
-    w = 7.4
-    picture(s, ASSETS / "model_io_grid.jpg", M + (CW - w) / 2, y + 0.22, w,
-            "Figure 4.  13 persons, 12 faces, 12 head poses, 10 skeletons, "
-            "11 behaviour detections on this frame.")
-    footnote(s, "Pose needs both shoulders in view, so the three it misses "
-                "are the students whose torsos sit behind a desk or a "
-                "neighbour -- not the smallest ones.")
+    s, y = chrome(prs, "Eight models, one frame", page=11)
+    w = 7.9
+    picture(s, ASSETS / "model_io_grid.jpg", M + (CW - w) / 2, y + 0.34, w)
+    footnote(s, "13 persons, 12 faces, 12 head poses, 10 skeletons, 11 "
+                "behaviour detections.")
     return s
 
 
@@ -614,8 +447,7 @@ def main() -> int:
         build(prs, R)
 
     prs.save(OUT)
-    print(f"wrote {OUT}  ({len(prs.slides.__iter__.__self__._sldIdLst)} "
-          f"slides)")
+    print(f"wrote {OUT}  ({len(prs.slides._sldIdLst)} slides)")
     return 0
 
 
