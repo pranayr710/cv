@@ -184,6 +184,9 @@ class Session:
         self.fps = 0.0
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
+        #: Bumped whenever a new frame and payload are published, so
+        #: the socket can send on change instead of on a timer.
+        self.revision = 0
         self.gaze = defaultdict(Counter)
         self.expr = defaultdict(Counter)
         self.actions = defaultdict(Counter)
@@ -401,6 +404,7 @@ class Session:
                     self.frames = index
 
                     with self._lock:
+                        self.revision += 1
                         if ok:
                             self.frame_jpeg = buf.tobytes()
                         self.payload = self._snapshot(record, graph, names, elapsed)
@@ -642,6 +646,9 @@ class VideoJob:
         self.gallery = None
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
+        #: Bumped whenever a new frame and payload are published, so
+        #: the socket can send on change instead of on a timer.
+        self.revision = 0
 
     def start(self):
         import cv2
@@ -740,6 +747,7 @@ class VideoJob:
 
         elapsed = max(time.time() - self.started, 1e-6)
         with self._lock:
+            self.revision += 1
             self.frame_jpeg = buffer.tobytes()
             # Every field the page reads, including the ones a batch run has
             # no answer for. A partial payload is worse than a dull one: the
@@ -826,20 +834,96 @@ class VideoJob:
                 "action": features.get("action"),
                 "gaze": features.get("gaze_label"),
                 "face_px": None,
+                "lean": features.get("lean_state"),
+                "lean_value": features.get("vertical_lean"),
             })
         if not boxes:
             return
 
+        students, objects = self._resolved_students(row)
         with self._lock:
+            self.revision += 1
             self.payload = {
                 **self.payload,
                 "boxes": boxes,
+                "students": students,
+                "objects": objects,
                 "in_frame": len(boxes),
                 "phase": "resolved",
                 "hint": (f"Resolved {len(boxes)} students. Names need faces "
                          "of about 60px; these are smaller, so they are "
                          "numbered instead."),
             }
+
+    def _resolved_students(self, row) -> tuple[list, list]:
+        """The roster the scene graph draws, from a finished batch run.
+
+        A video run used to send ``students: []`` on every payload including
+        the final one, so the graph card -- the seating map, the both-models
+        comparison, the object links -- stayed empty for the whole analysis
+        and stayed empty afterwards. The results panel listed five students
+        at the same moment the graph said nobody was in frame. All of it had
+        been computed; none of it was being sent.
+
+        Scores come from the profiles file, which is the session mean per
+        student, and position from the final frame.
+        """
+        profiles_path = self.out / "live_profiles.json"
+        by_id: dict[int, dict] = {}
+        if profiles_path.exists():
+            try:
+                data = json.loads(profiles_path.read_text(encoding="utf-8"))
+                entries = data if isinstance(data, list) else list(data.values())
+                for entry in entries:
+                    pid = entry.get("person_id")
+                    if pid is not None and int(pid) > 0:
+                        by_id[int(pid)] = entry
+            except (OSError, json.JSONDecodeError):
+                pass
+
+        students, objects = [], []
+        for node in row.get("nodes", []):
+            pid = node.get("person_id")
+            if pid is None or int(pid) <= 0:
+                continue
+            pid = int(pid)
+            features = node.get("features") or {}
+            profile = by_id.get(pid, {})
+            box = features.get("bbox") or [0, 0, 0, 0]
+            obj = features.get("object")
+            conf = features.get("object_confidence")
+            if obj:
+                objects.append({"cls": obj,
+                                "conf": round(float(conf or 0.0), 2)})
+            students.append({
+                "id": pid,
+                # A batch run numbers people within itself; the gallery
+                # cannot say who they are, so the page shows "Student 3".
+                "name": None,
+                "present": True,
+                "attention_score": profile.get("attention_score"),
+                "attention_score_mamba": profile.get(
+                    "attention_score_mamba"),
+                "attention_label": None,
+                "attention_reason": (
+                    f"session mean over "
+                    f"{profile.get('attention_windows', 0)} windows"),
+                "attention_source": "model",
+                "action": features.get("action"),
+                "evidence": features.get("action_evidence"),
+                "lean": features.get("lean_state"),
+                "object": obj,
+                "object_conf": conf,
+                "oriented": features.get("oriented"),
+                "cx": round(box[0] + box[2] / 2.0),
+                "cy": round(box[1] + box[3] / 2.0),
+                "facing": None,
+                "facing_front_pct": None,
+                # Empty rather than absent: the page reads these and a
+                # missing key throws before it repaints.
+                "gaze": {}, "expression": {}, "actions": {}, "recent": [],
+            })
+        return students, objects
 
     def _completion_note(self) -> str:
         """What to tell the operator, including when the file was damaged."""
@@ -1244,6 +1328,17 @@ def create_app(args):
             await socket.close(code=1008)
             return
         await socket.accept()
+        # What this client was last sent. The socket used to push on a 0.06s
+        # timer whatever the session held, so a video analysed at 1.2 frames
+        # per second was sent the same frame about thirteen times -- measured
+        # on one 58-frame run: 535 payloads, each carrying a 72 KB base64
+        # JPEG, about 38 MB for eleven seconds of footage, with the browser
+        # decoding sixteen identical images a second to draw one.
+        #
+        # Tracked per connection rather than on the session, so a page that
+        # connects midway is still sent the current frame at once instead of
+        # a blank panel until something next changes.
+        sent: int | str | None = None
         try:
             while True:
                 session = state["session"]
@@ -1256,12 +1351,17 @@ def create_app(args):
                 # thing anyone was looking at.
                 if session is not None and session.frame_jpeg:
                     with session._lock:
+                        revision = session.revision
                         jpeg, payload = session.frame_jpeg, session.payload
-                    if jpeg and payload:
+                    if jpeg and payload and revision != sent:
+                        sent = revision
                         payload = dict(payload)
                         payload["image"] = base64.b64encode(jpeg).decode("ascii")
                         await socket.send_text(json.dumps(payload))
-                else:
+                elif sent != "idle":
+                    # Idle is a state, not a heartbeat. Repeating it sixteen
+                    # times a second told the page nothing it did not know.
+                    sent = "idle"
                     await socket.send_text(json.dumps({"idle": True}))
                 await asyncio.sleep(0.06)
         except (WebSocketDisconnect, RuntimeError):
