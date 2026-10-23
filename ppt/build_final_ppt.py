@@ -129,8 +129,10 @@ def chrome(prs, title, lead=None, page=None):
 
 
 def footnote(slide, text, y=6.84):
-    tf = box(slide, M, y, CW, 0.34)
-    line(tf, text, 11, color=MUTED, first=True, spacing=1.2)
+    """The caveat line. Pass a longer string and it wraps; start it higher
+    when it needs two lines."""
+    tf = box(slide, M, y, CW, 0.60)
+    line(tf, text, 11, color=MUTED, first=True, spacing=1.25)
 
 
 def card(slide, x, y, w, h, accent, label, figures):
@@ -160,9 +162,15 @@ def card(slide, x, y, w, h, accent, label, figures):
 
 
 def table(slide, x, y, w, col_w, rows, *, head_h=0.38, row_h=0.36, size=12,
-          emphasise=None, accent=BLUE):
+          emphasise=None, mute=(), accent=BLUE):
     """A table with no gridlines: a rule under the header, hairlines between
-    rows, and the emphasised row carried in ink rather than in colour."""
+    rows, and the emphasised rows carried in ink rather than in colour.
+
+    `emphasise` is one row index or several. `mute` greys rows that are
+    context rather than finding -- a weaker class, a candidate that did not
+    survive. Muted is not hidden: every row is still printed, at full size,
+    in a colour that reads perfectly well up close.
+    """
     total = sum(col_w)
     col_w = [c * w / total for c in col_w]
 
@@ -173,9 +181,12 @@ def table(slide, x, y, w, col_w, rows, *, head_h=0.38, row_h=0.36, size=12,
         cx += cwid
     rect(slide, x, y + head_h - 0.04, w, 0.014, INK)
 
+    strong_rows = ({emphasise} if isinstance(emphasise, int)
+                   else set(emphasise or ()))
     ry = y + head_h + 0.10
     for i, row in enumerate(rows[1:]):
-        strong = emphasise is not None and i == emphasise
+        strong = i in strong_rows
+        quiet = i in set(mute)
         cx = x
         if strong:
             rect(slide, x - 0.12, ry - 0.07, w + 0.24, row_h + 0.06, PAPER)
@@ -183,13 +194,23 @@ def table(slide, x, y, w, col_w, rows, *, head_h=0.38, row_h=0.36, size=12,
         for j, (text, cwid) in enumerate(zip(row, col_w)):
             tfc = box(slide, cx, ry, cwid, row_h)
             line(tfc, text, size,
-                 color=INK if strong else SLATE,
-                 bold=strong or j == 0, first=True)
+                 color=INK if strong else (MUTED if quiet else SLATE),
+                 bold=strong or (j == 0 and not quiet), first=True)
             cx += cwid
         ry += row_h + 0.10
         if not strong and i < len(rows) - 2:
             rect(slide, x, ry - 0.08, w, 0.006, STONE)
     return ry
+
+
+def banner(slide, x, y, w, text, accent=BLUE, size=17):
+    """The one line a slide is about, set where the eye lands after the
+    figures above it."""
+    rect(slide, x, y, w, 0.80, PAPER)
+    rect(slide, x, y, 0.05, 0.80, accent)
+    tf = box(slide, x + 0.30, y + 0.14, w - 0.60, 0.56)
+    line(tf, text, size, font=DISPLAY, color=INK, first=True)
+    return y + 0.80
 
 
 def picture(slide, path, x, y, w, cap=None):
@@ -270,12 +291,8 @@ def s02_vs_paper(prs, R):
          [("0.578", "write - published")])
 
     # The margin, stated once, where the eye lands after the two numbers.
-    bar = M
-    rect(s, bar, top + 2.72, 2 * hw + gap, 0.80, PAPER)
-    rect(s, bar, top + 2.72, 0.05, 0.80, BLUE)
-    tf = box(s, bar + 0.30, top + 2.86, 2 * hw + gap - 0.6, 0.56)
-    line(tf, "+0.189 mAP@50,  a third higher,  on 24% of their labels", 17,
-         font=DISPLAY, color=INK, first=True)
+    banner(s, M, top + 2.72, 2 * hw + gap,
+           "+0.189 mAP@50,  a third higher,  on 24% of their labels")
 
     # Context, deliberately smaller than the finding.
     cx = M + 2 * (hw + gap)
@@ -322,31 +339,24 @@ def s03_attention(prs, R):
     card(s, M, y + 0.06, w, 3.42, GREY, "Majority baseline",
          [("0.671", "accuracy"), ("0.401", "macro F1")])
     card(s, M + w + gap, y + 0.06, w, 3.42, BLUE, "Learned model",
-         [("0.732", "accuracy"), ("0.720", "macro F1")])
+         [("0.732", "accuracy"), ("0.720", "macro F1  (baseline 0.401)")])
     card(s, M + 2 * (w + gap), y + 0.06, w, 3.42, RUST,
          "Ceiling from label reliability",
          [(f"{c['achievable_ceiling']:.3f}", "what a perfect model scores"),
           ("95%", "of that ceiling, reached")])
 
-    tf = box(s, M, y + 3.74, CW, 1.5)
-    line(tf, "Why the ceiling is the number that matters", 13, color=INK,
-         bold=True, first=True)
-    line(tf,
-         f"127 windows were re-judged blind. The same rater agreed with "
-         f"themselves {c['self_agreement']:.1%} of the time, kappa "
-         f"{c['cohens_kappa']:.3f}, which implies "
-         f"{c['implied_label_error_rate']:.1%} of labels are wrong. A perfect "
-         f"model scored against labels that wrong cannot exceed "
-         f"{c['achievable_ceiling']:.3f}.",
-         12, color=SLATE, space_before=7, spacing=1.30)
-    line(tf,
-         "So 0.732 is not 73% of the way to a solved problem. It is 95% of "
-         "everything this label set permits, and the remaining gap is bought "
-         "with better annotation, not a better model.",
-         12, color=SLATE, space_before=7, spacing=1.30)
-    footnote(s, "Out-of-fold, grouped by student. Off-task recall 0.804 "
-                "against the baseline's 0.000 -- the majority rule never "
-                "catches a disengaged student.")
+    banner(s, M, y + 3.60, CW,
+           "Off-task recall 0.804, against the majority rule's 0.000")
+
+    footnote(s,
+             f"Out-of-fold, grouped by student. The ceiling is measured, not "
+             f"assumed: 127 windows re-judged blind, the same rater agreeing "
+             f"with themselves {c['self_agreement']:.1%} of the time "
+             f"(kappa {c['cohens_kappa']:.3f}), which implies "
+             f"{c['implied_label_error_rate']:.1%} of labels are wrong -- so "
+             f"a perfect model cannot exceed "
+             f"{c['achievable_ceiling']:.3f}. 0.732 is 95% of that.",
+             y=6.52)
     return s
 
 
@@ -363,10 +373,16 @@ def s04_behaviour(prs, R):
         ("read", "0.419", "0.143", "0.455", "0.469", "1,254"),
         ("All classes", "0.607", "0.268", "0.649", "0.586", "6,091"),
     ]
-    yy = table(s, M, y + 0.10, CW, [2.1, 1, 1.2, 1.1, 1, 1], rows,
-               emphasise=0, accent=BLUE)
+    # write and using_device are the finding; sleep and read are context,
+    # muted rather than removed -- the all-class row depends on them and a
+    # table missing two of four classes invites the question it avoids.
+    yy = table(s, M, y + 0.06, CW, [2.1, 1, 1.2, 1.1, 1, 1], rows,
+               emphasise=(0, 1), mute=(2, 3), accent=BLUE, row_h=0.32)
 
-    tf = box(s, M, yy + 0.34, CW, 1.4)
+    yy = banner(s, M, yy + 0.20, CW,
+                "Two of the four classes clear 0.72 mAP@50")
+
+    tf = box(s, M, yy + 0.26, CW, 1.2)
     line(tf, "Read is the weak class, and it is weak for a known reason", 13,
          color=INK, bold=True, first=True)
     line(tf,
@@ -390,28 +406,27 @@ def s05_image_scorer(prs, R):
 
     gap = 0.40
     w = (CW - 2 * gap) / 3
-    card(s, M, y + 0.06, w, 3.42, BLUE, "Held out by group",
-         [(f"{im['held_out_accuracy_grouped']:.3f}", "accuracy"),
-          (f"{im['held_out_roc_auc']:.3f}", "ROC AUC")])
-    card(s, M + w + gap, y + 0.06, w, 3.42, GREY, "Held out at random",
-         [(f"{im['held_out_accuracy_random_leaky']:.3f}", "accuracy"),
-          ("+30 pts", "of leakage, not skill")])
-    card(s, M + 2 * (w + gap), y + 0.06, w, 3.42, RUST, "Against human scores",
+    card(s, M, y + 0.06, w, 3.42, BLUE, "Against human scores",
          [(f"{im['spearman_rho_prob_vs_human']:.3f}", "Spearman rho"),
           (f"{im['calibrated_mae_points_of_5']:.2f}", "mean error, of five")])
+    card(s, M + w + gap, y + 0.06, w, 3.42, RUST, "Held out by group",
+         [(f"{im['held_out_roc_auc']:.3f}", "ROC AUC"),
+          (f"{im['held_out_accuracy_grouped']:.3f}", "accuracy")])
+    card(s, M + 2 * (w + gap), y + 0.06, w, 3.42, GREY, "Held out at random",
+         [(f"{im['held_out_accuracy_random_leaky']:.3f}", "accuracy"),
+          ("+30 pts", "of leakage, not skill")])
 
-    tf = box(s, M, y + 3.74, CW, 1.5)
-    line(tf, "The 0.968 is the interesting number, because it is wrong", 13,
-         color=INK, bold=True, first=True)
-    line(tf,
-         "Consecutive frames of one lecture are near-identical. Split at "
-         "random, almost every test image has a near-twin in training, and "
-         "the model scores 0.968 by recognising the twin. Grouping the "
-         "near-duplicates before splitting removes that and the honest figure "
-         "is 0.664 -- the same model, measured without the leak.",
-         12, color=SLATE, space_before=7, spacing=1.30)
-    footnote(s, f"12,582 images in 677 near-duplicate groups. "
-                f"rho significant at p = {im['spearman_p']:.0e}.")
+    banner(s, M, y + 3.60, CW,
+           "Agrees with human scorers at rho 0.556,  p = 7.8e-30")
+
+    footnote(s,
+             "12,582 images in 677 near-duplicate groups; 350 scored by hand "
+             "on a five-point scale. The 0.968 is the same model measured "
+             "with a leak: split at random, nearly every test image has a "
+             "near-twin in training and the model scores by recognising the "
+             "twin. Grouping before splitting is what makes 0.664 the honest "
+             "figure.",
+             y=6.52)
     return s
 
 
@@ -431,20 +446,24 @@ def s06_tried(prs, R):
         ("Lagged window features", "0.562", "0.558", "Degraded"),
         ("Per-student normalisation", "0.536", "0.533", "Degraded"),
     ]
-    yy = table(s, M, y + 0.06, CW, [3.0, 1.2, 1.2, 1.6], rows,
-               emphasise=0, accent=GREEN, row_h=0.30)
+    # Eight rows at 0.30 push the banner into the footnote; 0.24 is still
+    # comfortably legible and buys the 0.5in the banner needs.
+    yy = table(s, M, y + 0.02, CW, [3.0, 1.2, 1.2, 1.6], rows,
+               emphasise=(0, 1), mute=(2, 3, 4, 5, 6, 7), accent=GREEN,
+               row_h=0.24)
 
-    tf = box(s, M, yy + 0.26, CW, 1.3)
-    line(tf, "Six of eight did not survive their own measurement", 13,
-         color=INK, bold=True, first=True)
-    line(tf,
-         "They are reported because a result that did not hold is the only "
-         "evidence that the ones that did were not chosen by luck. Mamba "
-         "ties the aggregate model to within 0.002 macro F1, so both now run "
-         "and both scores are shown.",
-         12, color=SLATE, space_before=7, spacing=1.30)
-    footnote(s, "Vision Mamba on the 12,582 images: 0.618 against ResNet18's "
-                "0.664, held out by near-duplicate group.")
+    banner(s, M, yy + 0.14, CW,
+           "Body geometry and peer context: +0.151 macro F1 over the "
+           "baseline", accent=GREEN)
+
+    footnote(s,
+             "Six of the eight did not survive their own measurement, and "
+             "are reported because a result that did not hold is the only "
+             "evidence the ones that did were not luck. Mamba ties the "
+             "aggregate model to within 0.003 macro F1, so both run and both "
+             "scores are shown. Vision Mamba on the 12,582 images: 0.618 "
+             "against ResNet18's 0.664.",
+             y=6.52)
     return s
 
 
