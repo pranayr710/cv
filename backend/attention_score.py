@@ -56,6 +56,11 @@ class _StudentState:
 
     frames: deque = field(default_factory=deque)
     last_window_ms: int = -1
+    #: Set once the model has refused this student's windows as unlike the
+    #: footage it was fitted on. Sticky, because the refusal is a property of
+    #: the session rather than of one window -- a one-person webcam session
+    #: does not acquire peers between frames.
+    unfit: bool = False
     scores: list[tuple[int, float]] = field(default_factory=list)
     uncertain: list[dict[str, Any]] = field(default_factory=list)
 
@@ -156,6 +161,12 @@ class AttentionScorer:
                                     "no trained model; rules apply", start)
 
         verdict = self.model.classify(vector)
+        # Remembered, not re-derived each frame. update() returns None on
+        # every frame between completed windows, so a caller that inspected
+        # only the current reading saw no refusal on those frames and went on
+        # using the other model's score.
+        state.unfit = bool(verdict.abstained
+                           and "outside the range" in (verdict.reason or ""))
         probability = None if verdict.probability != verdict.probability \
             else verdict.probability
         # The verdict's label comes from the raw probability, whose ordering
@@ -205,6 +216,16 @@ class AttentionScorer:
         return peer_vectors_in_span(
             spans, person_id, start_ms, start_ms + self.window_ms,
             self.expected_frames, MIN_COVERAGE)
+
+    def is_unfit(self, person_id: int) -> bool:
+        """Whether this student's windows are unlike the training footage.
+
+        True once the model has refused one of their windows for being out
+        of range. It stays true: the shape of a session does not change
+        between frames.
+        """
+        state = self._students.get(person_id)
+        return bool(state and state.unfit)
 
     def session_score(self, person_id: int) -> int | None:
         """A student's attention over the whole session so far, 1-10.
@@ -320,8 +341,7 @@ def annotate_attention(graph: dict, scorer: AttentionScorer,
         # alone would have left the saturated one on screen by itself,
         # reading as a confident verdict instead of as half of an obvious
         # contradiction.
-        unfit = reading is not None and reading.label is None and (
-            "outside the range" in (reading.reason or ""))
+        unfit = scorer.is_unfit(int(person_id))
         if mamba is not None and mamba.available and not unfit:
             session = mamba.session_score(int(person_id))
             features["attention_score_mamba"] = (
