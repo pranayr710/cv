@@ -1,0 +1,24 @@
+{
+ "n_windows": 557,
+ "n_students": 27,
+ "evaluation": "out-of-fold, grouped by student; calibration nested",
+ "before": {
+  "name": "raw",
+  "accuracy": 0.5458,
+  "claims_over_90pct_sure": 0.6499,
+  "calibration_error": 0.3394,
+  "scores_pinned_at_1_or_10": 0.5763
+ },
+ "after": {
+  "name": "calibrated",
+  "accuracy": 0.4883,
+  "claims_over_90pct_sure": 0.0,
+  "calibration_error": 0.0347,
+  "scores_pinned_at_1_or_10": 0.0
+ },
+ "platt": {
+  "a": 0.0431,
+  "b": 0.1212
+ },
+ "note": "The verdict still uses the raw probability, whose ordering every quoted accuracy measured. Only the 1-10 score moves."
+}

@@ -405,8 +405,39 @@ def s09_workflow_interpretation(prs, R):
     return s
 
 
+def s09b_model_types(prs, R):
+    """The models themselves: what kind each one is, and what it is for.
+
+    Asked for explicitly. Parameter counts are read off the loaded weights
+    by tools/evaluate/model_facts.py, not copied from the publications.
+    """
+    s, y = chrome(prs, "The models, and what kind each one is", page=10)
+
+    rows = [
+        ("Model", "Type", "Params", "Answers"),
+        ("YOLO11m", "CNN detector, COCO", "20.1 M", "where the people are"),
+        ("YOLO11m fine-tuned", "CNN detector, ours", "20.1 M",
+         "4 classroom behaviours"),
+        ("SCRFD det_10g", "CNN face detector", "4.2 M", "where the face is"),
+        ("ArcFace w600k_r50", "CNN embedding", "43.6 M", "who it is"),
+        ("SixDRepNet", "CNN regressor", "39.3 M", "which way the head points"),
+        ("EfficientNet-B0", "CNN classifier", "4.0 M", "facial expression"),
+        ("MediaPipe Pose", "TFLite landmarks", "33 points", "body geometry"),
+        ("MediaPipe Face Mesh", "TFLite landmarks", "468 points",
+         "eye and mouth geometry"),
+        ("Attention scorer", "MLP, ours", "21 features", "a 1-10 score"),
+        ("Mamba scorer", "State-space, ours", "2,897", "the same, from order"),
+    ]
+    table(s, M, y + 0.34, CW, [2.5, 2.4, 1.5, 3.0], rows, size=12,
+          row_h=0.30, emphasise=(1, 8, 9), accent=BLUE)
+
+    footnote(s, "152 M parameters in total. Three are trained here; the rest "
+                "are used at their published weights.")
+    return s
+
+
 def s10_models(prs, R):
-    s, y = chrome(prs, "What each model may be wrong about", page=10)
+    s, y = chrome(prs, "What each model may be wrong about", page=11)
 
     rows = [
         ("Model", "Output", "Contained by"),
@@ -427,7 +458,7 @@ def s10_models(prs, R):
 
 
 def s11_outputs(prs, R):
-    s, y = chrome(prs, "Eight models, one frame", page=11)
+    s, y = chrome(prs, "Eight models, one frame", page=12)
     w = 7.9
     picture(s, ASSETS / "model_io_grid.jpg", M + (CW - w) / 2, y + 0.34, w)
     footnote(s, "13 persons, 12 faces, 12 head poses, 10 skeletons, 11 "
@@ -443,7 +474,7 @@ def main() -> int:
     for build in (s01_title, s02_vs_paper, s03_attention, s04_behaviour,
                   s05_image_scorer, s06_tried, s07_architecture,
                   s08_workflow_perception, s09_workflow_interpretation,
-                  s10_models, s11_outputs):
+                  s09b_model_types, s10_models, s11_outputs):
         build(prs, R)
 
     prs.save(OUT)

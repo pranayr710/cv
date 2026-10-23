@@ -114,12 +114,13 @@ def test_saved_model_is_readable_json_not_a_pickle(tmp_path: Path):
 
     `lo` and `hi` are the per-feature range the model was fitted on, added
     so it can refuse footage unlike anything it saw rather than extrapolate
-    a confident score. They are plain numbers like the rest.
+    a confident score. `calibration` is the Platt map correcting the
+    probability's overconfidence. All plain numbers, like the rest.
     """
     path = _model().save(tmp_path / "m.json")
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert set(payload) == {"coefficients", "intercept", "feature_names",
-                            "mean", "scale", "lo", "hi"}
+                            "mean", "scale", "lo", "hi", "calibration"}
     assert payload["feature_names"] == list(FEATURE_NAMES)
 
 

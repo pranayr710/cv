@@ -158,9 +158,19 @@ class AttentionScorer:
         verdict = self.model.classify(vector)
         probability = None if verdict.probability != verdict.probability \
             else verdict.probability
-        score = None if probability is None else to_score_10(probability)
+        # The verdict's label comes from the raw probability, whose ordering
+        # is what was measured. The 1-10 score comes from the calibrated one,
+        # because the raw value is overconfident: out of fold it claimed more
+        # than 90% certainty on 65% of windows and was right on 60% of those,
+        # which put 58% of all scores at exactly 1 or exactly 10 -- and a
+        # student at 1/10 here against 10/10 from the sequence model.
+        shown = (None if probability is None
+                 else self.model.calibrated_probability(vector))
+        if shown is not None and shown != shown:
+            shown = None
+        score = None if shown is None else to_score_10(shown)
         if score is not None:
-            state.scores.append((start, float(probability)))
+            state.scores.append((start, float(shown)))
 
         if probability is not None and abs(probability - 0.5) < UNCERTAIN_BAND:
             state.uncertain.append({
