@@ -36,7 +36,7 @@ from backend.engagement_model import DEFAULT_MODEL, load_or_none
 GRAPH = Path("outputs/final2/live_graph.jsonl")
 LABELS = Path("labeling/labels.json")
 QUEUE = Path("labeling/to_label_next.json")
-REPORT = Path("outputs/window_model_report.json")
+REPORT = Path("results/window_model_report.json")
 
 
 def status() -> int:

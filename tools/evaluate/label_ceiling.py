@@ -32,7 +32,7 @@ warnings.filterwarnings("ignore")
 
 LABELS = Path("labeling/labels.json")
 RECHECK = Path("labeling/recheck.json")
-REPORT = Path("outputs/label_ceiling_report.json")
+REPORT = Path("results/label_ceiling_report.json")
 
 
 def main() -> int:

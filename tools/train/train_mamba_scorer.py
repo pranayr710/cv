@@ -36,8 +36,8 @@ from backend.mamba_model import MambaAttentionScorer, MambaConfig
 
 LABELS = Path("labeling/labels.json")
 GRAPH = Path("outputs/final2/live_graph.jsonl")
-MODEL_OUT = Path("outputs/mamba_attention_model.pt")
-REPORT = Path("outputs/mamba_model_report.json")
+MODEL_OUT = Path("models/mamba_attention_model.pt")
+REPORT = Path("results/mamba_model_report.json")
 
 
 def load() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list]:

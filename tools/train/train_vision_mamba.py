@@ -42,7 +42,7 @@ from backend.vision_mamba import VisionMamba, VisionMambaConfig
 
 SCORES = Path("outputs/image_engagement_scores.csv")
 HUMAN = Path("labeling/scores.csv")
-REPORT = Path("outputs/vision_mamba_report.json")
+REPORT = Path("results/vision_mamba_report.json")
 MODEL_OUT = Path("outputs/vision_mamba.pt")
 
 #: ImageNet channel statistics, so input is normalised identically to the

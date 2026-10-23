@@ -1,0 +1,107 @@
+{
+ "n_windows": 557,
+ "seeds": 8,
+ "baseline": {
+  "accuracy": 0.5514,
+  "macro_f1": 0.5484,
+  "trusted_accuracy": 0.5854
+ },
+ "candidates": {
+  "facing_variability": {
+   "accuracy": 0.5671,
+   "sd": 0.0136,
+   "macro_f1": 0.5628,
+   "trusted_accuracy": 0.6052,
+   "delta_f1": 0.0145,
+   "verdict": "noise"
+  },
+  "gaze_stability": {
+   "accuracy": 0.5249,
+   "sd": 0.0181,
+   "macro_f1": 0.5209,
+   "trusted_accuracy": 0.5808,
+   "delta_f1": -0.0275,
+   "verdict": "noise"
+  },
+  "hand_to_face": {
+   "accuracy": 0.5289,
+   "sd": 0.0191,
+   "macro_f1": 0.5271,
+   "trusted_accuracy": 0.5381,
+   "delta_f1": -0.0212,
+   "verdict": "noise"
+  },
+  "hands_visible": {
+   "accuracy": 0.5608,
+   "sd": 0.0207,
+   "macro_f1": 0.5586,
+   "trusted_accuracy": 0.5915,
+   "delta_f1": 0.0103,
+   "verdict": "noise"
+  },
+  "head_stillness": {
+   "accuracy": 0.542,
+   "sd": 0.0146,
+   "macro_f1": 0.5397,
+   "trusted_accuracy": 0.5793,
+   "delta_f1": -0.0087,
+   "verdict": "noise"
+  },
+  "head_torso_misalign": {
+   "accuracy": 0.5575,
+   "sd": 0.0175,
+   "macro_f1": 0.5531,
+   "trusted_accuracy": 0.6067,
+   "delta_f1": 0.0048,
+   "verdict": "noise"
+  },
+  "lean_variability": {
+   "accuracy": 0.5397,
+   "sd": 0.0199,
+   "macro_f1": 0.5372,
+   "trusted_accuracy": 0.5777,
+   "delta_f1": -0.0111,
+   "verdict": "noise"
+  },
+  "longest_attend_bout": {
+   "accuracy": 0.5496,
+   "sd": 0.0187,
+   "macro_f1": 0.5476,
+   "trusted_accuracy": 0.5899,
+   "delta_f1": -0.0008,
+   "verdict": "noise"
+  },
+  "longest_off_task_bout": {
+   "accuracy": 0.5449,
+   "sd": 0.0189,
+   "macro_f1": 0.542,
+   "trusted_accuracy": 0.5777,
+   "delta_f1": -0.0064,
+   "verdict": "noise"
+  },
+  "posture_openness": {
+   "accuracy": 0.5561,
+   "sd": 0.0207,
+   "macro_f1": 0.5536,
+   "trusted_accuracy": 0.5716,
+   "delta_f1": 0.0053,
+   "verdict": "noise"
+  },
+  "motion_energy": {
+   "accuracy": 0.5341,
+   "sd": 0.0157,
+   "macro_f1": 0.5317,
+   "trusted_accuracy": 0.5701,
+   "delta_f1": -0.0166,
+   "verdict": "noise"
+  },
+  "peer_synchrony": {
+   "accuracy": 0.5359,
+   "sd": 0.0088,
+   "macro_f1": 0.5323,
+   "trusted_accuracy": 0.5625,
+   "delta_f1": -0.0161,
+   "verdict": "noise"
+  }
+ }
+}

@@ -46,7 +46,7 @@ from backend.engagement_features import (
 GRAPH = Path("outputs/final2/live_graph.jsonl")
 LABELS = Path("labeling/labels.json")
 RECHECK = Path("labeling/recheck.json")
-REPORT = Path("outputs/candidate_features.json")
+REPORT = Path("results/candidate_features.json")
 
 
 # --------------------------------------------------------------------------

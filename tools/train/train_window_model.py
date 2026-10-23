@@ -41,7 +41,7 @@ from backend.engagement_features import FEATURE_NAMES
 from backend.engagement_model import EngagementModel, MLPEngagementModel
 
 LABELS = Path("labeling/labels.json")
-REPORT = Path("outputs/window_model_report.json")
+REPORT = Path("results/window_model_report.json")
 
 
 def load_labelled() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:

@@ -36,8 +36,8 @@ WEIGHTS = (
 #: Learned artifacts. Their absence is not fatal -- the pipeline falls back to
 #: the rule-based verdict -- so they are reported separately.
 OPTIONAL = (
-    ("outputs/window_engagement_model.json", "learned attention score"),
-    ("outputs/mamba_attention_model.pt", "Mamba sequence scorer"),
+    ("models/window_engagement_model.json", "learned attention score"),
+    ("models/mamba_attention_model.pt", "Mamba sequence scorer"),
 )
 
 

@@ -1,0 +1,17 @@
+{
+ "n_trusted": 82,
+ "n_conflicted": 45,
+ "n_train": 430,
+ "test_on_task_rate": 0.6707,
+ "model_accuracy": 0.7171,
+ "model_macro_f1": 0.7083,
+ "model_off_task_recall": 0.8296,
+ "baseline_accuracy": 0.6707,
+ "baseline_macro_f1": 0.4015,
+ "accuracy_ci": [
+  0.6094,
+  0.8132
+ ],
+ "accuracy_vs_baseline_p": 0.2067,
+ "note": "Trusted = judged identically on two independent passes. Accuracy is not significant against the majority class on this split; macro F1 and off-task recall are what separate the model from guessing."
+}

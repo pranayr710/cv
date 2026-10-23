@@ -75,10 +75,16 @@ machine that trained it, preserving the path. Without it the pipeline still
 runs: behaviour falls back to object-and-posture inference, and the four
 trained classes (`read`, `write`, `sleep`, `using_device`) are unavailable.
 
-The trained attention scorers **do** ship, in `outputs/`. They are 76 KB. If
+The trained attention scorers **do** ship, in `models/`. They are 76 KB. If
 they are missing the system silently falls back to the rule-based verdict,
-which measured 0.447 accuracy against the model's 0.650 — a quiet and
+which measured 0.447 accuracy against the model's 0.717 — a quiet and
 substantial downgrade, which is why `classgraph doctor` reports on them.
+
+They used to live in `outputs/`, which the container declares as a `VOLUME`.
+Baking them into the image and then mounting a volume over that path hid
+them, so a deployment that bound `-v ./outputs:/app/outputs` — which the
+usage examples in the Dockerfile tell you to do — got the rule verdict and
+no warning. `outputs/` now holds only what a run produces.
 
 ### First run needs internet
 

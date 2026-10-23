@@ -39,9 +39,9 @@ from backend.mamba_model import MambaAttentionScorer, MambaConfig
 
 LABELS = Path("labeling/labels.json")
 GRAPH = Path("outputs/final2/live_graph.jsonl")
-MODEL = Path("outputs/mamba_attention_model.pt")
+MODEL = Path("models/mamba_attention_model.pt")
 QUEUE = Path("labeling/to_label_next_mamba.json")
-REPORT = Path("outputs/mamba_model_report.json")
+REPORT = Path("results/mamba_model_report.json")
 
 
 def load_model() -> MambaAttentionScorer | None:

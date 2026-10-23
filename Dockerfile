@@ -51,9 +51,19 @@ COPY README.md ./
 
 # The trained scorers are kilobytes and ship with the repo. Without them the
 # pipeline silently falls back to the rule-based verdict, which measured 0.447
-# against 0.650 for the model -- a quiet downgrade, so they are copied
+# against 0.717 for the model -- a quiet downgrade, so they are copied
 # explicitly rather than left to a wildcard that might miss them.
-COPY outputs/window_engagement_model.json outputs/mamba_attention_model.pt ./outputs/
+#
+# Into models/, which is where backend/engagement_model.py and
+# backend/mamba_score.py look. They used to live under outputs/, which is a
+# mounted volume -- so the image shipped its own copy and the mount then hid
+# it, and the container fell back to the rule verdict on any host that bound
+# a volume there. outputs/ now holds only what a run produces.
+COPY models/ ./models/
+
+# The measurement record. Not loaded by anything at runtime; copied so a
+# container can be asked what the numbers in the deck rest on.
+COPY results/ ./results/
 
 RUN pip install --no-cache-dir -e .
 

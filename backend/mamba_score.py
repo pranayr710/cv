@@ -34,7 +34,7 @@ from backend.engagement_sequence import (
 )
 
 #: Where ``tools/train/train_mamba_scorer.py`` leaves its trained weights.
-DEFAULT_MODEL = Path("outputs/mamba_attention_model.pt")
+DEFAULT_MODEL = Path("models/mamba_attention_model.pt")
 
 #: Below this share of the 48 grid slots filled with real frames, the window
 #: is mostly padding and the masked mean is taken over too little to mean

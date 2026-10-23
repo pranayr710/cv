@@ -1,0 +1,11 @@
+{
+ "n_rechecked": 127,
+ "self_agreement": 0.6457,
+ "cohens_kappa": 0.261,
+ "implied_label_error_rate": 0.2301,
+ "achievable_ceiling": 0.7699,
+ "model_accuracy_all_labels": 0.5587,
+ "model_macro_f1_all_labels": 0.5575,
+ "model_accuracy_trusted_subset": 0.5902,
+ "n_trusted": 82
+}

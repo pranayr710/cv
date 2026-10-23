@@ -69,6 +69,9 @@ tools/        78 scripts, grouped by what you would open one for -- see tools/RE
   data/         building and maintaining the label and image sets
   assets/       images and charts for the decks
 classgraph/   the installed CLI (`classgraph serve`, `classgraph video`, ...)
+models/       the two trained scorers the system loads at runtime (tracked)
+results/      the measurement behind every number quoted here (tracked)
+outputs/      what a run produces -- disposable, gitignored, no exceptions
 tests/        699 tests
 docs/         plans, literature review, privacy, per-person work split
 ppt/          deck builders; the decks themselves are written to the root

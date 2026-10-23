@@ -42,7 +42,7 @@ warnings.filterwarnings("ignore")
 
 LABELS = Path("labeling/labels.json")
 RECHECK = Path("labeling/recheck.json")
-REPORT = Path("outputs/trusted_eval_report.json")
+REPORT = Path("results/trusted_eval_report.json")
 
 
 def main() -> int:

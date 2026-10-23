@@ -38,7 +38,7 @@ from pathlib import Path
 from backend.engagement_features import FEATURE_NAMES
 
 #: Default location of the trained coefficients.
-DEFAULT_MODEL = Path("outputs/window_engagement_model.json")
+DEFAULT_MODEL = Path("models/window_engagement_model.json")
 
 #: Half-width of the abstention band around p = 0.5. A window whose probability
 #: falls inside it is reported as unknown rather than decided.

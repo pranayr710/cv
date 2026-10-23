@@ -47,7 +47,7 @@ from backend.engagement_features import iter_windows
 
 LABELS = Path("labeling/labels.json")
 GRAPH = Path("outputs/final2/live_graph.jsonl")
-REPORT = Path("outputs/semi_supervised_report.json")
+REPORT = Path("results/semi_supervised_report.json")
 
 
 def load() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,

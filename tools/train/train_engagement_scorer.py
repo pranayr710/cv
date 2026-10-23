@@ -41,7 +41,7 @@ DATA = Path("labeling/images/Final Dataset 256/Final Dataset 256")
 CALIB_MANIFEST = Path("labeling/images/calibration/manifest.json")
 SCORES = Path("labeling/scores.json")
 CACHE = Path("outputs/engagement_features.npz")
-REPORT = Path("outputs/engagement_scorer_report.json")
+REPORT = Path("results/engagement_scorer_report.json")
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png"}
 BATCH = 64

@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from tools.train.train_window_model import load_labelled
 
-REPORT = Path("outputs/classifier_comparison.json")
+REPORT = Path("results/classifier_comparison.json")
 
 
 def candidates() -> dict:

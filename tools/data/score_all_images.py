@@ -39,7 +39,7 @@ from tools.train.train_engagement_scorer import (
 )
 
 OUT_CSV = Path("outputs/image_engagement_scores.csv")
-OUT_REPORT = Path("outputs/score_method_comparison.json")
+OUT_REPORT = Path("results/score_method_comparison.json")
 
 
 def to_ten(values: np.ndarray) -> np.ndarray:

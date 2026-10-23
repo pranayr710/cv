@@ -1,0 +1,21 @@
+{
+ "n_labelled": 179,
+ "n_unlabelled": 405,
+ "permutations": 12,
+ "evaluation": "out-of-fold, students permuted between folds",
+ "baseline": {
+  "accuracy": 0.6224,
+  "accuracy_sd": 0.0274,
+  "macro_f1": 0.6211
+ },
+ "label_spreading": {
+  "accuracy": 0.6359,
+  "accuracy_sd": 0.0322,
+  "macro_f1": 0.6264
+ },
+ "paired_difference": 0.0135,
+ "paired_t": 1.585,
+ "wins": 7,
+ "verdict": "within noise",
+ "caveat": "label spreading is transductive: the windows to be scored must be present, unlabelled, when it is fit. It cannot score a new student without refitting."
+}

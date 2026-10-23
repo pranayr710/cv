@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from tools.train.semi_supervised import fit_mlp, load, predict_mlp
 
-REPORT = Path("outputs/label_spreading_check.json")
+REPORT = Path("results/label_spreading_check.json")
 
 
 def permuted_folds(groups: np.ndarray, n_folds: int,
