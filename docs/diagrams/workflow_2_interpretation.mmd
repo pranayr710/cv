@@ -1,4 +1,4 @@
-%% ClassGraph workflow, part 2 of 2 - interpretation (steps 7-12)
+%% ClassGraph workflow, part 2 of 2 - interpretation (steps 7-13)
 %% Everything here is a decision about those measurements.
 flowchart LR
   classDef interp fill:#FFFFFF,stroke:#1F6F50,stroke-width:2px,color:#10273F
@@ -8,14 +8,18 @@ flowchart LR
   PREV["from step 6"]:::gate
   S7["7 - Scene layout<br/>intersect the facing rays"]:::interp
   G4{"3 or more<br/>students?"}:::gate
-  X4["Layout unknown<br/>second score stays blank"]:::giveup
+  X4["Layout unknown<br/>a turned head decides nothing"]:::giveup
   S8["8 - Action rules<br/>geometry first, 17 actions"]:::interp
   G5{"any<br/>evidence?"}:::gate
   X5["Action is unknown<br/>never defaults to attentive"]:::giveup
-  S9["9 - Expression<br/>8 classes mapped to 3"]:::interp
+  S9["9 - Expression + posture<br/>8 classes to 3; lean always reported"]:::interp
   S10["10 - Temporal tracker<br/>blink vs closure, rolling %"]:::interp
-  S11["11 - Scene graph<br/>nodes + 4 edge types"]:::interp
-  S12["12 - Profiles and report<br/>on-task % and engagement %<br/>reported separately"]:::interp
+  S11["11 - Window the student<br/>15 s wide, 7.5 s stride"]:::interp
+  G6{"30% of the<br/>window seen?"}:::gate
+  X6["Both models abstain<br/>no score is invented"]:::giveup
+  S12A["12a - Aggregate model<br/>21 features - 1 to 10"]:::interp
+  S12B["12b - Mamba sequence model<br/>48 steps - 1 to 10"]:::interp
+  S13["13 - Scene graph, profiles, report<br/>both scores side by side<br/>on-task % reported separately"]:::interp
 
   PREV --> S7 --> G4
   G4 -- no --> X4
@@ -25,4 +29,10 @@ flowchart LR
   G5 -- no --> X5
   G5 -- yes --> S9 --> S10
   X5 -.-> S10
-  S10 --> S11 --> S12
+  S10 --> S11 --> G6
+  G6 -- no --> X6
+  G6 -- yes --> S12A
+  G6 -- yes --> S12B
+  X6 -.-> S13
+  S12A --> S13
+  S12B --> S13

@@ -6,9 +6,10 @@ flowchart LR
   classDef derive  fill:#FFFFFF,stroke:#1F6F50,stroke-width:2px,color:#10273F
   classDef out     fill:#E9F1F4,stroke:#0E7C86,stroke-width:2px,color:#10273F
 
-  subgraph IN [" INPUT "]
+  subgraph IN [" INPUT - two paths, one pipeline "]
     direction TB
-    FRAME["Frame<br/><small>webcam 640x480<br/>or video 1080p</small>"]
+    CAM["Live camera<br/><small>webcam 640x480<br/>one pass, streaming</small>"]
+    VID["Uploaded recording<br/><small>video 1080p<br/>two passes over the file</small>"]
     GAL["Enrolled gallery<br/><small>name to 512-d vector<br/>registered once</small>"]
   end
 
@@ -29,22 +30,35 @@ flowchart LR
     BEH["YOLO11m fine-tuned<br/><small>20.1 M - 4 behaviours</small>"]
   end
 
+  subgraph IDS [" IDENTITY - the path differs, nothing else does "]
+    direction TB
+    IDL["Live: decide on first sight<br/><small>match against the gallery<br/>0% resolved on this footage</small>"]
+    IDB["Batch: decide after the file<br/><small>cluster every sighting first<br/>87% resolved, numbered</small>"]
+  end
+
   subgraph DER [" DERIVE "]
     direction TB
-    ID["Identity resolver<br/><small>clustering + cannot-link<br/>stable person_id</small>"]
     LAY["Scene layout<br/><small>facing rays to focus<br/>group vs lecture</small>"]
     ACT["Action rules<br/><small>geometry first<br/>17 actions + evidence</small>"]
     TEMP["Temporal tracker<br/><small>blink vs closure<br/>rolling engagement</small>"]
+  end
+
+  subgraph SCO [" ATTENTION - 15 s window, 7.5 s stride "]
+    direction TB
+    MLP["Aggregate model<br/><small>MLP over 21 features<br/>the shipping score</small>"]
+    MAM["Mamba sequence model<br/><small>48 steps x 13 features<br/>reads order, not averages</small>"]
   end
 
   subgraph OUT [" OUTPUT "]
     direction TB
     RAW["raw.jsonl<br/><small>one record per frame</small>"]
     GRAPH["live_graph.jsonl<br/><small>nodes = students<br/>edges = relations</small>"]
-    REP["profiles + report<br/><small>per-student history<br/>two scores, graphs</small>"]
+    REP["profiles + report<br/><small>per-student history<br/>both scores, graphs</small>"]
   end
 
-  FRAME --> YOLO --> TRK
+  CAM --> YOLO
+  VID --> YOLO
+  YOLO --> TRK
   YOLO -- "person crop" --> SCRFD
   YOLO -- "person crop" --> POSE
   YOLO -- "person crop" --> BEH
@@ -53,9 +67,11 @@ flowchart LR
   SCRFD -- "face crop" --> SIXD
   SCRFD -- "aligned face" --> EMO
 
-  ARC --> ID
-  TRK -- "cannot-link" --> ID
-  GAL -. "supplies the name only<br/>when a face is good enough" .-> ID
+  ARC --> IDL
+  ARC --> IDB
+  TRK -- "cannot-link" --> IDL
+  TRK -- "cannot-link" --> IDB
+  GAL -. "supplies the name only<br/>when a face is good enough" .-> IDL
   POSE -- "facing_direction" --> LAY
   LAY -- "oriented?" --> ACT
   POSE --> ACT
@@ -65,11 +81,16 @@ flowchart LR
   ACT --> TEMP
   EMO --> TEMP
 
-  ID --> RAW
-  TEMP --> GRAPH
+  TEMP --> MLP
+  TEMP --> MAM
+  IDL --> RAW
+  IDB --> RAW
+  MLP --> GRAPH
+  MAM --> GRAPH
   RAW --> GRAPH --> REP
 
-  class FRAME,GAL input
+  class CAM,VID,GAL input
   class YOLO,TRK,SCRFD,ARC,POSE,MESH,SIXD,EMO,BEH model
-  class ID,LAY,ACT,TEMP derive
+  class IDL,IDB,LAY,ACT,TEMP derive
+  class MLP,MAM derive
   class RAW,GRAPH,REP out

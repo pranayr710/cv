@@ -492,7 +492,7 @@ def s01c_architecture(prs, page):
                   "Each box is a model or a decision stage; each arrow is "
                   "the data it passes on.", page)
 
-    bottom = picture(s, Path("ppt_assets/from_models/slide10_1.png"),
+    bottom = picture(s, Path("ppt_assets/architecture.png"),
                      ML, y + 0.10, CW)
     yy = caption(s, ML, bottom + 0.16, CW, "Figure 4.",
                  "Full pipeline: detection, per-person models, derived "
@@ -507,7 +507,7 @@ def s01c_architecture(prs, page):
           "is what makes a person_id survive a whole lecture."])
     note(s, ML + half + 0.30, yy + 0.04, half, 1.52,
          "Why the attention model sits last",
-         ["It takes 18 window-level features built from everything upstream, "
+         ["It takes 21 window-level features built from everything upstream, "
           "not raw pixels, so it is small enough to fit the labels available "
           "and inspectable enough to explain a score to a teacher.",
           "Each score carries the features that moved it."])
@@ -522,11 +522,11 @@ def s01d_workflow(prs, page):
                   "ends and interpretation begins.", page)
 
     heading(s, y, "Perception - what is measured from the image")
-    bottom = picture(s, Path("ppt_assets/from_models/slide11_1.png"),
+    bottom = picture(s, Path("ppt_assets/workflow_1_perception.png"),
                      ML, y + 0.42, CW)
     yy = heading(s, bottom + 0.22,
                  "Interpretation - what is concluded from those measurements")
-    bottom = picture(s, Path("ppt_assets/from_models/slide11_2.png"),
+    bottom = picture(s, Path("ppt_assets/workflow_2_interpretation.png"),
                      ML, yy + 0.04, CW)
     yy = caption(s, ML, bottom + 0.14, CW, "Figure 5.",
                  "Per-frame execution path, with the branches that produce a "
