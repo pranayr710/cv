@@ -5,9 +5,7 @@ flowchart LR
   classDef giveup  fill:#FFF6E6,stroke:#B47A14,stroke-width:2px,color:#8A5D10
   classDef gate    fill:#E9F1F4,stroke:#0E7C86,stroke-width:2px,color:#10273F
 
-  S1["1 - Read frame<br/>camera, or a file"]:::percept
-  G0{"frame<br/>decoded?"}:::gate
-  X0["Seek past it and carry on<br/>only 30 in a row end the clip"]:::giveup
+  S1["1 - Capture frame"]:::percept
   S2["2 - YOLO11m detect<br/>persons + objects"]:::percept
   G1{"any person<br/>box?"}:::gate
   X1["Nothing downstream runs<br/>frame recorded as empty"]:::giveup
@@ -16,26 +14,17 @@ flowchart LR
   G2{"face<br/>readable?"}:::gate
   X2["Body pose carries the student<br/>no expression, no head pose"]:::giveup
   S5["5 - ArcFace embed<br/>512-d vector"]:::percept
-  G3{"live, or<br/>a whole file?"}:::gate
-  S5A["Live - decide now<br/>match against the gallery"]:::percept
-  S5B["Batch - decide at the end<br/>cluster every sighting first"]:::percept
+  G3{"matches<br/>gallery?"}:::gate
   X3["Reported unidentified<br/>never given to nearest match"]:::giveup
   S6["6 - Measure<br/>Pose, Face Mesh, SixDRepNet"]:::percept
   NEXT["to step 7"]:::gate
 
-  S1 --> G0
-  G0 -- no --> X0
-  X0 -.-> S1
-  G0 -- yes --> S2 --> G1
+  S1 --> S2 --> G1
   G1 -- no --> X1
   G1 -- yes --> S3 --> S4 --> G2
   G2 -- no --> X2
   G2 -- yes --> S5 --> G3
-  G3 -- "camera" --> S5A
-  G3 -- "file" --> S5B
-  S5A -- "no match" --> X3
-  S5A -- "named" --> S6
-  S5B -- "numbered within the run" --> S6
+  G3 -- no --> X3
+  G3 -- yes --> S6 --> NEXT
   X2 -.-> S6
   X3 -.-> S6
-  S6 --> NEXT
