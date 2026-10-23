@@ -86,8 +86,34 @@ class TestRules:
         assert a.name != "eyes_closed"
 
     @pytest.mark.parametrize("gaze", ["left", "right", "back"])
-    def test_gaze_away_is_off_task(self, gaze):
+    def test_a_turned_head_alone_is_not_a_verdict(self, gaze):
+        """Without a measured room focus, a turned head decides nothing.
+
+        This used to assert the opposite: head yaw past 20 degrees from a
+        single global reference meant "looking away", off task. That is the
+        camera-relative test backend/scene_layout.py exists to replace, and
+        it fired hardest where it was most wrong -- a webcam session has one
+        student, the focus needs three to fit, so EVERY looking_away verdict
+        in a live session came from this rule, and someone looking at their
+        own screen rather than at the lens was marked off task for it.
+
+        Falling through to "attentive" instead would be the same error
+        mirrored. The honest answer is that nothing was established.
+        """
         a = classify(PERSON, [], gaze, 0.0, 0.3)
+        assert a.name == "unknown"
+        assert a.off_task is False
+
+    @pytest.mark.parametrize("gaze", ["left", "right", "back"])
+    def test_a_turned_head_is_off_task_once_the_room_is_measured(self, gaze):
+        """What the removed rule was reaching for, with evidence behind it.
+
+        `oriented` compares the student's shoulders against the focus the
+        room was measured to have, so it carries no camera constant. Across
+        the batch sessions on disk this path produced 4,770 looking_away
+        frames against the removed rule's 991.
+        """
+        a = classify(PERSON, [], gaze, 0.0, 0.3, oriented=False)
         assert a.name == "looking_away"
         assert a.off_task is True
 
@@ -230,14 +256,25 @@ class TestGraphAnnotation:
         }
 
     @staticmethod
-    def _graph(gaze="teacher"):
+    def _graph(gaze="teacher", oriented=None):
+        """A two-student graph.
+
+        `oriented` is what backend.scene_layout.annotate would have written:
+        whether the student's shoulders point at the room's measured focus.
+        It has to be passed explicitly for a looking_away verdict, because a
+        turned head on its own no longer produces one -- see
+        TestRules.test_a_turned_head_alone_is_not_a_verdict.
+        """
+        feat = {"gaze_label": gaze}
+        if oriented is not None:
+            feat["oriented"] = oriented
         return {
             "frame_id": 0, "timestamp_ms": 0, "edges": [],
             "nodes": [
                 {"id": 1, "person_id": 1, "role": "student",
-                 "features": {"gaze_label": gaze}},
+                 "features": dict(feat)},
                 {"id": 2, "person_id": 2, "role": "student",
-                 "features": {"gaze_label": gaze}},
+                 "features": dict(feat)},
             ],
         }
 
@@ -249,7 +286,8 @@ class TestGraphAnnotation:
 
     def test_same_action_creates_a_shared_action_edge(self):
         """Two students doing the same thing is the relation worth drawing."""
-        graph = annotate_graph(self._graph("left"), self._record())
+        graph = annotate_graph(self._graph("left", oriented=False),
+                               self._record())
         shared = [e for e in graph["edges"] if e["type"] == "shared_action"]
         assert len(shared) == 1
         assert shared[0]["features"]["action"] == "looking_away"
@@ -265,8 +303,9 @@ class TestGraphAnnotation:
         assert not [e for e in graph["edges"] if e["type"] == "shared_action"]
 
     def test_different_actions_do_not_link(self):
-        graph = self._graph("left")
+        graph = self._graph("left", oriented=False)
         graph["nodes"][1]["features"]["gaze_label"] = "teacher"
+        graph["nodes"][1]["features"]["oriented"] = True
         graph = annotate_graph(graph, self._record())
         assert not [e for e in graph["edges"] if e["type"] == "shared_action"]
 
@@ -278,7 +317,7 @@ class TestGraphAnnotation:
         assert "action" not in annotated["nodes"][2]["features"]
 
     def test_existing_edges_are_preserved(self):
-        graph = self._graph("left")
+        graph = self._graph("left", oriented=False)
         graph["edges"].append({"type": "spatial_adjacency", "source": 1,
                                "target": 2, "features": {}})
         annotated = annotate_graph(graph, self._record())

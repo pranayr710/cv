@@ -241,7 +241,8 @@ class AttentionScorer:
         return len(windows)
 
 
-def annotate_attention(graph: dict, scorer: AttentionScorer) -> dict:
+def annotate_attention(graph: dict, scorer: AttentionScorer,
+                       mamba=None) -> dict:
     """Attach the learned attention score to every student in one frame.
 
     This is the pipeline's entry point. It runs after the scene graph, the
@@ -259,6 +260,11 @@ def annotate_attention(graph: dict, scorer: AttentionScorer) -> dict:
       score can be told why.
     * ``attention_source`` -- ``"model"`` or ``"rule"``, so the two are never
       confused in the output.
+    * ``attention_score_mamba`` -- the same window scored by the Mamba
+      sequence model, when one is loaded. Present alongside the aggregate
+      score rather than instead of it: out-of-fold on 179 labelled windows
+      the two came out at 0.609 and 0.592, a gap smaller than the noise in
+      179 labels, so choosing a winner would be reporting a coin flip.
 
     The rule verdict is left untouched in ``engagement``. It is no longer what
     the score is built from, but removing it would throw away the comparison
@@ -268,6 +274,9 @@ def annotate_attention(graph: dict, scorer: AttentionScorer) -> dict:
     Args:
         graph: One frame's scene graph, already annotated.
         scorer: A live :class:`AttentionScorer`, carried across frames.
+        mamba: An optional :class:`backend.mamba_score.MambaScorer`, also
+            carried across frames. ``None`` leaves the second score absent
+            rather than guessed.
 
     Returns:
         The same graph, mutated in place and returned for chaining.
@@ -278,6 +287,16 @@ def annotate_attention(graph: dict, scorer: AttentionScorer) -> dict:
         features = node.get("features")
         if not person_id or person_id <= 0 or not isinstance(features, dict):
             continue
+
+        # Both scorers see every frame, so their window boundaries stay in
+        # step. Running one only when the other produced a reading would
+        # starve its buffer and leave the second score permanently blank.
+        mamba_window = (mamba.update(int(person_id), timestamp, features)
+                        if mamba is not None and mamba.available else None)
+        if mamba is not None and mamba.available:
+            session = mamba.session_score(int(person_id))
+            features["attention_score_mamba"] = (
+                mamba_window if mamba_window is not None else session)
 
         reading = scorer.update(int(person_id), timestamp, features)
         if reading is None:

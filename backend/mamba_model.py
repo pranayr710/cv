@@ -21,7 +21,6 @@ sequence model can separate them.
 """
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import torch
@@ -157,5 +156,14 @@ def probability(model: MambaAttentionScorer, steps: list[list[float]],
 
 
 def to_score_10(prob: float) -> int:
-    """A 1-10 score, matching backend.attention_score.to_score_10."""
-    return max(1, min(10, math.floor(prob * 10) + 1))
+    """A 1-10 score, matching backend.attention_score.to_score_10.
+
+    It did not match. This floored ``prob * 10 + 1`` while the aggregate
+    scorer rounds ``prob * 9 + 1``, so at p=0.5 one said 5 and the other 6.
+    The two scores are now shown side by side on the dashboard, where that
+    gap reads as the models disagreeing about a student when they agreed
+    exactly and only the arithmetic differed. There is one mapping.
+    """
+    from backend.attention_score import to_score_10 as canonical
+
+    return canonical(prob)

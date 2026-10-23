@@ -101,6 +101,7 @@ def read_session(graph_path: Path):
         ``timeline`` maps ``person_id`` to ``(timestamp_ms, bucket)`` samples.
     """
     timeline: dict[int, list] = defaultdict(list)
+    seen: Counter = Counter()
     sums: dict[int, list[float]] = defaultdict(lambda: [0.0, 0.0, 0])
     pairs: Counter = Counter()
     objects: Counter = Counter()
@@ -122,6 +123,7 @@ def read_session(graph_path: Path):
             if pid is None or pid <= 0:
                 continue
             feat = node.get("features") or {}
+            seen[pid] += 1
             action = feat.get("action")
             timeline[pid].append((ts, BUCKET_OF.get(action, "unknown")))
             # A change of state is an edge. This is the graph a student still
@@ -150,8 +152,35 @@ def read_session(graph_path: Path):
                 pairs[tuple(sorted((a, b)))] += 1
 
     positions = {p: (x / n, y / n) for p, (x, y, n) in sums.items() if n}
-    return (timeline, positions, dict(pairs), frames, dict(objects), layouts,
-            dict(transitions))
+    return (timeline, positions, dict(pairs), frames,
+            _durable_objects(objects, seen), layouts, dict(transitions))
+
+
+#: Share of a student's observed frames an object must be attributed to them
+#: for before it is reported as something they used, and the absolute floor
+#: beneath it.
+#:
+#: Measured over the 424 person-object links in the sessions on disk, 219 of
+#: them (52%) rested on under 5% of that student's frames and the weakest
+#: rested on a single frame. One of those single frames put a **cup** in a
+#: results page for a room that had no cup in it, drawn in the scene graph
+#: exactly like a laptop that was visible throughout -- the picture gave a
+#: 1-frame detection and a 400-frame one the same weight, so the reader had
+#: no way to tell them apart.
+#:
+#: A thing a student actually used during a session is in their hands for
+#: more than a moment. 10% of their frames, and never fewer than three, is
+#: what that means on a recording of any length. It removes 268 of the 424
+#: links, which is the point: they were detector noise with a label on it.
+MIN_OBJECT_FRAME_SHARE = 0.10
+MIN_OBJECT_FRAMES = 3
+
+
+def _durable_objects(objects: Counter, seen: Counter) -> dict:
+    """Keep only the person-object links that held for long enough."""
+    return {key: n for key, n in objects.items()
+            if n >= MIN_OBJECT_FRAMES
+            and n >= MIN_OBJECT_FRAME_SHARE * max(seen.get(key[0], 0), 1)}
 
 
 def _runs(series):
@@ -309,9 +338,12 @@ def _scene_graph(names, on_task, objects, pairs, present):
     used = sorted({o for _, o, _ in links})
 
     if not links and not pairs:
-        return ('<p class="muted">No objects were attributed to anyone and no '
-                'two students were doing the same thing at the same time, so '
-                'there are no links to draw.</p>')
+        return ('<p class="muted">No object was in any student’s hands for '
+                f'long enough to report — a link needs '
+                f'{MIN_OBJECT_FRAME_SHARE:.0%} of that student’s frames, '
+                'and never fewer than '
+                f'{MIN_OBJECT_FRAMES} — and no two students were doing the '
+                'same thing at the same time. There are no links to draw.</p>')
 
     rows = max(len(people), len(used), 1)
     row_h, pad = 54, 45
@@ -356,6 +388,12 @@ def _scene_graph(names, on_task, objects, pairs, present):
                    f'fill="none" stroke="url(#linkGrad)" stroke-opacity=".65" '
                    f'stroke-width="{1.5 + 4 * n / top_obj:.1f}">'
                    f'<title>{names.get(pid, pid)} → {obj}: {n} frames</title></path>')
+        # The frame count printed on the link, not only in a hover title. A
+        # tooltip does not exist on a printed page or in a screenshot, which
+        # is how these get read, and without it a link held for 4 frames and
+        # one held for 400 are two lines of slightly different thickness.
+        out.append(f'<text x="{midX:.0f}" y="{midY - 5:.0f}" class="rowlab" '
+                   f'text-anchor="middle" font-size="10">{n}f</text>')
 
     # Render Student Avatar Nodes
     for pid in people:
@@ -488,6 +526,13 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
     # reader is looking at should never be ambiguous.
     attention = {p["person_id"]: p.get("attention_score")
                  for p in students}
+    # The Mamba sequence model's score for the same student. Reported next to
+    # the above, never averaged with it: out of fold on 179 hand-labelled
+    # windows, grouped by student, the two scored 0.609 and 0.592 -- a gap
+    # smaller than 179 labels can resolve, so declaring a winner would be
+    # reporting a coin flip. Where they disagree, that is worth seeing.
+    mamba = {p["person_id"]: p.get("attention_score_mamba")
+             for p in students}
     engaged = {p["person_id"]: p.get("engagement_pct") for p in students}
     order = sorted((p["person_id"] for p in students),
                    key=lambda pid: (on_task.get(pid) is None, on_task.get(pid, 0)))
@@ -505,7 +550,9 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
         <span class="id">#{pid} · {p["frames_seen"]} frames</span></header>
       <div class="pair">
         <div><b>{"—" if attention[pid] is None else f"{attention[pid]}/10"}</b>
-             <small>attention &middot; model</small></div>
+             <small>attention &middot; aggregate model</small></div>
+        <div><b>{"—" if mamba[pid] is None else f"{mamba[pid]}/10"}</b>
+             <small>attention &middot; Mamba sequence</small></div>
         <div><b>{"—" if on_task[pid] is None else f"{on_task[pid]:.0f}%"}</b>
              <small>on task &middot; rules</small></div>
         <div><b>{"—" if engaged[pid] is None else f"{engaged[pid]:.0f}%"}</b>
@@ -516,7 +563,9 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
         <dt>Most of the time</dt><dd>{top or "—"}</dd>
         <dt>Expression</dt><dd>{_stack_expr(p["expression"]["counts"])}</dd>
         <dt>Posture</dt><dd>{posture_label(lean)}</dd>
-        <dt>Attention from</dt><dd>{p.get('attention_windows', 0)} scored windows</dd>
+        <dt>Attention from</dt><dd>{p.get('attention_windows', 0)} windows
+          scored by the aggregate model,
+          {p.get('attention_windows_mamba', 0)} by the sequence model</dd>
       </dl>
       <div class="tghead">How they moved between actions</div>
       {_transitions_svg(pid, transitions)}
@@ -570,7 +619,7 @@ h2 {{ font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color
 .card header {{ display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 12px; }}
 .card h3 {{ margin: 0; font-size: 1.1rem; font-weight: 700; color: #fff; }}
 .id {{ color: var(--muted); font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; }}
-.pair {{ display: flex; gap: 26px; margin: 10px 0 14px; }}
+.pair {{ display: flex; gap: 20px; margin: 10px 0 14px; flex-wrap: wrap; }}
 .pair b {{ font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; display: block; font-family: 'JetBrains Mono', monospace; color: #06b6d4; }}
 .pair small {{ color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }}
 .stack {{ display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--track); gap: 2px; }}

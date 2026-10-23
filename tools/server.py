@@ -63,6 +63,21 @@ VIDEO_SUFFIXES = frozenset({".mp4", ".avi", ".mov", ".mkv", ".webm"})
 #: tool -- `classgraph video` streams from disk with no copy.
 MAX_UPLOAD_BYTES = 512 * 1024 * 1024
 
+#: Roughly the smallest face the recogniser can match against the gallery.
+#: Measured, not guessed: on the overhead classroom footage 86 faces came out
+#: at a median of 56px with only 9 above this line, and the enrolment scores
+#: for those crops ran 0.36-0.45 against a 0.5 acceptance gate. Below this,
+#: students are numbered rather than named, and the page should say so while
+#: the run is still going rather than leave it to be inferred from the result.
+RECOGNISABLE_FACE_PX = 60
+
+#: Object confidence below which a detection is shown faded and not counted
+#: as something the room contained. The detector is run at 0.35 (0.25 for
+#: books, 0.15 beside a person) deliberately, because raising it loses real
+#: laptops -- so weak detections exist by design and the display, not the
+#: detector, is where they have to be marked as weak.
+REPORTABLE_OBJECT_CONF = 0.50
+
 STATIC = Path(__file__).resolve().parent / "static"
 UNKNOWN = -1
 
@@ -155,6 +170,7 @@ class Session:
             annotate_attention,
         )
         from backend.face import FaceAnalyzer
+        from backend.mamba_score import MambaScorer
         from backend.integrate import (
             _assemble_frame,
             _build_detector,
@@ -206,6 +222,10 @@ class Session:
                 "no trained attention model found; scores will be "
                 "absent and the rule verdict is the only answer. "
                 "Train one with tools/train_window_model.py.")
+        # The sequence model, scored on the same windows and shown beside the
+        # aggregate score. Optional: a missing checkpoint leaves one number
+        # on screen instead of two and takes nothing down.
+        mamba = MambaScorer()
         names = {p.person_id: p.name for p in self.gallery.people}
         floor = self.config.identity.min_face_score_for_identity
 
@@ -318,7 +338,7 @@ class Session:
                             ),
                             record, self.config,
                         ),
-                        scorer,
+                        scorer, mamba,
                     )
                     frames_file.write(json.dumps(record) + "\n")
                     graph_file.write(json.dumps(graph) + "\n")
@@ -419,12 +439,37 @@ class Session:
                 # calculation, so the viewer can see the geometry being used.
                 "facing": posture.get("facing_direction"),
                 "oriented": feat.get("oriented"),
+                # Posture, reported in its own right. It used to reach the
+                # page only when it won the action contest, which it lost to
+                # every object rule and both gaze rules -- 2 frames in 424
+                # on one recording, against 334 in which it had been measured.
+                "lean": feat.get("lean_state"),
+                "lean_value": feat.get("vertical_lean"),
             })
+
+        # Where each student actually is in the frame, and which way they
+        # face. The graph drew students on a four-column grid in whatever
+        # order the roster happened to be in, which is a picture of the array
+        # rather than of the room -- and these positions had been measured
+        # all along.
+        where = {}
+        for person in record["persons"]:
+            pid = person.get("person_id")
+            box = person.get("bbox")
+            if not pid or pid <= 0 or not box:
+                continue
+            where[pid] = {
+                "cx": round(box[0] + box[2] / 2.0),
+                "cy": round(box[1] + box[3] / 2.0),
+                "facing": (person.get("posture") or {}).get(
+                    "facing_direction"),
+            }
 
         students = []
         for pid, name in sorted(names.items()):
             counts = self.gaze[pid]
             graded = sum(counts.values())
+            spot = where.get(pid) or {}
             students.append({
                 "id": pid,
                 "name": name,
@@ -435,6 +480,14 @@ class Session:
                 # and in group work it is close to the opposite one.
                 "attention_score": (feats.get(pid) or {}).get(
                     "attention_score"),
+                # The Mamba sequence model's score for the same student,
+                # shown beside the above rather than replacing it. Out of
+                # fold on 179 labelled windows the two came out 0.609 and
+                # 0.592 -- too close to call a winner on that many labels, so
+                # both are reported and the viewer can see them agree or not.
+                "attention_score_mamba": (feats.get(pid) or {}).get(
+                    "attention_score_mamba"),
+                "lean": (feats.get(pid) or {}).get("lean_state"),
                 "attention_label": (feats.get(pid) or {}).get(
                     "attention_label"),
                 "attention_reason": (feats.get(pid) or {}).get(
@@ -450,6 +503,18 @@ class Session:
                 "actions": dict(self.actions[pid]),
                 "action": (feats.get(pid) or {}).get("action"),
                 "evidence": (feats.get(pid) or {}).get("action_evidence"),
+                # The object THIS student was judged to be handling, and how
+                # sure the detector was of it. The graph used to draw an arc
+                # from every student to every object in the frame, which drew
+                # a book for people who never touched one. assign_objects
+                # already decides ownership exclusively; the answer simply
+                # was not being sent.
+                "object": (feats.get(pid) or {}).get("object"),
+                "object_conf": (feats.get(pid) or {}).get("object_confidence"),
+                "oriented": (feats.get(pid) or {}).get("oriented"),
+                "cx": spot.get("cx"),
+                "cy": spot.get("cy"),
+                "facing": spot.get("facing"),
                 "recent": list(self.recent[pid]),
             })
 
@@ -477,7 +542,13 @@ class Session:
             "seconds": round(elapsed, 1),
             "fps": round(self.fps, 1),
             "in_frame": len(record["persons"]),
-            "objects": [o["cls"] for o in record.get("objects", [])],
+            # Class and confidence, not class alone. A bottle at 0.28 and a
+            # laptop at 0.91 were two identical chips on screen, so a weak
+            # detection read as a fact about the room. The page shows the
+            # number and fades the chip below REPORTABLE_OBJECT_CONF.
+            "objects": [{"cls": o["cls"],
+                         "conf": round(float(o.get("confidence") or 0.0), 2)}
+                        for o in record.get("objects", [])],
             "boxes": boxes,
             "students": students,
             "pairs": [{"a": a, "b": b, "frames": n}
@@ -639,10 +710,30 @@ class VideoJob:
                 "fps": round(kept / elapsed, 1),
                 "seconds": int(elapsed),
                 "phase": "detecting",
-                "hint": ("Detecting people. Identity and actions are "
-                         "resolved in a second pass, once the whole "
-                         "recording has been seen."),
+                "hint": self._detecting_hint(boxes),
             }
+
+    def _detecting_hint(self, boxes) -> str:
+        """What pass 1 can honestly say, including what it will never give.
+
+        "Resolved in a second pass" explains why boxes say unidentified now,
+        and implies names are coming. On footage where the faces are too
+        small to recognise they are not, and the question gets asked again at
+        the end. Both facts belong in the same sentence.
+        """
+        faces = [b["face_px"] for b in boxes if b.get("face_px")]
+        base = ("Detecting people. Identity and actions are resolved in a "
+                "second pass, once the whole recording has been seen.")
+        if not faces:
+            return base
+        median = sorted(faces)[len(faces) // 2]
+        if median >= RECOGNISABLE_FACE_PX:
+            return base + (f" Faces here are about {median}px, large enough "
+                           "to match against registered students.")
+        return base + (
+            f" Faces here are about {median}px and matching a registered "
+            f"student needs around {RECOGNISABLE_FACE_PX}px, so students "
+            "will be numbered rather than named.")
 
     def _publish_resolved(self) -> None:
         """Redraw the last frame with what pass 2 concluded.
@@ -703,13 +794,20 @@ class VideoJob:
 
     def _completion_note(self) -> str:
         """What to tell the operator, including when the file was damaged."""
-        read = self._graph_rows() * self.sample_rate
+        rows = self._graph_rows()
+        read = rows * self.sample_rate
         if self.total_frames and read < self.total_frames * 0.9:
-            return (f"The video ended after about {read} of "
-                    f"{self.total_frames} frames, so it is most likely "
-                    "damaged. The results cover only the part that could be "
-                    "read.")
-        return f"Finished: {self._graph_rows()} frames analysed."
+            # Reached only after the decoder has already been given 30 tries
+            # to step over each bad frame (MAX_CONSECUTIVE_BAD_FRAMES in
+            # tools/batch_session.py). Before that recovery existed, one
+            # rejected h264 packet 16 frames into a 288-frame recording ended
+            # the read and produced this message for a file that was fine.
+            return (f"Only {read} of {self.total_frames} frames could be "
+                    "decoded, even after skipping past the frames that "
+                    "failed. The results below cover that part only.")
+        return (f"Finished: {rows} frames analysed"
+                + (f" from {self.total_frames} in the recording."
+                   if self.total_frames else "."))
 
     def _graph_rows(self) -> int:
         path = self.out / "live_graph.jsonl"
@@ -1043,6 +1141,12 @@ def create_app(args):
                 "id": int(pid),
                 "name": names.get(int(pid)),
                 "attention": entry.get("attention_score"),
+                "attention_windows": entry.get("attention_windows"),
+                # The sequence model's answer for the same student, so the
+                # finished run shows both and not just the one that ships.
+                "attention_mamba": entry.get("attention_score_mamba"),
+                "attention_windows_mamba": entry.get(
+                    "attention_windows_mamba"),
                 "on_task_pct": entry.get("on_task_pct"),
                 "engagement_pct": entry.get("engagement_pct"),
                 "frames": entry.get("frames_seen"),

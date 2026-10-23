@@ -117,6 +117,10 @@ def _people_in(record: dict) -> tuple[list[dict], bool]:
             # The learned attention score, from
             # backend/attention_score.py. Carried, never recomputed.
             "attention_score": features.get("attention_score"),
+            # The same window scored by the Mamba sequence model
+            # (backend/mamba_score.py). Carried beside the aggregate score,
+            # never averaged with it.
+            "attention_score_mamba": features.get("attention_score_mamba"),
             "attention_label": features.get("attention_label"),
             "attention_source": features.get("attention_source"),
             "is_sustained_distracted": features.get("is_sustained_distracted"),
@@ -391,6 +395,7 @@ def build_profiles(
     gaze_labels: dict[int, list[str | None]] = defaultdict(list)
     action_labels: dict[int, list[str | None]] = defaultdict(list)
     attention_scores: dict[int, list[int]] = defaultdict(list)
+    mamba_scores: dict[int, list[int]] = defaultdict(list)
     action_times: dict[int, list[int]] = defaultdict(list)
     scene_frames: dict[object, set] = defaultdict(set)
     scene_of: dict[int, object] = {}
@@ -457,6 +462,9 @@ def build_profiles(
                 score = person.get("attention_score")
                 if score is not None:
                     attention_scores[person_id].append(int(score))
+                mamba = person.get("attention_score_mamba")
+                if mamba is not None:
+                    mamba_scores[person_id].append(int(mamba))
                 action_times[person_id].append(record.get("timestamp_ms", 0))
                 scene = record.get("scene")
                 scene_frames[scene].add(record.get("frame_id"))
@@ -639,6 +647,16 @@ def build_profiles(
                       / len(attention_scores[person_id]))
                 if attention_scores[person_id] else None),
             "attention_windows": len(attention_scores[person_id]),
+            # The sequence model's answer for the same student. Reported next
+            # to the above, not instead of it: out-of-fold on 179 labelled
+            # windows the two scored 0.609 and 0.592, a difference smaller
+            # than the noise in that many labels. Two numbers that agree are
+            # corroboration; collapsing them into one hides a disagreement.
+            "attention_score_mamba": (
+                round(sum(mamba_scores[person_id])
+                      / len(mamba_scores[person_id]))
+                if mamba_scores[person_id] else None),
+            "attention_windows_mamba": len(mamba_scores[person_id]),
             "layout": (Counter(layout_kinds[person_id]).most_common(1)[0][0]
                        if layout_kinds[person_id] else None),
             "posture": _summarise_posture(posture_samples[person_id]),

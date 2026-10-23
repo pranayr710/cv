@@ -28,7 +28,23 @@ def _gallery(names=("Asha", "Ben")):
 class TestEncryption:
     def test_names_and_embeddings_do_not_survive_on_disk(self, tmp_path,
                                                          monkeypatch):
-        """The point of encrypting is that the file stops being readable."""
+        """The point of encrypting is that the file stops being readable.
+
+        The envelope is checked structurally rather than by searching the
+        file for the names. Searching was the obvious way to write this and
+        it is unsound: the salt and the ciphertext are random bytes in
+        base64, so any short string turns up in them eventually. Measured
+        over 300 saves of this gallery, "Ben" appeared by chance in 25 of
+        them -- an 8% chance, per run, of a privacy test failing for a reason
+        that has nothing to do with privacy. It surfaced as a test that
+        failed about one full run in three and passed in isolation, which is
+        the shape of a flake nobody trusts and everybody eventually reruns
+        past.
+
+        What the envelope must contain is exactly three fields, none of them
+        a plaintext record. That is the actual property, and it does not
+        depend on a coin flip.
+        """
         monkeypatch.setenv(vault.KEY_ENV, "a-term-passphrase")
         # Asserted rather than assumed: if another test leaves `available`
         # patched to False, this test fails with "Asha is in the file", which
@@ -42,10 +58,28 @@ class TestEncryption:
         path = tmp_path / "gallery.json"
         _gallery().save(path)
 
-        blob = path.read_text(encoding="utf-8")
-        assert "Asha" not in blob
-        assert "Ben" not in blob
-        assert vault.is_encrypted(json.loads(blob))
+        envelope = json.loads(path.read_text(encoding="utf-8"))
+        assert vault.is_encrypted(envelope)
+        assert set(envelope) == {"format", "salt", "ciphertext"}
+        # Nothing a reader could use: no roster, no name field, no vectors.
+        for key in ("people", "name", "embedding", "next_person_id",
+                    "format_version"):
+            assert key not in envelope
+
+    def test_a_long_name_does_not_survive_on_disk(self, tmp_path,
+                                                  monkeypatch):
+        """The substring check, made sound by using a name long enough that
+        a chance collision in 15 KB of base64 is about one in five billion.
+
+        Kept beside the structural test because the two fail for different
+        reasons: this one catches a plaintext name smuggled into a field the
+        structural test did not think to name.
+        """
+        monkeypatch.setenv(vault.KEY_ENV, "a-term-passphrase")
+        name = "Bartholomew-Fitzgerald"
+        _gallery((name,)).save(tmp_path / "gallery.json")
+        blob = (tmp_path / "gallery.json").read_text(encoding="utf-8")
+        assert name not in blob
 
     def test_the_right_passphrase_round_trips(self, tmp_path, monkeypatch):
         monkeypatch.setenv(vault.KEY_ENV, "a-term-passphrase")

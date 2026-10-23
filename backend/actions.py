@@ -132,6 +132,65 @@ BLINK_MS = 600
 #: yawning.
 YAWN_RATIO = 0.35
 
+#: Lean thresholds, in units of ``vertical_lean`` (nose.y minus shoulder-mid.y
+#: over person height; more negative = head higher above the shoulders).
+#:
+#: Measured over 41,421 frames across the nine batch sessions on disk, the
+#: signal is close to a single bell: mean -0.131, standard deviation 0.081,
+#: quartiles -0.184 / -0.138 / -0.088. There are no two clusters here, so
+#: these cannot be a boundary between "slouching" and "upright" people; they
+#: are one standard deviation either side of the population, and that is all
+#: they claim. Both actions stay marked ``inferred`` for that reason.
+#:
+#: What they replace was asymmetric by accident. Slouching fired above -0.05,
+#: which is 1.0 sd and reached 14.3% of frames; leaning forward fired below
+#: -0.30, which is 2.1 sd and reached 1.0% -- and on a full 63-frame video it
+#: reached nothing at all, because the most forward lean in that recording was
+#: -0.279. The threshold sat outside the range the measurement can produce, so
+#: "leaning forward" was not rare, it was unreachable.
+SLOUCH_LEAN = -0.05
+FORWARD_LEAN = -0.21
+
+#: Labels for the always-reported lean state. This is reported on every
+#: student every frame as ``features.lean_state``, separately from ``action``.
+#:
+#: Lean sits fifteenth of eighteen in PRIORITY, below every object rule, both
+#: gaze rules and head-down, so on real footage it almost never won: 2 frames
+#: out of 424 in one video, against 334 in which the lean had been measured
+#: and was then discarded. Posture is not a competitor to "on phone" -- a
+#: student can be on their phone *and* slouching -- so it is no longer
+#: entered in a contest it was always going to lose.
+LEAN_STATES = {
+    "slouching": "slouching",
+    "upright": "upright",
+    "leaning_forward": "leaning forward",
+}
+
+
+def lean_state(posture) -> tuple[str, float] | tuple[None, None]:
+    """The student's lean band and the raw value, or ``(None, None)``.
+
+    Args:
+        posture: The student's posture dict, or ``None``.
+
+    Returns:
+        ``(state, vertical_lean)`` where state is a key of
+        :data:`LEAN_STATES`, or ``(None, None)`` when the shoulders or the
+        nose could not be read. Not having seen someone's posture is not
+        evidence that they sat upright.
+    """
+    if not posture:
+        return None, None
+    value = posture.get("vertical_lean")
+    if value is None:
+        return None, None
+    value = float(value)
+    if value > SLOUCH_LEAN:
+        return "slouching", value
+    if value < FORWARD_LEAN:
+        return "leaning_forward", value
+    return "upright", value
+
 
 @dataclass(frozen=True)
 class Action:
@@ -143,6 +202,11 @@ class Action:
         off_task: Whether this counts against engagement.
         obj: The object class the action was read from, if any. Carried so the
             scene graph can hold a person-object edge.
+        obj_confidence: The detector's confidence in that object. Carried
+            because the scene graph draws a person-object edge from it, and a
+            book seen once at 0.26 drew exactly the same edge as a laptop seen
+            throughout at 0.91 -- which is how an object nobody could see in
+            the room ends up in the results.
         confidence: ``"direct"`` for detected objects and unambiguous landmark
             geometry, ``"inferred"`` for a plausible reading of weaker
             evidence. Surfaced in the interface so an inferred label is never
@@ -154,6 +218,7 @@ class Action:
     off_task: bool
     obj: str | None = None
     confidence: str = "direct"
+    obj_confidence: float | None = None
 
     @property
     def label(self) -> str:
@@ -423,12 +488,18 @@ def classify(
     cfg = config if config is not None else CONFIG
 
     near_any, near_head = set(), set()
+    # The best confidence seen for each class on this student, so the action
+    # can carry the strength of the evidence it was read from.
+    conf_of: dict[str, float] = {}
     for obj in objects or ():
         cls, bbox = obj.get("cls"), obj.get("bbox")
         if not cls or not bbox:
             continue
         if _overlaps(person_bbox, bbox):
             near_any.add(cls)
+            score = obj.get("confidence")
+            if score is not None:
+                conf_of[cls] = max(conf_of.get(cls, 0.0), float(score))
         if _overlaps(person_bbox, bbox, "head"):
             near_head.add(cls)
 
@@ -447,22 +518,26 @@ def classify(
                       and _overlaps(person_bbox, o["bbox"])), None)
     if phone_box is not None and _object_in_hands(posture, person_bbox,
                                                   phone_box):
-        return Action("on_phone", "cell phone in hand", True, "cell phone")
+        return Action("on_phone", "cell phone in hand", True, "cell phone",
+                      obj_confidence=conf_of.get("cell phone"))
 
     drink = near_head & DRINK_CLASSES
     if drink:
         obj = min(drink)
-        return Action("drinking", f"{obj} at head height", False, obj)
+        return Action("drinking", f"{obj} at head height", False, obj,
+                      obj_confidence=conf_of.get(obj))
 
     food = near_head & FOOD_CLASSES
     if food:
         obj = min(food)
-        return Action("eating", f"{obj} at head height", False, obj)
+        return Action("eating", f"{obj} at head height", False, obj,
+                      obj_confidence=conf_of.get(obj))
 
     typing = near_any & TYPING_CLASSES
     if typing:
         obj = min(typing)
-        return Action("typing", f"{obj} overlap", False, obj)
+        return Action("typing", f"{obj} overlap", False, obj,
+                      obj_confidence=conf_of.get(obj))
 
     if "book" in near_any:
         # Reading and writing differ only by what the hands are doing. When the
@@ -470,11 +545,12 @@ def classify(
         # when they are not, the honest answer is that it is one or the other.
         if _hands_low(posture, person_bbox):
             return Action("writing", "book with hands low at the desk", False,
-                          "book", "inferred")
+                          "book", "inferred", conf_of.get("book"))
         if posture and posture.get("shoulder_mid"):
             return Action("reading", "book with hands not at the desk", False,
-                          "book", "inferred")
-        return Action("studying", "book overlap, hands not visible", False, "book")
+                          "book", "inferred", conf_of.get("book"))
+        return Action("studying", "book overlap, hands not visible", False,
+                      "book", obj_confidence=conf_of.get("book"))
 
     if "laptop" in near_any:
         # A phone held up reads as a laptop to the detector often enough to
@@ -489,8 +565,10 @@ def classify(
         if handheld and _object_in_hands(posture, person_bbox, laptop_box):
             return Action("on_phone",
                           "device in hand, phone-sized against the face",
-                          False, "cell phone", "inferred")
-        return Action("on_laptop", "laptop overlap", False, "laptop")
+                          False, "cell phone", "inferred",
+                          conf_of.get("laptop"))
+        return Action("on_laptop", "laptop overlap", False, "laptop",
+                      obj_confidence=conf_of.get("laptop"))
 
     ratio = mouth_open_ratio(landmarks)
     if ratio is not None and ratio > YAWN_RATIO:
@@ -516,9 +594,23 @@ def classify(
     # the room was measured to have, so it carries no camera constant at all.
     if oriented is False:
         return Action("looking_away", "facing away from the room focus", True)
-    if oriented is None and gaze_label in ("left", "right", "back"):
-        return Action("looking_away", f"gaze {gaze_label}", True,
-                      confidence="inferred")
+    # There is deliberately no fallback to `gaze_label` here.
+    #
+    # It used to read: when the focus could not be measured, call anyone whose
+    # head yaw exceeds 20 degrees "looking away". That is the camera-relative
+    # test the paragraph above explains this module replaced, reinstated as a
+    # default -- and it is wrong in the one case it fires most. A webcam
+    # session has a single student, the focus needs three to be measured, so
+    # `oriented` is always None and *every* looking_away came from this line.
+    # Someone sitting at a laptop looking at their screen rather than at the
+    # lens clears 20 degrees of yaw easily, and was marked off task for it.
+    #
+    # Across the batch sessions on disk this line produced 991 of 5,761
+    # looking_away frames (17%); the other 4,770 came from a measured focus
+    # and are untouched. Those 991 rested on a reference angle nothing had
+    # calibrated. The gaze direction is still reported in `gaze_label` as an
+    # observation -- it is the off-task *verdict* drawn from it that there was
+    # never evidence for.
 
     if down:
         return Action("head_down", f"pitch {pitch:.0f} deg", False)
@@ -528,16 +620,27 @@ def classify(
         # vertical_lean is nose.y - shoulder_mid.y over person height. More
         # negative means the head sits higher above the shoulders (upright);
         # closer to zero means it has sunk towards them.
-        if lean > -0.05:
+        if lean > SLOUCH_LEAN:
             return Action("slouching", f"lean {lean:+.2f}", False,
                           confidence="inferred")
-        if lean < -0.30:
+        if lean < FORWARD_LEAN:
             return Action("leaning_forward", f"lean {lean:+.2f}", False,
                           confidence="inferred")
 
     if gaze_label is None:
         return Action("unknown", "no face read", False)
-    return Action("attentive", f"gaze {gaze_label}", False)
+    if oriented is True or gaze_label in cfg.engagement.attending_gaze_labels:
+        return Action("attentive", f"gaze {gaze_label}", False)
+    # Head turned, and no measured focus to judge it against.
+    #
+    # Falling through to "attentive" here would be the same mistake as the
+    # looking_away fallback removed above, pointing the other way: both read
+    # a verdict out of a camera-relative angle that nothing calibrated. A
+    # student at a webcam whose head is 25 degrees off the lens is not
+    # evidently attending and not evidently distracted, and this module's own
+    # rule is that no evidence means `unknown`, never a confident guess.
+    return Action("unknown", f"head turned ({gaze_label}) and no room focus "
+                  "to judge it against", False)
 
 
 def assign_objects(persons: list, objects: list) -> dict[int, list]:
@@ -596,8 +699,10 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
 
     Returns:
         The same graph, with ``features.action``, ``features.action_evidence``,
-        ``features.action_confidence`` and ``features.object`` filled in, plus
-        ``shared_action`` edges between students doing the same thing.
+        ``features.action_confidence``, ``features.object``,
+        ``features.object_confidence``, ``features.lean_state`` and
+        ``features.vertical_lean`` filled in, plus ``shared_action`` edges
+        between students doing the same thing.
     """
     objects = record.get("objects") or []
     persons = record.get("persons", [])
@@ -635,6 +740,14 @@ def annotate_graph(graph: dict, record: dict, config=None) -> dict:
         feat["action_evidence"] = action.evidence
         feat["action_confidence"] = action.confidence
         feat["object"] = action.obj
+        feat["object_confidence"] = (
+            None if action.obj_confidence is None
+            else round(float(action.obj_confidence), 3))
+        # Posture, reported in its own right rather than as a losing candidate
+        # in the action contest. See LEAN_STATES.
+        state, value = lean_state(person.get("posture") or feat.get("posture"))
+        feat["lean_state"] = state
+        feat["vertical_lean"] = None if value is None else round(value, 3)
         if node.get("role") == "student":
             actions[node["id"]] = action.name
             box = person.get("bbox")

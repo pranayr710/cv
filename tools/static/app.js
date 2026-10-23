@@ -80,6 +80,20 @@ const ACTION_COLOUR = {
   attentive: "#4ea36b", unknown: "#4a5058",
 };
 
+//: Mirrors REPORTABLE_OBJECT_CONF in tools/server.py.
+const REPORTABLE_OBJECT_CONF = 0.5;
+
+const LEAN_LABEL = {
+  slouching: "slouching", leaning_forward: "leaning forward", upright: "upright",
+};
+
+/** The colour band for a 1-10 attention score. Shared by both models, so a
+ *  5 from one is the same colour as a 5 from the other. */
+function scoreColour(score) {
+  if (score == null) return "var(--muted)";
+  return score >= 7 ? "var(--accent)" : score >= 4 ? "var(--warn)" : "var(--bad)";
+}
+
 const $ = (id) => document.getElementById(id);
 const feed = $("feed");
 const overlay = $("overlay");
@@ -118,18 +132,40 @@ function paintRoster(students) {
     // in would contradict how the rest of this system treats thin evidence.
     const pct = el.querySelector(".pct");
     const score = s.attention_score;
-    pct.textContent = score == null ? "—" : `${score}/10`;
-    pct.style.color = score == null ? "var(--muted)"
-      : score >= 7 ? "var(--accent)"
-      : score >= 4 ? "var(--warn)" : "var(--bad)";
+    const mamba = s.attention_score_mamba;
+    // Two models, side by side. The aggregate model is the one that ships;
+    // the Mamba sequence model scores the same 15-second window from the
+    // frames in order rather than from their averages. Out of fold on 179
+    // labelled windows they came out at 0.609 and 0.592 -- closer together
+    // than 179 labels can separate -- so neither is presented as the answer
+    // and a disagreement between them is information the viewer should see.
+    pct.innerHTML = score == null
+      ? '<span class="sc sc-none">—</span>'
+      : `<span class="sc" style="color:${scoreColour(score)}">${score}</span>`
+        + '<span class="sc-sep">/</span>'
+        + (mamba == null
+            ? '<span class="sc sc-none" title="Mamba: no full window yet">'
+              + "–</span>"
+            : `<span class="sc sc-mamba" style="color:${scoreColour(mamba)}">`
+              + `${mamba}</span>`);
     pct.title = score == null
       ? "waiting for a full 15s window"
-      : `${s.attention_label || "no verdict"} · ${s.attention_reason || ""}` +
-        (s.attention_source ? ` · from the ${s.attention_source}` : "");
+      : `aggregate model ${score}/10`
+        + (mamba == null ? "" : `, Mamba sequence model ${mamba}/10`)
+        + ` · ${s.attention_label || "no verdict"}`
+        + ` · ${s.attention_reason || ""}`;
 
     const act = s.action ? ACTION_LABEL[s.action] || s.action : "not seen";
+    // Posture is shown next to the action, not instead of it. A student can
+    // be on their phone and slouching at the same time, and the old display
+    // could only ever say one of those because lean competed with every
+    // object rule for a single slot and lost.
+    const lean = s.lean && s.lean !== "upright"
+      ? ` <span class="lean">${escape(LEAN_LABEL[s.lean] || s.lean)}</span>`
+      : "";
     el.querySelector(".act").innerHTML =
       `<span style="color:${ACTION_COLOUR[s.action] || "var(--muted)"}">●</span> ${escape(act)}` +
+      lean +
       (s.evidence ? ` <span style="opacity:.65">· ${escape(s.evidence)}</span>` : "");
 
     const total = Object.values(s.gaze).reduce((a, b) => a + b, 0);
@@ -233,7 +269,11 @@ function paintOverlay(boxes) {
     ctx.strokeStyle = colour;
     ctx.strokeRect(ox + x * scale, oy + y * scale, bw * scale, bh * scale);
     const who = b.name || (tracked ? `Student ${b.person_id}` : "unidentified");
-    const what = ACTION_LABEL[b.action] || "";
+    let what = ACTION_LABEL[b.action] || "";
+    if (b.lean && b.lean !== "upright") {
+      const posture = LEAN_LABEL[b.lean] || b.lean;
+      what = what ? `${what}, ${posture}` : posture;
+    }
     const label = b.name || tracked
       ? (what ? `${who} · ${what}` : who)
       : (b.face_px ? `unidentified · face ${b.face_px}px` : "unidentified");
@@ -277,44 +317,59 @@ function connect() {
     const hint = $("hint");
     if (d.hint) { hint.textContent = d.hint; hint.hidden = false; }
     else hint.hidden = true;
+    // The detector runs at a deliberately low threshold, so weak detections
+    // exist by design. They used to arrive here as bare class names and were
+    // drawn identically to strong ones -- a bottle the detector was 28% sure
+    // of looked exactly like a laptop it was 91% sure of. The number is shown
+    // and anything under the reportable confidence is dimmed and marked.
     $("objects").innerHTML = objects.length
-      ? objects.map((o) => `<span class="chip">${escape(o)}</span>`).join("")
+      ? objects.map((o) => {
+          const weak = o.conf < REPORTABLE_OBJECT_CONF;
+          return `<span class="chip${weak ? " weak" : ""}" title="${
+            weak ? "below the reportable confidence; shown but not counted"
+                 : "detector confidence"}">${escape(o.cls)}` +
+            `<b>${Math.round(o.conf * 100)}%</b></span>`;
+        }).join("")
       : '<span class="empty">none</span>';
+    // The graph draws only what the detector was reasonably sure of; an
+    // object seen once at 0.26 is not a thing that was in the room.
+    const strong = objects.filter((o) => o.conf >= REPORTABLE_OBJECT_CONF)
+                          .map((o) => o.cls);
     window.lastStudents = students;
-    window.lastObjects = objects;
+    window.lastObjects = strong;
     window.lastPairs = pairs;
     paintRoster(students);
     paintPairs(pairs, students);
-    paintLiveGraph(students, objects, pairs);
+    paintLiveGraph(students, strong, pairs);
     window._layout = d.layout;
     requestAnimationFrame(() => paintOverlay(d.boxes));
   };
   socket.onclose = () => setTimeout(connect, 1200);
 }
 
-let currentGraphMode = "radar";
-let currentGraphFilter = "all";
-let focusedStudentId = null;
-let nodePositions = {};
+let currentGraphMode = "room";
 
+/** Switch which measurement the scene graph is showing. */
 function setGraphMode(mode) {
   currentGraphMode = mode;
   document.querySelectorAll(".graph-tab").forEach(tab => {
     tab.classList.toggle("active", tab.dataset.mode === mode);
   });
+  // Named for what each one measures. "Gaze Radar", "Energy Flow" and
+  // "Topology Network" described the drawing rather than the quantity, and
+  // two of the three were not drawing a quantity at all.
   const labels = {
-    radar: "🛰️ Gaze Radar & Spatial Beams",
-    topology: "🕸️ Scene Topology Network",
-    flow: "🌊 Energy Flow Stream",
-    heatmap: "🔥 Social Interaction Matrix"
+    room: "Seating and room focus",
+    objects: "Who was holding what",
+    scores: "Attention: both models",
+    heatmap: "Shared actions between students"
   };
   $("graphModeLabel").textContent = labels[mode] || mode;
-}
-
-function setFilter(filter, el) {
-  currentGraphFilter = filter;
-  document.querySelectorAll(".filter-pill").forEach(pill => pill.classList.remove("active"));
-  if (el) el.classList.add("active");
+  // Repaint at once. Without this the tab highlights and the picture does
+  // not change until the next socket frame, which on a finished run never
+  // arrives -- so every tab looked broken after a video had been analysed.
+  paintLiveGraph(window.lastStudents || [], window.lastObjects || [],
+                 window.lastPairs || []);
 }
 
 function toggleFullscreenGraph() {
@@ -324,277 +379,352 @@ function toggleFullscreenGraph() {
   }
 }
 
-function showGraphHud(e, title, body) {
-  const hud = $("graphHud");
-  if (!hud) return;
-  $("hudTitle").textContent = title;
-  $("hudBody").innerHTML = body;
-  hud.style.opacity = "1";
-}
+/* The four graph modes.
+ *
+ * Each of these draws a measurement. That is a change: two of them used to
+ * draw every student joined to every object, which is a complete bipartite
+ * graph and carries no information at all -- it put a book beside a student
+ * who never touched one. A third drew a "teacher podium" at a fixed place on
+ * the canvas with a ray from each student to it, although nothing had
+ * measured where the front of the room was or which way anyone faced.
+ *
+ * The pipeline already decides object ownership exclusively, already measures
+ * where the focus of the room is, and already measures where each student
+ * sits. The graphs were not short of data; they were not asking for it.
+ */
 
-function hideGraphHud() {
-  const hud = $("graphHud");
-  if (hud) hud.style.opacity = "0";
-}
-
-const DEMO_STUDENTS = [
-  { id: 1, name: "Aarav", present: true, action: "attentive", attention: 0.94, gaze: "teacher" },
-  { id: 2, name: "Bhavya", present: true, action: "studying", attention: 0.88, gaze: "down" },
-  { id: 3, name: "Chetan", present: true, action: "on_phone", attention: 0.28, gaze: "down" },
-  { id: 4, name: "Divya", present: true, action: "attentive", attention: 0.91, gaze: "teacher" }
-];
-const DEMO_OBJECTS = ["laptop", "book", "cell phone"];
-const DEMO_PAIRS = [{ a: 1, b: 2, frames: 42 }];
-
+/** Draw the scene graph in whichever mode is selected.
+ *
+ * `present` is the students the pipeline currently sees; an empty list draws
+ * an empty graph that says it is empty, rather than the four invented
+ * students this used to fall back on.
+ */
 function paintLiveGraph(students, detectedObjects, pairs) {
   const svg = $("graphCanvas");
   if (!svg) return;
-  let present = (students || []).filter(s => s && s.present);
-  let objects = Array.from(new Set(detectedObjects || []));
-  let pairList = pairs || [];
+  const present = (students || []).filter(s => s && s.present);
+  const objects = Array.from(new Set(detectedObjects || []));
+  const pairList = pairs || [];
 
   if (!present.length) {
-    present = DEMO_STUDENTS;
-    objects = DEMO_OBJECTS;
-    pairList = DEMO_PAIRS;
-  }
-
-  const W = 900, H = 420;
-
-  if (currentGraphMode === "heatmap") {
-    renderInteractionMatrix(svg, present, pairList, W, H);
+    emptyGraph(svg, "No registered student is in frame. "
+      + "The graph fills in as people are recognised.");
     return;
   }
 
-  if (currentGraphMode === "radar") {
-    renderGazeRadar(svg, present, objects, pairList, W, H);
-  } else if (currentGraphMode === "flow") {
-    renderEnergyFlow(svg, present, objects, pairList, W, H);
+  const W = 900, H = 420;
+  if (currentGraphMode === "heatmap") {
+    renderInteractionMatrix(svg, present, pairList, W, H);
+  } else if (currentGraphMode === "scores") {
+    renderScoreCompare(svg, present, objects, pairList, W, H);
+  } else if (currentGraphMode === "objects") {
+    renderObjectLinks(svg, present, objects, pairList, W, H);
   } else {
-    renderNetworkTopology(svg, present, objects, pairList, W, H);
+    renderRoomMap(svg, present, objects, pairList, W, H);
   }
 }
 
-function renderGazeRadar(svg, present, objects, pairs, W, H) {
-  let html = `
-    <defs>
-      <linearGradient id="podiumGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#6366f1"/>
-        <stop offset="100%" stop-color="#06b6d4"/>
-      </linearGradient>
-      <linearGradient id="laserBeam" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#10b981" stop-opacity="0.8"/>
-        <stop offset="100%" stop-color="#34d399" stop-opacity="0.2"/>
-      </linearGradient>
-    </defs>
+/** A student's display name, falling back to their tracked number. */
+function who(s) {
+  return s.name || `Student ${s.id}`;
+}
 
-    <!-- Teacher Podium / Board -->
-    <g transform="translate(450, 45)">
-      <rect x="-140" y="-18" width="280" height="36" rx="10" fill="rgba(99, 102, 241, 0.12)" stroke="url(#podiumGrad)" stroke-width="2"/>
-      <text x="0" y="5" fill="#fff" font-size="13" font-weight="700" text-anchor="middle" font-family="'Outfit', sans-serif">👩‍🏫 Teacher Podium &amp; Screen Target</text>
-    </g>
-  `;
+/** An honest empty state, in place of the placeholder dataset.
+ *
+ * When no student was present the graph used to draw four invented students
+ * -- Aarav, Bhavya, Chetan, Divya -- holding an invented laptop, book and
+ * phone, in the same colours and shapes as a real measurement and with
+ * nothing on screen marking it as fake. That is how objects nobody could see
+ * in the room ended up in the results: the graph was not reporting a
+ * detection, it was reporting its own filler.
+ *
+ * A measurement display with a demo mode is one that sometimes lies, and the
+ * viewer cannot tell which time.
+ */
+function emptyGraph(svg, message) {
+  svg.innerHTML =
+    '<text x="450" y="200" text-anchor="middle" class="graph-empty-title">'
+    + "Nothing to draw yet</text>"
+    + '<text x="450" y="226" text-anchor="middle" class="graph-empty-note">'
+    + escape(message) + "</text>";
+}
 
-  // Spatial Student Desk Positions
-  const cols = Math.min(present.length, 4);
-  const rows = Math.ceil(present.length / cols);
-  
-  present.forEach((s, idx) => {
-    const col = idx % cols;
-    const row = Math.floor(idx / cols);
-    const x = 180 + col * (540 / Math.max(cols - 1, 1));
-    const y = 160 + row * 110;
-    
-    nodePositions[s.id] = { x, y };
+/** Shared SVG preamble: a legend strip along the top of the canvas. */
+function legend(items) {
+  let x = 24;
+  let out = "";
+  for (const item of items) {
+    out += `<circle cx="${x}" cy="18" r="5" fill="${item[0]}"/>`
+         + `<text x="${x + 11}" y="22" class="graph-legend">`
+         + `${escape(item[1])}</text>`;
+    x += 26 + item[1].length * 6.6;
+  }
+  return out;
+}
 
-    const isFocused = focusedStudentId === null || focusedStudentId === s.id;
-    const groupClass = isFocused ? "graph-highlighted" : "graph-dimmed";
+/** Where the students are, and what the room is oriented toward.
+ *
+ * Positions are the measured bounding-box centres, scaled into the canvas,
+ * not a four-column grid in roster order. The focus is the one the pipeline
+ * fitted from the students' shoulder directions; when it could not fit one,
+ * this says so rather than drawing a podium that was never measured.
+ */
+function renderRoomMap(svg, present, objects, pairs, W, H) {
+  const L = window._layout;
+  const pts = present.filter(s => s.cx != null && s.cy != null);
+  if (!pts.length) {
+    emptyGraph(svg, "No student position has been measured yet.");
+    return;
+  }
 
-    // Laser Gaze Ray pointing up to Podium or Target
-    const targetY = 65;
-    const targetX = 450 + (col - (cols - 1) / 2) * 40;
+  // Scale the frame's pixel coordinates into the canvas, with one factor for
+  // both axes so the seating keeps its shape instead of being stretched.
+  const xs = pts.map(s => s.cx).concat(L && L.focus ? [L.focus[0]] : []);
+  const ys = pts.map(s => s.cy).concat(L && L.focus ? [L.focus[1]] : []);
+  const pad = 70;
+  const minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+  const minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+  const k = Math.min((W - 2 * pad) / Math.max(maxX - minX, 1),
+                     (H - 2 * pad - 30) / Math.max(maxY - minY, 1));
+  const X = (v) => pad + (v - minX) * k;
+  const Y = (v) => pad + 30 + (v - minY) * k;
 
-    if (currentGraphFilter === "all" || currentGraphFilter === "gaze") {
-      const laserColor = s.action === "on_phone" || s.action === "eyes_closed" ? "#f43f5e" : "#10b981";
-      html += `
-        <line x1="${x}" y1="${y - 18}" x2="${targetX}" y2="${targetY}" 
-              stroke="${laserColor}" stroke-opacity="${isFocused ? 0.65 : 0.1}" stroke-width="2.5" stroke-dasharray="6 3" class="${groupClass}"/>
-      `;
+  let html = legend([["#4ea36b", "facing the focus"],
+                     ["#d99038", "facing away"],
+                     ["#7d848f", "shoulders not read"]]);
+
+  if (L && L.focus) {
+    const fx = X(L.focus[0]), fy = Y(L.focus[1]);
+    const hue = L.kind === "group" ? "#4ea36b" : "#4a86c9";
+    for (const s of pts) {
+      // The colour is the pipeline's own `oriented` verdict for that student,
+      // not a guess from where they land on the canvas. Grey means the
+      // shoulders could not be read, which is not the same as facing away.
+      const tone = s.oriented === true ? "#4ea36b"
+                 : s.oriented === false ? "#d99038" : "#7d848f";
+      html += `<line x1="${X(s.cx)}" y1="${Y(s.cy)}" x2="${fx}" y2="${fy}" `
+            + `stroke="${tone}" stroke-opacity="0.45" stroke-width="2"/>`;
     }
+    html += `<circle cx="${fx}" cy="${fy}" r="13" fill="none" `
+          + `stroke="${hue}" stroke-width="2.5"/>`
+          + `<line x1="${fx - 19}" y1="${fy}" x2="${fx + 19}" y2="${fy}" `
+          + `stroke="${hue}" stroke-width="2.5"/>`
+          + `<line x1="${fx}" y1="${fy - 19}" x2="${fx}" y2="${fy + 19}" `
+          + `stroke="${hue}" stroke-width="2.5"/>`
+          + `<text x="${fx + 26}" y="${fy + 4}" class="graph-note">`
+          + `room focus (${escape(L.kind)})</text>`;
+  } else {
+    const why = L && L.n < 3
+      ? `Needs 3 people to fit the facing rays and ${L.n} are in frame.`
+      : "The facing directions do not converge on a shared point.";
+    html += `<text x="${W / 2}" y="${H - 18}" text-anchor="middle" `
+          + `class="graph-note">No room focus could be measured. `
+          + `${escape(why)}</text>`;
+  }
 
-    const actColor = ACTION_COLOUR[s.action] || "#10b981";
-    html += `
-      <g transform="translate(${x},${y})" class="${groupClass}" cursor="pointer"
-         onmouseover="focusedStudentId=${s.id}; showGraphHud(event, '${escape(s.name)} (#${s.id})', 'Action: <b>${s.action || "attentive"}</b><br>On-Task: <b>${s.attention != null ? Math.round(s.attention*100) + "%" : "—"}</b>'); paintLiveGraph(window.lastStudents||[], window.lastObjects||[], window.lastPairs||[]);"
-         onmouseout="focusedStudentId=null; hideGraphHud(); paintLiveGraph(window.lastStudents||[], window.lastObjects||[], window.lastPairs||[]);">
-        <!-- Desk -->
-        <rect x="-42" y="-12" width="84" height="42" rx="8" fill="rgba(15, 23, 42, 0.8)" stroke="${actColor}" stroke-width="1.8"/>
-        <!-- Student Avatar Circle -->
-        <circle cx="0" cy="-14" r="16" fill="${actColor}" stroke="#030611" stroke-width="2.5"/>
-        <text x="0" y="-10" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">${s.id}</text>
-        <text x="0" y="16" fill="#f8fafc" font-size="11" font-weight="600" text-anchor="middle" font-family="'Outfit', sans-serif">${escape(s.name)}</text>
-      </g>
-    `;
-  });
-
+  for (const s of pts) {
+    const colour = ACTION_COLOUR[s.action] || "#7d848f";
+    html += `<g transform="translate(${X(s.cx)},${Y(s.cy)})">`
+          + `<circle r="15" fill="${colour}" stroke="#0d0f11" `
+          + `stroke-width="2.5"/>`
+          + `<text y="4" text-anchor="middle" class="graph-id">${s.id}</text>`
+          + `<text y="31" text-anchor="middle" class="graph-name">`
+          + `${escape(who(s))}</text></g>`;
+  }
   svg.innerHTML = html;
 }
 
-function renderNetworkTopology(svg, present, objects, pairs, W, H) {
-  const px = 220, ox = 680;
-  let html = `
-    <defs>
-      <linearGradient id="topoGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#818cf8"/>
-        <stop offset="100%" stop-color="#06b6d4"/>
-      </linearGradient>
-    </defs>
-  `;
+/** Who was holding what, and how sure the detector was.
+ *
+ * One link per student, to the single object the pipeline attributed to THEM.
+ * Ownership is exclusive -- backend.actions.assign_objects gives each object
+ * to the one student whose box contains the largest share of it, because on a
+ * real lecture 35% of detected phones overlapped more than one student box
+ * and crediting all of them inflated "on phone" to 30% of every action.
+ */
+function renderObjectLinks(svg, present, objects, pairs, W, H) {
+  const held = present.filter(s => s.object);
+  if (!held.length) {
+    emptyGraph(svg, present.length === 1
+      ? "No object was attributed to this student in this frame."
+      : "No object was attributed to any student in this frame.");
+    return;
+  }
 
+  const classes = Array.from(new Set(held.map(s => s.object))).sort();
+  const px = 250, ox = 640;
+  const yOf = (i, n) => 70 + (H - 120) * ((i + 0.5) / Math.max(n, 1));
   const py = {}, oy = {};
-  present.forEach((s, i) => { py[s.id] = (H / (present.length + 1)) * (i + 1); });
-  objects.forEach((obj, i) => { oy[obj] = (H / (objects.length + 1)) * (i + 1); });
+  held.forEach((s, i) => { py[s.id] = yOf(i, held.length); });
+  classes.forEach((c, i) => { oy[c] = yOf(i, classes.length); });
 
-  // Draw Shared Action Arcs
-  if (pairs && pairs.length && (currentGraphFilter === "all" || currentGraphFilter === "actions")) {
-    pairs.forEach(p => {
-      if (py[p.a] && py[p.b]) {
-        const midY = (py[p.a] + py[p.b]) / 2;
-        const bend = px - 70;
-        html += `<path d="M${px},${py[p.a]} Q${bend},${midY} ${px},${py[p.b]}" fill="none" stroke="#f97316" stroke-width="2.5" stroke-dasharray="5 4" stroke-opacity="0.8"/>`;
+  let html = legend([["#4a86c9", "detector confident"],
+                     ["#c9a14d", "weak detection"]]);
+
+  for (const s of held) {
+    const conf = s.object_conf == null ? 0 : s.object_conf;
+    const weak = conf < REPORTABLE_OBJECT_CONF;
+    const mid = (px + ox) / 2;
+    const midY = (py[s.id] + oy[s.object]) / 2;
+    html += `<path d="M${px},${py[s.id]} Q${mid},${midY} ${ox},`
+          + `${oy[s.object]}" fill="none" `
+          + `stroke="${weak ? "#c9a14d" : "#4a86c9"}" stroke-width="2.5" `
+          + `${weak ? 'stroke-dasharray="6 4" ' : ""}stroke-opacity="0.75"/>`
+          + `<text x="${mid}" y="${midY - 6}" text-anchor="middle" `
+          + `class="graph-note">${Math.round(conf * 100)}%</text>`;
+  }
+
+  for (const s of held) {
+    html += `<g transform="translate(${px},${py[s.id]})">`
+          + `<circle r="15" fill="${ACTION_COLOUR[s.action] || "#7d848f"}" `
+          + `stroke="#0d0f11" stroke-width="2.5"/>`
+          + `<text y="4" text-anchor="middle" class="graph-id">${s.id}</text>`
+          + `<text x="-24" y="4" text-anchor="end" class="graph-name">`
+          + `${escape(who(s))}</text></g>`;
+  }
+  for (const c of classes) {
+    html += `<g transform="translate(${ox},${oy[c] - 15})">`
+          + `<rect width="160" height="30" rx="8" `
+          + `fill="rgba(74,134,201,.14)" stroke="#4a86c9" `
+          + `stroke-opacity=".5"/>`
+          + `<text x="14" y="20" class="graph-name">${escape(c)}</text></g>`;
+  }
+
+  const quiet = present.length - held.length;
+  if (quiet > 0) {
+    html += `<text x="${W / 2}" y="${H - 14}" text-anchor="middle" `
+          + `class="graph-note">${quiet} student`
+          + `${quiet === 1 ? " was" : "s were"} holding nothing the detector `
+          + "recognised.</text>";
+  }
+  svg.innerHTML = html;
+}
+
+/** Both models' attention scores for each student, side by side.
+ *
+ * The shipping score comes from a logistic model over 21 aggregate features;
+ * the second from the Mamba sequence model reading the same 15-second window
+ * frame by frame in order. Out of fold on 179 hand-labelled windows, grouped
+ * by student, they scored 0.609 and 0.592 -- a gap smaller than 179 labels
+ * can resolve. So neither is shown as the answer, and where they disagree
+ * about a student that disagreement is on screen rather than averaged away.
+ */
+function renderScoreCompare(svg, present, objects, pairs, W, H) {
+  const scored = present.filter(
+    s => s.attention_score != null || s.attention_score_mamba != null);
+  if (!scored.length) {
+    emptyGraph(svg, "No student has been visible for a full 15-second "
+      + "window yet. Both models abstain until then.");
+    return;
+  }
+
+  const left = 160, right = W - 90;
+  const rowH = Math.min(54, (H - 120) / scored.length);
+  const barW = (right - left) / 10;
+  let html = legend([["#4a86c9", "aggregate model (shipping)"],
+                     ["#a862c0", "Mamba sequence model"]]);
+
+  // Gridlines at each second point of the 1-10 scale, so a bar is read off
+  // an axis instead of estimated from its length.
+  for (let v = 0; v <= 10; v += 2) {
+    const x = left + v * barW;
+    html += `<line x1="${x}" y1="56" x2="${x}" `
+          + `y2="${56 + scored.length * rowH}" `
+          + `stroke="rgba(255,255,255,.08)"/>`
+          + `<text x="${x}" y="${72 + scored.length * rowH}" `
+          + `text-anchor="middle" class="graph-note">${v}</text>`;
+  }
+
+  scored.forEach((s, i) => {
+    const y = 62 + i * rowH;
+    const h = Math.min(13, rowH / 3.4);
+    html += `<text x="${left - 12}" y="${y + h + 3}" text-anchor="end" `
+          + `class="graph-name">${escape(who(s))}</text>`;
+    const bars = [["#4a86c9", s.attention_score, "aggregate"],
+                  ["#a862c0", s.attention_score_mamba, "Mamba"]];
+    bars.forEach((bar, k) => {
+      const by = y + k * (h + 3);
+      const score = bar[1];
+      if (score == null) {
+        html += `<text x="${left + 6}" y="${by + h - 1}" class="graph-note">`
+              + `${bar[2]}: no full window yet</text>`;
+        return;
       }
+      html += `<rect x="${left}" y="${by}" width="${score * barW}" `
+            + `height="${h}" rx="3" fill="${bar[0]}"/>`
+            + `<text x="${left + score * barW + 7}" y="${by + h - 1}" `
+            + `class="graph-value">${score}</text>`;
     });
-  }
-
-  // Draw Student to Object Arcs
-  if (currentGraphFilter === "all" || currentGraphFilter === "objects") {
-    present.forEach(s => {
-      objects.forEach(obj => {
-        const midX = (px + ox) / 2;
-        const midY = (py[s.id] + oy[obj]) / 2;
-        html += `<path d="M${px},${py[s.id]} Q${midX},${midY} ${ox},${oy[obj]}" fill="none" stroke="url(#topoGrad)" stroke-width="2" stroke-opacity="0.65"/>`;
-      });
-    });
-  }
-
-  // Render Student Nodes
-  present.forEach(s => {
-    const actColor = ACTION_COLOUR[s.action] || "#10b981";
-    html += `
-      <g transform="translate(${px},${py[s.id]})" cursor="pointer"
-         onmouseover="showGraphHud(event, '${escape(s.name)}', 'Status: ${s.action}')" onmouseout="hideGraphHud()">
-        <circle r="16" fill="${actColor}" stroke="#030611" stroke-width="3"/>
-        <text x="0" y="4" fill="#fff" font-size="11" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">${s.id}</text>
-        <text x="-24" y="4" fill="#f8fafc" font-size="12" font-weight="600" text-anchor="end" font-family="'Outfit', sans-serif">${escape(s.name)}</text>
-      </g>
-    `;
   });
 
-  // Render Object Nodes
-  const objIcons = { laptop: "💻", book: "📖", "cell phone": "📱", keyboard: "⌨️", bottle: "🍾", cup: "☕" };
-  objects.forEach(obj => {
-    const icon = objIcons[obj] || "📦";
-    html += `
-      <g transform="translate(${ox},${oy[obj] - 14})">
-        <rect width="150" height="28" rx="8" fill="rgba(6, 182, 212, 0.15)" stroke="#06b6d4" stroke-opacity="0.5" stroke-width="1.2"/>
-        <text x="12" y="18" fill="#f8fafc" font-size="12" font-weight="600">${icon} ${escape(obj)}</text>
-      </g>
-    `;
-  });
-
+  const gaps = scored.filter(s => s.attention_score != null
+    && s.attention_score_mamba != null
+    && Math.abs(s.attention_score - s.attention_score_mamba) >= 3);
+  html += `<text x="${W / 2}" y="${H - 10}" text-anchor="middle" `
+        + `class="graph-note">`
+        + (gaps.length
+            ? escape("The two models differ by 3 or more points on "
+                + `${gaps.length} of ${scored.length} students. Neither is `
+                + "known to be the better one on this evidence.")
+            : "The two models agree within 2 points on every student.")
+        + "</text>";
   svg.innerHTML = html;
 }
 
-function renderEnergyFlow(svg, present, objects, pairs, W, H) {
-  const px = 220, ox = 680;
-  let html = `
-    <defs>
-      <linearGradient id="flowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#38bdf8"/>
-        <stop offset="100%" stop-color="#818cf8"/>
-      </linearGradient>
-    </defs>
-  `;
-
-  const py = {}, oy = {};
-  present.forEach((s, i) => { py[s.id] = (H / (present.length + 1)) * (i + 1); });
-  objects.forEach((obj, i) => { oy[obj] = (H / (objects.length + 1)) * (i + 1); });
-
-  present.forEach(s => {
-    objects.forEach(obj => {
-      const midX = (px + ox) / 2;
-      const midY = (py[s.id] + oy[obj]) / 2;
-      html += `<path d="M${px},${py[s.id]} Q${midX},${midY} ${ox},${oy[obj]}" fill="none" stroke="url(#flowGrad)" stroke-width="3" class="flow-line"/>`;
-    });
-  });
-
-  present.forEach(s => {
-    const actColor = ACTION_COLOUR[s.action] || "#10b981";
-    html += `
-      <g transform="translate(${px},${py[s.id]})">
-        <circle r="16" fill="${actColor}" stroke="#030611" stroke-width="3"/>
-        <text x="0" y="4" fill="#fff" font-size="11" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">${s.id}</text>
-        <text x="-24" y="4" fill="#f8fafc" font-size="12" font-weight="600" text-anchor="end" font-family="'Outfit', sans-serif">${escape(s.name)}</text>
-      </g>
-    `;
-  });
-
-  const objIcons = { laptop: "💻", book: "📖", "cell phone": "📱", keyboard: "⌨️", bottle: "🍾", cup: "☕" };
-  objects.forEach(obj => {
-    const icon = objIcons[obj] || "📦";
-    html += `
-      <g transform="translate(${ox},${oy[obj] - 14})">
-        <rect width="150" height="28" rx="8" fill="rgba(6, 182, 212, 0.15)" stroke="#06b6d4" stroke-width="1.2"/>
-        <text x="12" y="18" fill="#f8fafc" font-size="12" font-weight="600">${icon} ${escape(obj)}</text>
-      </g>
-    `;
-  });
-
-  svg.innerHTML = html;
-}
-
+/** How often each pair of students was doing the same thing at the same time.
+ *
+ * "attentive" is excluded upstream, because linking everyone watching the
+ * front would bury the pairs that mean something.
+ */
 function renderInteractionMatrix(svg, present, pairs, W, H) {
   if (present.length < 2) {
-    svg.innerHTML = '<text x="450" y="210" fill="var(--muted)" font-size="14" text-anchor="middle" font-family="\'Outfit\', sans-serif">Needs at least 2 present students to calculate pairwise social interaction matrix</text>';
+    emptyGraph(svg, "A shared-action matrix needs at least two students in "
+      + "frame; there " + (present.length === 1 ? "is one." : "are none."));
     return;
   }
 
   const size = Math.min(320 / present.length, 55);
-  const startX = 450 - (present.length * size) / 2;
-  const startY = 80;
-
-  let html = `<g transform="translate(0, 0)">`;
-
-  // Row and Header labels
-  present.forEach((s, i) => {
-    html += `<text x="${startX + i * size + size / 2}" y="${startY - 10}" fill="#a5b4fc" font-size="11" font-weight="700" text-anchor="middle" font-family="'Outfit', sans-serif">${escape(s.name)}</text>`;
-    html += `<text x="${startX - 12}" y="${startY + i * size + size / 2 + 4}" fill="#a5b4fc" font-size="11" font-weight="700" text-anchor="end" font-family="'Outfit', sans-serif">${escape(s.name)}</text>`;
-  });
-
-  const pairLookup = {};
+  const startX = W / 2 - (present.length * size) / 2;
+  const startY = 90;
+  const lookup = {};
   (pairs || []).forEach(p => {
-    pairLookup[`${p.a}_${p.b}`] = p.frames;
-    pairLookup[`${p.b}_${p.a}`] = p.frames;
+    lookup[`${p.a}_${p.b}`] = p.frames;
+    lookup[`${p.b}_${p.a}`] = p.frames;
+  });
+  const counts = Object.keys(lookup).map(k => lookup[k]);
+  const top = Math.max(1, Math.max.apply(null, counts.concat([1])));
+
+  let html = `<text x="${W / 2}" y="26" text-anchor="middle" `
+    + `class="graph-note">Frames in which both students were doing the same `
+    + "thing. Darker is more.</text>";
+
+  present.forEach((s, i) => {
+    html += `<text x="${startX + i * size + size / 2}" y="${startY - 12}" `
+          + `text-anchor="middle" class="graph-name">${escape(who(s))}</text>`
+          + `<text x="${startX - 12}" y="${startY + i * size + size / 2 + 4}" `
+          + `text-anchor="end" class="graph-name">${escape(who(s))}</text>`;
   });
 
-  present.forEach((s1, r) => {
-    present.forEach((s2, c) => {
-      const x = startX + c * size;
-      const y = startY + r * size;
+  present.forEach((a, r) => {
+    present.forEach((b, c) => {
+      const x = startX + c * size, y = startY + r * size;
       if (r === c) {
-        html += `<rect x="${x + 2}" y="${y + 2}" width="${size - 4}" height="${size - 4}" rx="6" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)"/>`;
-      } else {
-        const val = pairLookup[`${s1.id}_${s2.id}`] || 0;
-        const fill = val > 20 ? "rgba(16, 185, 129, 0.5)" : val > 0 ? "rgba(99, 102, 241, 0.35)" : "rgba(15, 23, 42, 0.6)";
-        html += `
-          <rect x="${x + 2}" y="${y + 2}" width="${size - 4}" height="${size - 4}" rx="6" fill="${fill}" stroke="rgba(255,255,255,0.1)"/>
-          <text x="${x + size/2}" y="${y + size/2 + 4}" fill="#fff" font-size="11" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">${val}</text>
-        `;
+        html += `<rect x="${x + 2}" y="${y + 2}" width="${size - 4}" `
+              + `height="${size - 4}" rx="6" fill="rgba(255,255,255,.03)"/>`;
+        return;
       }
+      const v = lookup[`${a.id}_${b.id}`] || 0;
+      // One hue, light to dark, in proportion to the count. The three fixed
+      // colours this replaces gave 1 frame and 19 frames the same shade and
+      // put a hard edge at 20 that nothing in the data corresponds to.
+      html += `<rect x="${x + 2}" y="${y + 2}" width="${size - 4}" `
+            + `height="${size - 4}" rx="6" fill="rgba(74,134,201,`
+            + `${(0.08 + 0.72 * (v / top)).toFixed(2)})" `
+            + `stroke="rgba(255,255,255,.08)"/>`
+            + `<text x="${x + size / 2}" y="${y + size / 2 + 4}" `
+            + `text-anchor="middle" class="graph-value">${v || ""}</text>`;
     });
   });
-
-  html += `</g>`;
   svg.innerHTML = html;
 }
 
@@ -749,14 +879,27 @@ async function showResults(reportUrl) {
     box.innerHTML = '<p class="empty">No student was resolved in this run.</p>';
   } else {
     box.innerHTML = students.map((s) => {
-      const who = s.name || `Student ${s.id}`;
-      const score = s.attention == null ? "—" : `${s.attention}/10`;
+      const name = s.name || `Student ${s.id}`;
+      // Both models, with the number of windows each rests on. They can and
+      // do disagree -- on the recording this was built against one student
+      // came out 1/10 from the aggregate model and 10/10 from Mamba -- and
+      // that is a fact about how little 179 labels settle, not a fault to
+      // hide by picking one.
+      const pair = `<span class="sc" style="color:${
+        scoreColour(s.attention)}">${s.attention == null ? "—"
+        : s.attention}</span><span class="sc-sep">/</span><span class="sc" `
+        + `style="color:${scoreColour(s.attention_mamba)}">${
+        s.attention_mamba == null ? "–" : s.attention_mamba}</span>`;
       const onTask = s.on_task_pct == null
         ? "" : ` · ${Math.round(s.on_task_pct)}% on task`;
       const did = s.top_action ? ` · mostly ${ACTION_LABEL[s.top_action]
         || s.top_action}` : "";
+      const windows = `${s.attention_windows || 0} and ${
+        s.attention_windows_mamba || 0} windows scored`;
       return `<div class="student present">
-          <div class="row"><b>${escape(who)}</b><span>${score}</span></div>
+          <div class="row"><b>${escape(name)}</b><span class="pct"
+            title="aggregate model / Mamba sequence model, each out of 10 · ${
+            windows}">${pair}</span></div>
           <div class="sub">${s.frames || 0} frames${onTask}${did}</div>
         </div>`;
     }).join("");

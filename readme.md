@@ -49,6 +49,14 @@ permutation). The one change that did help was giving the model peer context
 -- what the rest of the room was doing -- which is worth more than any of
 them.
 
+The Mamba scorer now **runs alongside** the shipping model rather than being
+kept in the record only. Both score every window and both numbers reach the
+dashboard and the report, because "statistically tied" is a reason to show
+two answers, not to pick one and present it as the answer. Where they
+disagree about a student, that is on screen. The two share a window, a
+stride, a coverage gate and a 1-10 mapping, so a difference between them is
+always a difference in judgement and never in arithmetic.
+
 ## Where to look
 
 - **[PART1_PLAN.md](PART1_PLAN.md)** — current status: what's delivered, the
@@ -107,5 +115,5 @@ is simply `null`) if the weights aren't present.
 pytest
 ```
 
-236 tests, no ML weights required for most of them (model-backed tests skip
+658 tests, no ML weights required for most of them (model-backed tests skip
 cleanly when a dependency is absent rather than faking a pass).

@@ -66,7 +66,7 @@ step is association, not another threshold.
 | orientation / engagement | **solid** — rests on measured geometry |
 | behaviour model | **conditional** — works at 1080p, fires 3/801 at 640×360 |
 | expression | **weak** — `min_confidence = 0.40` is uncalibrated |
-| gaze label | **weak** — camera-relative; now bypassed for `looking_away`, still used elsewhere |
+| gaze label | **weak** — camera-relative. No longer produces a verdict on its own: with no measured room focus, a turned head now reads `unknown` rather than `looking_away` (it previously produced 991 of 5,761 looking_away frames, and *every* one in a live webcam session, where the focus needs three students and there is one). Still reported as an observation. |
 
 `concentration` remains in the profile alongside `on_task_pct` and
 `engagement_pct` and disagrees with both — one student measures 93.0%, 23.8%

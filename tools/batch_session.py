@@ -39,10 +39,80 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+#: How many consecutive unreadable frames end a clip.
+#:
+#: A single failed read used to end it, and that discarded most of a working
+#: recording. Measured on dataset/high-2636(2191-2347)/view2191.mp4: the
+#: container declares 288 frames, sequential reads stall at frame 16 on an
+#: h264 packet the decoder rejects, and **seeking to frame 17 and carrying on
+#: decodes every one of the remaining 271**. The file is not damaged; one
+#: packet in it is. The pipeline analysed 16 frames of 288, reported the
+#: video as "most likely damaged", and built a results page from 6% of the
+#: recording -- which is the most dangerous kind of failure here, because the
+#: numbers that came out of it looked exactly like numbers from a whole run.
+#:
+#: 30 is a bound rather than a measurement: it has to be large enough to step
+#: over a burst of bad packets and small enough that a file which has genuinely
+#: ended stops within a second instead of seeking to the end of a long video.
+MAX_CONSECUTIVE_BAD_FRAMES = 30
+
 #: Mean absolute pixel difference above which two clips are treated as
 #: belonging to different scenes. Measured on a real split recording:
 #: consecutive boundaries sat at 4.5-5.9, two clips 150 apart at 73.9.
 CONTINUITY_LIMIT = 20.0
+
+
+def iter_frames(capture, declared: int = 0):
+    """Yield ``(index, frame)`` for a clip, stepping over undecodable frames.
+
+    Args:
+        capture: An open ``cv2.VideoCapture``.
+        declared: The container's frame count, when known. Used only as an
+            upper bound on how far recovery will seek, so a file whose count
+            is wrong or missing still terminates.
+
+    Yields:
+        ``(index, frame)`` in order. The index is the real position in the
+        clip, so it stays aligned with the sample-rate stride and with the
+        timestamps derived from it even after a frame has been skipped.
+
+    A failed ``read()`` means "this frame did not decode", not "the video
+    ended". Those are different, and treating them as the same silently
+    truncated a recording to 6% of itself. Recovery seeks one frame past the
+    failure and tries again; only :data:`MAX_CONSECUTIVE_BAD_FRAMES` failures
+    in a row end the clip.
+    """
+    import cv2
+
+    index = 0
+    bad = 0
+    while True:
+        ok, frame = capture.read()
+        if ok:
+            bad = 0
+            yield index, frame
+            index += 1
+            continue
+
+        # A failure at or past the length the container claims is the end of
+        # the file, not a bad packet, so it stops here. Recovering from it
+        # would mean seeking MAX_CONSECUTIVE_BAD_FRAMES times past the end of
+        # every clean video -- 29 wasted seeks per clip, which a test of this
+        # function caught. A container that *under*-reports its length is
+        # unaffected: its reads keep succeeding past `declared` and only the
+        # genuine final failure lands here.
+        if declared > 0 and index >= declared:
+            return
+
+        bad += 1
+        index += 1
+        if bad >= MAX_CONSECUTIVE_BAD_FRAMES:
+            return
+        # Seeking is what makes this work at all: without the seek the
+        # capture stays parked on the packet it could not decode and every
+        # further read fails too.
+        if not capture.set(cv2.CAP_PROP_POS_FRAMES, index):
+            return
 
 #: Colour-histogram correlation below which consecutive SAMPLED frames are
 #: treated as a new scene.
@@ -163,14 +233,10 @@ def plan_scenes(clips, sample_rate):
     hists = []
     for clip in clips:
         capture = cv2.VideoCapture(str(clip))
-        index = 0
-        while True:
-            ok, frame = capture.read()
-            if not ok:
-                break
+        declared = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        for index, frame in iter_frames(capture, declared):
             if index % sample_rate == 0:
                 hists.append(_histogram(frame))
-            index += 1
         capture.release()
     if not hists:
         return []
@@ -235,6 +301,7 @@ def run(args, on_frame=None) -> int:
 
     from backend.actions import annotate_graph
     from backend.attention_score import AttentionScorer, annotate_attention
+    from backend.mamba_score import MambaScorer
     from backend.config import CONFIG
     from backend.enrollment import EnrolledGallery
     from backend.identity import TwoPassIdentityResolver
@@ -328,11 +395,8 @@ def run(args, on_frame=None) -> int:
     with _build_face_analyzer(config) as faces, keyed_path.open("w", encoding="utf-8") as sink:
         for number, clip in enumerate(clips, start=1):
             capture = cv2.VideoCapture(str(clip))
-            index = 0
-            while True:
-                ok, frame = capture.read()
-                if not ok:
-                    break
+            declared = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+            for index, frame in iter_frames(capture, declared):
                 if index % args.sample_rate == 0:
                     planned = plan[frame_id] if frame_id < len(plan) else scene
                     if planned != scene:
@@ -384,7 +448,6 @@ def run(args, on_frame=None) -> int:
                             on_frame(frame, record, kept)
                         except Exception:  # noqa: BLE001
                             logger.exception("preview callback failed")
-                index += 1
             capture.release()
             if number % 10 == 0 or number == len(clips):
                 print(f"  {number}/{len(clips)} clips, {kept} frames, "
@@ -419,6 +482,9 @@ def run(args, on_frame=None) -> int:
     # One scorer for the whole session: it carries each student's
     # rolling window across frames.
     scorer = AttentionScorer()
+    # The sequence model, scored on the same windows. Absent checkpoint ->
+    # available is False and the second score is simply not reported.
+    mamba = MambaScorer()
     graph_path = out / "live_graph.jsonl"
     raw_path = out / "raw.jsonl"
     with (keyed_path.open(encoding="utf-8") as source,
@@ -442,7 +508,7 @@ def run(args, on_frame=None) -> int:
                             generate_scene_graph(record, config)),
                         record),
                     record, config),
-                scorer)
+                scorer, mamba)
             graphs.write(json.dumps(graph) + "\n")
     keyed_path.unlink(missing_ok=True)
 

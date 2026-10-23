@@ -163,7 +163,22 @@ class TestMambaModel:
 
 class TestScoreMapping:
     @pytest.mark.parametrize("prob,expected", [
-        (0.0, 1), (0.05, 1), (0.5, 6), (0.99, 10), (1.0, 10)])
+        (0.0, 1), (0.05, 1), (0.5, 5), (0.99, 10), (1.0, 10)])
     def test_scores_stay_in_range(self, prob, expected):
         """A score outside 1-10 would render as a broken figure in the UI."""
         assert to_score_10(prob) == expected
+
+    def test_the_two_models_share_one_mapping(self):
+        """The expectation at p=0.5 moved from 6 to 5, and that is the point.
+
+        This module floored `p * 10 + 1` while backend.attention_score rounds
+        `p * 9 + 1`, so an identical probability became a 6 from one model and
+        a 5 from the other. The dashboard now shows both scores side by side,
+        where that reads as the two models disagreeing about a student when
+        they agreed exactly and only the arithmetic differed.
+        """
+        from backend.attention_score import to_score_10 as aggregate
+
+        for i in range(0, 101):
+            p = i / 100.0
+            assert to_score_10(p) == aggregate(p)
