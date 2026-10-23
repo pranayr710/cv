@@ -8,12 +8,12 @@ page out of the fragment -- which is the dangerous shape of this bug, because
 nothing downstream can tell a run over 16 frames from a run over 288.
 
 The file was not damaged. Seeking to frame 17 and carrying on decodes every
-one of the remaining frames, which is what :func:`tools.batch_session.iter_frames`
+one of the remaining frames, which is what :func:`tools.run.batch_session.iter_frames`
 now does.
 """
 import pytest
 
-from tools.batch_session import MAX_CONSECUTIVE_BAD_FRAMES, iter_frames
+from tools.run.batch_session import MAX_CONSECUTIVE_BAD_FRAMES, iter_frames
 
 
 class FakeCapture:

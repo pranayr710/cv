@@ -36,7 +36,7 @@ A second consequence, which changes where the pipeline's bottleneck now sits:
 SCRFD finds *more faces than YOLO finds persons* on the same frame (48 vs 30).
 Person detection, not face detection, is now the weaker stage. Faces with no
 containing person box are reported by :func:`FaceDetector.detect` and counted
-by ``tools/bench_faces.py`` rather than silently dropped.
+by ``tools/evaluate/bench_faces.py`` rather than silently dropped.
 
 Usage:
     from backend.face_detect import FaceDetector

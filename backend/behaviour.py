@@ -19,7 +19,7 @@ Trained on two independently-collected datasets
 ------------------------------------------------
 
 877 images / 6091 boxes, merged from this project's own classroom footage plus a
-second, unrelated classroom dataset (see ``tools/merge_behaviour_datasets.py``).
+second, unrelated classroom dataset (see ``tools/data/merge_behaviour_datasets.py``).
 Merging was previously blocked by a label-density conflict and became possible
 once ``look_forward`` was dropped -- see "what it does not report" below. The
 payoff was large, and the out-of-distribution figure is the one that matters:
@@ -200,7 +200,7 @@ class BehaviourClassifier:
         if not weights.is_file():
             raise FileNotFoundError(
                 f"Fine-tuned behaviour weights not found at {weights}. Train "
-                f"them with `python -m tools.train_behaviour` (runs/ is "
+                f"them with `python -m tools.train.train_behaviour` (runs/ is "
                 f"gitignored, so a fresh clone has none). Refusing to fall back "
                 f"to a COCO model, which would report object classes as student "
                 f"behaviour."
@@ -272,7 +272,7 @@ class BehaviourClassifier:
         # containment rather than IoU: this model was trained on tight
         # head+torso boxes while pipeline students are full-body or face-seeded,
         # so IoU under-matches for reasons unrelated to correctness (it rejected
-        # 4 of 11 correct pairs on a real frame -- see tools/eval_detection.py).
+        # 4 of 11 correct pairs on a real frame -- see tools/evaluate/eval_detection.py).
         assigned: dict[int, tuple[str, float]] = {}
         for label, conf, box in sorted(detections, key=lambda d: -d[1]):
             best_idx, best_overlap = -1, -1.0

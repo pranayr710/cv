@@ -100,7 +100,7 @@ contact sheets rather than from counts, as the Phase 1 gate requires.
 
 ## What was run, in order
 
-1. `tools/sweep_identity.py` — first execution ever. **No `match_threshold`
+1. `tools/diagnose/sweep_identity.py` — first execution ever. **No `match_threshold`
    value reaches the ground truth**: best is 11 ids at 0.20, 13 at the shipped
    0.35, 17 at 0.60. Duplicate frames are 0 at every value and no-id is a flat
    6.3%, so the threshold is not the lever.
@@ -111,7 +111,7 @@ contact sheets rather than from counts, as the Phase 1 gate requires.
 3. Quality-gated identity creation (`IdentityConfig.quality_gated_creation`) —
    the untried half of `docs/LITERATURE_REVIEW.md` §2. This is the lever that
    moved the number.
-4. Poster rejection (`tools/reject_static_faces.py`) and the visual audit.
+4. Poster rejection (`tools/diagnose/reject_static_faces.py`) and the visual audit.
 
 ## Verdict table — 10 surviving ids, judged by eye
 
@@ -172,7 +172,7 @@ taken identity as far as this lever goes.
 
 ## Gaze was uncalibrated, and it mattered more than expected
 
-`HeadPoseConfig.yaw_reference_deg` was still 0.0. `tools/calibrate_gaze.py`
+`HeadPoseConfig.yaw_reference_deg` was still 0.0. `tools/data/calibrate_gaze.py`
 measured **+44.1°** for this camera — in line with the +37.4° and +35.5°
 measured on the two others, so an off-centre mount is the norm here, not the
 exception. Before calibration 73.9% of faces read "right" and *every* student's

@@ -57,13 +57,13 @@ any OUC-CGE work.
    one-page rule sheet below.
 3. **Training gate.** Raters first co-code 5 practice intervals, then code
    the real 30 separately. Compute rater1-vs-rater2 agreement with
-   `tools/boss_agreement.py --rater2`. Gate: Cohen's kappa ≥ 0.6, else
+   `tools/evaluate/boss_agreement.py --rater2`. Gate: Cohen's kappa ≥ 0.6, else
    reconcile the rule sheet and repeat. (Published BOSS studies typically
    report higher; 0.6 is this project's stated floor.)
 4. **System extraction.** Run the pipeline over the same segment; pull each
    student's per-interval majority verdict into the system CSV.
    Coverage below ~90% must be reported alongside results — the tool prints it.
-5. **Scoring.** `tools/boss_agreement.py --human rater1.csv --system system.csv`
+5. **Scoring.** `tools/evaluate/boss_agreement.py --human rater1.csv --system system.csv`
    → percent agreement + Cohen's kappa + confusion table.
 
 ### One-page coding rule sheet (for raters)

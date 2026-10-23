@@ -21,7 +21,7 @@ inferring state from orientation. Citing this converts the rule from ad hoc to
 a documented adaptation of an established instrument — with the honest limit,
 stated in :mod:`docs.LITERATURE_REVIEW` section 5, that we have NOT reproduced
 BOSS's validation: no external check against attention, comprehension, or
-outcome data exists for our score yet. :mod:`tools.boss_agreement` plus
+outcome data exists for our score yet. :mod:`tools.evaluate.boss_agreement` plus
 :mod:`docs.BOSS_VALIDATION` define the cheapest such check.
 
 Combines the two signals a live frame actually carries — ``head_pose``'s

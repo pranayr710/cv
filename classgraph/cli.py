@@ -152,13 +152,13 @@ def main() -> int:
     # A table rather than a chain of ifs, so adding a command is one line
     # and the help text above cannot drift from what actually dispatches.
     routes = {
-        "serve": ("tools.server", []),
-        "video": ("tools.batch_session", []),
-        "live": ("tools.live_session", []),
-        "train": ("tools.train_window_model", []),
-        "label": ("tools.improve_model", ["--next", "60"]),
-        "db": ("tools.ingest_session", ["--list"]),
-        "erase": ("tools.erase_person", []),
+        "serve": ("tools.run.server", []),
+        "video": ("tools.run.batch_session", []),
+        "live": ("tools.run.live_session", []),
+        "train": ("tools.train.train_window_model", []),
+        "label": ("tools.train.improve_model", ["--next", "60"]),
+        "db": ("tools.run.ingest_session", ["--list"]),
+        "erase": ("tools.run.erase_person", []),
     }
 
     args, rest = parser.parse_known_args()

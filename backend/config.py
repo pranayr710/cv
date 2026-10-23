@@ -176,7 +176,7 @@ class FaceConfig:
       **whole frame**; Face Mesh then supplies landmarks/EAR per box.
     * ``"mediapipe"`` — the original path: Face Mesh's own internal detector,
       run on each person crop. Kept so the two can be benchmarked against each
-      other (``tools/bench_faces.py``), not because it is competitive.
+      other (``tools/evaluate/bench_faces.py``), not because it is competitive.
 
     Measured on ``dataset/img01.jpg`` (1920x1088 classroom CCTV, ~50 students,
     30 persons found by YOLO):
@@ -403,10 +403,10 @@ class BehaviourConfig:
     is invisible to every downstream signal, so recall wins for detection.
     """
 
-    # Produced by tools/train_behaviour.py. Under runs/ which is gitignored, so
+    # Produced by tools/train/train_behaviour.py. Under runs/ which is gitignored, so
     # a fresh clone must retrain (or be pointed at a copied checkpoint) rather
     # than silently running an untrained model.
-    # Trained by tools/train_behaviour.py on the merged 4-class dataset
+    # Trained by tools/train/train_behaviour.py on the merged 4-class dataset
     # (877 train / 58 val images, 6091 boxes). Early-stopped at epoch 27 of a
     # 60-epoch run, 23 minutes on an RTX 4050.
     #
@@ -462,7 +462,7 @@ class BehaviourConfig:
     # boxes). That decision is now baked into the model itself: both classes
     # were excluded from the merged training set entirely, which also dissolved
     # the label-density conflict that had blocked merging the second dataset
-    # (see tools/merge_behaviour_datasets.py). Nothing left to defer at
+    # (see tools/data/merge_behaviour_datasets.py). Nothing left to defer at
     # inference time; head pose still owns orientation.
     deferred_classes: tuple[str, ...] = ()
 
@@ -471,7 +471,7 @@ class BehaviourConfig:
     # than IoU because the two box conventions differ: this model was trained on
     # tight head+torso annotations while the pipeline's students are full-body
     # or face-seeded boxes. IoU 0.5 rejected 4 of 11 correct pairs on a real
-    # frame -- see tools/eval_detection.py.
+    # frame -- see tools/evaluate/eval_detection.py.
     require_mutual_centre: bool = True
 
 
@@ -847,7 +847,7 @@ class TemporalConfig:
     # in the classroom literature and is long enough that a glance, a stretch
     # or a dropped pen cannot reach it.
     #
-    # tools/sweep_temporal.py measures how the reported numbers move with this
+    # tools/diagnose/sweep_temporal.py measures how the reported numbers move with this
     # value, so the choice can be argued rather than asserted.
     sustained_attention_seconds: float = 20.0
     sustained_interaction_seconds: float = 20.0
@@ -1013,7 +1013,7 @@ class IdentityConfig:
 
     # --- rejecting things that are not students ---------------------------- #
     #
-    # A visual identity audit (tools/audit_identity.py) found the pipeline was
+    # A visual identity audit (tools/diagnose/audit_identity.py) found the pipeline was
     # profiling two WALL POSTERS as students -- printed faces, tracked for 27
     # and 20 sightings, contributing a permanently "attentive, neutral" phantom
     # to every class-level aggregate. Nothing in the pipeline asked whether a
@@ -1128,7 +1128,7 @@ class IdentityConfig:
     # not a quality one.
     min_face_px_to_found: int = 35
 
-    # Path to a registered-face gallery written by tools/register_faces.py.
+    # Path to a registered-face gallery written by tools/run/register_faces.py.
     #
     # None (the default) keeps this project's session-scoped identity property
     # exactly as it has always been: ids are anonymous, invented per video and
@@ -1168,7 +1168,7 @@ class PipelineConfig:
 class ProfileConfig:
     """Per-student profile reporting -- see backend/student_profile.py.
 
-    Exists because a visual identity audit (tools/audit_identity.py) showed the
+    Exists because a visual identity audit (tools/diagnose/audit_identity.py) showed the
     raw profile list was not a student roster. On the audited 5.5-minute video
     it contained 18 entries, of which only ~5-6 were real, correctly-identified
     students; the rest were 1-3 frame detection ghosts and two wall posters.

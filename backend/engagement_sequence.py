@@ -9,7 +9,7 @@ vectors, because the fraction of frames spent looking away is the same in both.
 This module keeps the window as a sequence: one vector per frame, in time
 order, plus a mask marking which timesteps the student was actually visible
 for. Whether that extra information is worth anything is an empirical question
--- see ``tools/train_mamba_scorer.py``, which measures it against the
+-- see ``tools/train/train_mamba_scorer.py``, which measures it against the
 aggregate model on the same labels under the same group-aware split.
 
 The per-frame vector is deliberately the *unaggregated* form of the same

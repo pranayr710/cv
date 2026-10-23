@@ -191,7 +191,7 @@ def _filter_profiles(path: Path, person_ids: set[int]) -> bool:
 
 
 #: Containers an uploaded recording may arrive in. Mirrors VIDEO_SUFFIXES in
-#: tools/server.py.
+#: tools/run/server.py.
 RECORDING_SUFFIXES = (".mp4", ".avi", ".mov", ".mkv", ".webm")
 
 

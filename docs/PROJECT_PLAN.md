@@ -4,7 +4,7 @@
 > through delivery. Per-person scope lives in
 > [WORK_PERSON_A.md](WORK_PERSON_A.md) · [WORK_PERSON_B.md](WORK_PERSON_B.md) ·
 > [WORK_PERSON_C.md](WORK_PERSON_C.md). The narrative behind every number here
-> is in [../CHALLENGES_AND_SOLUTIONS.md](../CHALLENGES_AND_SOLUTIONS.md); the
+> is in [../CHALLENGES_AND_SOLUTIONS.md](CHALLENGES_AND_SOLUTIONS.md); the
 > research behind every open decision is in
 > [LITERATURE_REVIEW.md](LITERATURE_REVIEW.md).
 
@@ -162,7 +162,7 @@ matrix, reported next to human-observer agreement rather than alone.
 
 Full-pipeline run end to end · every claim in the deck re-verified against a
 current measurement · demo video via `render_video.py` · final report · privacy
-section final · deck regenerated from `build_ppt.py`.
+section final · deck regenerated from `ppt/build_ppt.py`.
 
 ---
 
@@ -189,7 +189,7 @@ Two standing rules, both learned the hard way here:
 2. **Render before believing.** A precision/recall of 54%/60% that contradicted
    99% face coverage on the same students turned out to be an
    annotation-convention mismatch, not a real failure. Both matching modes are
-   kept in `tools/eval_detection.py` so the choice stays visible.
+   kept in `tools/evaluate/eval_detection.py` so the choice stays visible.
 
 ---
 

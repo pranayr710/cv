@@ -119,16 +119,16 @@ class TestObjectConfidenceIsCarried:
 
 
 class TestWeakObjectLinksAreNotReported:
-    """tools.report keeps only links that held for long enough."""
+    """tools.run.report keeps only links that held for long enough."""
 
     def test_a_single_frame_link_is_dropped(self):
-        from tools.report import _durable_objects
+        from tools.run.report import _durable_objects
 
         kept = _durable_objects(Counter({(1, "cup"): 1}), Counter({1: 400}))
         assert kept == {}
 
     def test_a_sustained_link_is_kept(self):
-        from tools.report import _durable_objects
+        from tools.run.report import _durable_objects
 
         kept = _durable_objects(Counter({(1, "laptop"): 300}),
                                 Counter({1: 400}))
@@ -138,7 +138,7 @@ class TestWeakObjectLinksAreNotReported:
         """On a five-frame clip, 10% is half a frame. Without the floor a
         single detection would clear the share test and be reported as
         something the student used."""
-        from tools.report import _durable_objects
+        from tools.run.report import _durable_objects
 
         kept = _durable_objects(Counter({(1, "book"): 1}), Counter({1: 5}))
         assert kept == {}
@@ -147,7 +147,7 @@ class TestWeakObjectLinksAreNotReported:
         """A student seen in 20 frames and one seen in 400 are judged against
         their own exposure. Otherwise someone who walked in at the end could
         never be credited with anything they were holding."""
-        from tools.report import _durable_objects
+        from tools.run.report import _durable_objects
 
         kept = _durable_objects(
             Counter({(1, "book"): 8, (2, "book"): 8}),

@@ -1,4 +1,4 @@
-"""Tests for tools.prepare_ouccge (dataset prep + THE split rule).
+"""Tests for tools.data.prepare_ouccge (dataset prep + THE split rule).
 
 Covers, in order:
 1. labels.csv parsing: valid parse; unknown label rejected; duplicate id
@@ -9,15 +9,15 @@ Covers, in order:
 4. Stratification is approximate and reported (all three splits non-empty on
    a reasonable mix).
 5. Manifest writing: schema + sortedness + roundtrip through the evaluator's
-   leakage check (tools.eval_group_activity.load_manifest).
+   leakage check (tools.evaluate.eval_group_activity.load_manifest).
 """
 
 import csv
 
 import pytest
 
-from tools.eval_group_activity import load_manifest as eval_load_manifest
-from tools.prepare_ouccge import (
+from tools.evaluate.eval_group_activity import load_manifest as eval_load_manifest
+from tools.data.prepare_ouccge import (
     VALID_LABELS,
     assign_splits,
     build_manifest,

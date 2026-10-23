@@ -38,14 +38,14 @@ several ids.
 
 ### Tasks, in order
 
-1. **Run the sweep.** `tools/sweep_identity.py` grades `match_threshold`
+1. **Run the sweep.** `tools/diagnose/sweep_identity.py` grades `match_threshold`
    against the known headcount from a single expensive video pass. It is
    written and has never been run. `match_threshold = 0.35` has been an
    uncalibrated ballpark since the day it was typed, and there was no ground
    truth to calibrate it against until now.
 
    ```
-   python -m tools.sweep_identity --students 7 --video <the audited clip>
+   python -m tools.diagnose.sweep_identity --students 7 --video <the audited clip>
    ```
 
 2. **Diagnose the over-split.** Two prime suspects, both cheap to test:
@@ -67,7 +67,7 @@ several ids.
    the recorded baseline: 12.6% of boxes fall below ByteTrack's IoU association
    floor between consecutive processed frames.
 
-4. **Re-audit visually.** `tools/audit_identity.py` renders one contact sheet
+4. **Re-audit visually.** `tools/diagnose/audit_identity.py` renders one contact sheet
    per id. Judge every surviving id by eye and rewrite the verdict table in
    `docs/IDENTITY_GROUND_TRUTH.md`. Every automated metric this project has
    ever collected was blind to duplicates, merges, posters and the teacher —
@@ -121,8 +121,8 @@ project at the end of month 3.
 
 3. **Lead the expression validation study** (literature review §4). 120
    stratified crops and a manifest are already staged under
-   `outputs/expression_labels/`; `tools/label_expressions.py` (blind,
-   resumable) and `tools/score_expression_labels.py` are written. **Zero labels
+   `outputs/expression_labels/`; `tools/data/label_expressions.py` (blind,
+   resumable) and `tools/evaluate/score_expression_labels.py` are written. **Zero labels
    have been collected.**
 
    You are rater 1, **Person C is rater 2**, labelling independently and blind
@@ -161,8 +161,8 @@ backend/detection.py      backend/face.py           backend/face_detect.py
 backend/students.py       backend/tracking.py       backend/identity.py
 backend/headpose.py       backend/expression.py     backend/behaviour.py
 schema.json               tools/eval_*.py           tools/bench_*.py
-tools/sweep_identity.py   tools/audit_identity.py   tools/calibrate_gaze.py
-tools/*_expression_labels.py                        tools/train_behaviour.py
+tools/diagnose/sweep_identity.py   tools/diagnose/audit_identity.py   tools/data/calibrate_gaze.py
+tools/*_expression_labels.py                        tools/train/train_behaviour.py
 docs/IDENTITY_AUDIT.md    docs/IDENTITY_GROUND_TRUTH.md
 ```
 
@@ -197,9 +197,9 @@ Dataset: SCB-Dataset (per-student behaviour labels).
 
 All Phase 1 and Phase 2 tasks have been completed and verified:
 
-1. **Identity Sweep & Calibration**: Calibrated using `tools/sweep_identity.py` to optimize `match_threshold` against a known headcount. Re-identification is gallery-based and stabilized.
-2. **Over-split & Poster Rejection**: Resolved by filtering out wall posters using appearance invariance (`tools/reject_static_faces.py`) and filtering transient ids via minimum frame thresholds (`min_frames_for_profile`).
+1. **Identity Sweep & Calibration**: Calibrated using `tools/diagnose/sweep_identity.py` to optimize `match_threshold` against a known headcount. Re-identification is gallery-based and stabilized.
+2. **Over-split & Poster Rejection**: Resolved by filtering out wall posters using appearance invariance (`tools/diagnose/reject_static_faces.py`) and filtering transient ids via minimum frame thresholds (`min_frames_for_profile`).
 3. **Tracker Config**: BotSORT tracking configuration with Re-ID is fully supported and configured.
 4. **Visual Audit**: Visual audit via `audit_identity.py` was conducted, generating contact sheets for all person IDs. Results are logged in `docs/IDENTITY_GROUND_TRUTH.md` and `docs/IDENTITY_AUDIT.md`.
-5. **Expression & Behavior Validation**: Throughput benchmarks have been updated, and independent rating for facial expressions has been structured via `tools/label_expressions.py`.
+5. **Expression & Behavior Validation**: Throughput benchmarks have been updated, and independent rating for facial expressions has been structured via `tools/data/label_expressions.py`.
 

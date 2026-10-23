@@ -4,7 +4,7 @@
 task 3: "you write the wording, the file owner applies it in their own
 files." Everything below is copy-pasteable. C has already applied the renames
 in every C-owned file (backend/engagement.py, backend/config.py Engagement
-section, backend/reporting.py, tools/render_video.py, tools/dashboard.py,
+section, backend/reporting.py, tools/run/render_video.py, tools/run/dashboard.py,
 PART1_PLAN.md, readme.md).*
 
 ## Ground rules (so owners don't over- or under-apply)
@@ -19,7 +19,7 @@ PART1_PLAN.md, readme.md).*
   separate coordinated change, NOT part of this handoff.
 * **Library/API names** (`HSEmotion`, `EmotiEffLib`), literature references
   ("Barrett et al.", EU AI Act emotion-inference discussion), and mentions of
-  OTHER systems' emotion monitoring (build_ppt.py's China cases) are
+  OTHER systems' emotion monitoring (ppt/build_ppt.py's China cases) are
   **correct as-is — do not change**.
 
 ## Patch list
@@ -78,7 +78,7 @@ prefer a different composition order, change it — but keep both texts.
 * Line 81: `instructor from student, so the teacher receives a concentration score and` →
   `instructor from student, so the teacher receives an on-task proxy score and`
 
-### `tools/apply_gaze_calibration.py`
+### `tools/data/apply_gaze_calibration.py`
 
 * Line 12: `applied, and the "concentration" numbers in that profile were consequently` →
   `applied, and the on-task scores in that profile were consequently`
@@ -86,7 +86,7 @@ prefer a different composition order, change it — but keep both texts.
 ## Explicitly NO-ACTION files (checked, uses are legitimate)
 
 * `backend/expression.py`, `tests/test_expression.py`,
-  `tools/eval_expression_sanity.py`, `tools/prepare_expression_labels.py`,
+  `tools/evaluate/eval_expression_sanity.py`, `tools/data/prepare_expression_labels.py`,
   `requirements.txt` — library names (`HSEmotion`/`EmotiEffLib`) and
   defensive citations only. Also: do NOT touch expression.py during Person
   A's retrain window.
@@ -101,5 +101,5 @@ prefer a different composition order, change it — but keep both texts.
 * `tests/test_attention.py:194` — "gaze aversion during concentration"
   describes the psychological phenomenon in cited literature; referential,
   correct as-is.
-* `build_ppt.py` — all remaining "emotion"/"concentration"-adjacent lines
+* `ppt/build_ppt.py` — all remaining "emotion"/"concentration"-adjacent lines
   describe other systems' surveillance or the ban itself.

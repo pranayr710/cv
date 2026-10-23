@@ -39,7 +39,7 @@ already established in `tools/eval_*.py`: split by source clip and never by
 frame (the existing 481-image set comes from only 11 videos, so a frame-level
 split would inflate every score through near-duplicate memorisation), and make
 the matching mode an explicit visible flag rather than a buried assumption —
-`tools/eval_detection.py` keeps both `--match centre|iou` for exactly that
+`tools/evaluate/eval_detection.py` keeps both `--match centre|iou` for exactly that
 reason, after an annotation-convention mismatch nearly produced a false
 conclusion.
 
@@ -109,7 +109,7 @@ report Cohen's kappa or percent agreement. Half a day.
 
 Person A leads. You label independently and blind — blind to A's labels and to
 the model's prediction, which is what makes the inter-rater agreement mean
-anything. `python -m tools.label_expressions --labeller <your name>`, resumable.
+anything. `python -m tools.data.label_expressions --labeller <your name>`, resumable.
 
 ---
 
@@ -141,8 +141,8 @@ Score it against OUC-CGE group labels using the harness you built in month 3.
 
 ### Final deliverables
 
-Deck (`build_ppt.py` generates it from code — keep it that way), final report,
-and the demo video. `tools/render_video.py` already draws a finished run back
+Deck (`ppt/build_ppt.py` generates it from code — keep it that way), final report,
+and the demo video. `tools/run/render_video.py` already draws a finished run back
 onto its own frames with ids, labels and rejections visible in colour — that is
 the artifact a reviewer watches, and it deliberately renders what the pipeline
 *threw away*, in red, so a viewer can disagree with it.
@@ -153,8 +153,8 @@ the artifact a reviewer watches, and it deliberately renders what the pipeline
 
 ```
 backend/group_activity.py  (new)    backend/engagement.py
-the dashboard / reporting layer     tools/eval_engagement.py
-tools/render_video.py               build_ppt.py    verify_ppt.py
+the dashboard / reporting layer     tools/evaluate/eval_engagement.py
+tools/run/render_video.py           ppt/build_ppt.py   ppt/verify_ppt.py
 readme.md   PART1_PLAN.md   CHALLENGES_AND_SOLUTIONS.md
 docs/LITERATURE_REVIEW.md           the final report
 ```

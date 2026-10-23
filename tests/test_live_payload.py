@@ -15,7 +15,7 @@ from collections import Counter, defaultdict, deque
 
 import pytest
 
-from tools.server import REPORTABLE_OBJECT_CONF, Session
+from tools.run.server import REPORTABLE_OBJECT_CONF, Session
 
 
 @pytest.fixture

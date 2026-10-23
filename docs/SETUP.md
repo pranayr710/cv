@@ -25,24 +25,24 @@ Use the project's own interpreter. The system Python has no torch.
 
 ```bat
 cd c:\Users\prana\Desktop\sem5\projects\vision
-.venv\Scripts\python.exe -m tools.server
+.venv\Scripts\python.exe -m tools.run.server
 ```
 
 Tool defaults now resolve without arguments, because the data sits beside the
 code:
 
 ```bat
-.venv\Scripts\python.exe -m tools.sweep_identity --students 7
-.venv\Scripts\python.exe -m tools.bench_pipeline
-.venv\Scripts\python.exe -m tools.batch_session --dir dataset\lecture_2636 --limit 60
+.venv\Scripts\python.exe -m tools.diagnose.sweep_identity --students 7
+.venv\Scripts\python.exe -m tools.evaluate.bench_pipeline
+.venv\Scripts\python.exe -m tools.run.batch_session --dir dataset\lecture_2636 --limit 60
 ```
 
 ## The three things you actually run
 
 | What | Command |
 |---|---|
-| Live demo | `.venv\Scripts\python.exe -m tools.server` then open http://127.0.0.1:8000 |
-| Offline session | `.venv\Scripts\python.exe -m tools.batch_session --dir dataset\lecture_2636 --limit 60 --out outputs\session` |
+| Live demo | `.venv\Scripts\python.exe -m tools.run.server` then open http://127.0.0.1:8000 |
+| Offline session | `.venv\Scripts\python.exe -m tools.run.batch_session --dir dataset\lecture_2636 --limit 60 --out outputs\session` |
 | Tests | `.venv\Scripts\python.exe -m pytest -q` |
 
 ## Fresh clone
@@ -55,7 +55,7 @@ A clone is **not** self-contained. After cloning you need:
 2. **Footage** — `dataset/` is gitignored. Copy it from a machine that has it.
 3. **Behaviour weights** — `runs/behaviour/merged4_aug/weights/best.pt`.
    Regenerate with
-   `python -m tools.train_behaviour --data dataset/behaviour_merged/data.yaml --imgsz 640`
+   `python -m tools.train.train_behaviour --data dataset/behaviour_merged/data.yaml --imgsz 640`
    (about 23 minutes on an RTX 4050). Train at 640: 960 with batch 8 wants
    9 GB on a 6.4 GB card, spills to system memory and takes 18 hours.
 

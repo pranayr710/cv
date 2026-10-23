@@ -18,7 +18,7 @@ import json
 import pytest
 
 from backend.erasure import _recordings_in, erase
-from tools.server import KEEP_RECENT_UPLOADS, prune_uploads
+from tools.run.server import KEEP_RECENT_UPLOADS, prune_uploads
 
 
 def _upload(uploads, name, when):
@@ -55,7 +55,7 @@ class TestRecordingsAreNotKeptForever:
         assert (uploads / "only").exists()
 
     def test_some_are_kept_on_purpose(self):
-        """Not zero: tools/export_faces_to_enrol.py needs the source video to
+        """Not zero: tools/run/export_faces_to_enrol.py needs the source video to
         pull face crops, and that is the obvious next step after a run."""
         assert KEEP_RECENT_UPLOADS >= 1
 

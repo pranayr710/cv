@@ -117,7 +117,7 @@ it is listed as open work, not claimed as done.
 
 * **Access control now:** reports are generated to local files; there is no
   multi-user surface to harden. The intended consumer model is teacher-only:
-  class-level dashboards first (`tools/dashboard.py` defaults to aggregated,
+  class-level dashboards first (`tools/run/dashboard.py` defaults to aggregated,
   class-level trends), individual drill-down only behind an explicit
   `--per-student <id>` request — a deliberate act, not a browsing default,
   so individual views are countable and attributable.

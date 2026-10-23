@@ -23,7 +23,7 @@ learned version worse than the rules it replaces even at higher accuracy:
 * **It is a linear model over interpretable features.** With a few hundred
   labelled windows, anything heavier fits the raters rather than the task.
 
-The model is trained by ``tools/train_window_model.py`` and loaded from a JSON
+The model is trained by ``tools/train/train_window_model.py`` and loaded from a JSON
 file -- coefficients, not a pickle, so the artifact is readable, diffable, and
 carries no import-time code.
 """
@@ -213,7 +213,7 @@ class MLPEngagementModel(EngagementModel):
     the model happened to suit, and this is the opposite.
 
     The gain is real but small, and 179 labels cannot separate close candidates
-    with confidence. Re-run tools/compare_classifiers.py after each round of
+    with confidence. Re-run tools/evaluate/compare_classifiers.py after each round of
     labelling; if logistic regression catches up, prefer it, because a linear
     model's explanation is exact rather than approximate.
 
@@ -305,7 +305,7 @@ def load_or_none(path: Path | None = None) -> EngagementModel | None:
 
         logging.getLogger(__name__).warning(
             "ignoring %s: trained on %d features %s, current set has %d. "
-            "Retrain with tools/train_window_model.py.",
+            "Retrain with tools/train/train_window_model.py.",
             path or DEFAULT_MODEL, len(model.feature_names),
             "that differ from the current ones", len(FEATURE_NAMES))
         return None

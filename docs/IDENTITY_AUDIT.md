@@ -1,6 +1,6 @@
 # Identity audit — visual verification of `person_id` correctness
 
-Method: `tools/audit_identity.py` renders one contact sheet per `person_id`,
+Method: `tools/diagnose/audit_identity.py` renders one contact sheet per `person_id`,
 sampling face crops evenly across that id's whole lifetime, then each sheet is
 judged by eye. Source: `outputs/wa_full_video.jsonl` (full 5.5-min WhatsApp
 video, 331 frames at 1 fps).

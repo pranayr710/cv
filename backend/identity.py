@@ -716,7 +716,7 @@ def appearance_invariance(crops: Sequence[np.ndarray]) -> float | None:
     and lighting.
 
     This exists because a visual identity audit
-    (``tools/audit_identity.py``) found the pipeline profiling two wall posters
+    (``tools/diagnose/audit_identity.py``) found the pipeline profiling two wall posters
     as students -- tracked for 27 and 20 sightings, each contributing a
     permanently "attentive, neutral" phantom to every class-level aggregate.
     Nothing asked whether a face ever changed, because to a face detector a

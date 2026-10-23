@@ -10,15 +10,15 @@ error unless a console is open. None is visible in a diff.
 """
 from pathlib import Path
 
-from tools.check_js_strings import (
+from tools.diagnose.check_js_strings import (
     broken_strings,
     code_only,
     missing_handlers,
     undefined_calls,
 )
 
-APP = Path("tools/static/app.js")
-HTML = Path("tools/static/index.html")
+APP = Path("tools/run/static/app.js")
+HTML = Path("tools/run/static/index.html")
 
 
 class TestAStringSpanningALine:

@@ -1,8 +1,8 @@
 # OUC-CGE: Acquisition & Preparation Status
 
 *Owner: Person C (month-3 tasks 1–2). Companion tooling:
-`tools/prepare_ouccge.py` (this doc's commands), evaluation via
-`tools/eval_group_activity.py`.*
+`tools/data/prepare_ouccge.py` (this doc's commands), evaluation via
+`tools/evaluate/eval_group_activity.py`.*
 
 ## What OUC-CGE is and why it is the right external check
 
@@ -21,9 +21,9 @@ self-fulfilling artifact instead of an external check.
 | Dataset identified, licence + permanence verified | ✅ |
 | Download executed | ❌ **pending** (~13h of video; not fetched during this work session) |
 | `labels.csv` obtained from archive metadata | ❌ pending download |
-| Preparation script (`tools/prepare_ouccge.py`) | ✅ written against published layout; **layout assumption flagged in its docstring — run `--verify-only` first** |
+| Preparation script (`tools/data/prepare_ouccge.py`) | ✅ written against published layout; **layout assumption flagged in its docstring — run `--verify-only` first** |
 | Split definition (by source video/clip) | ✅ implemented + unit-tested; enforced again at eval time |
-| Evaluation harness | ✅ `tools/eval_group_activity.py`, unit-tested |
+| Evaluation harness | ✅ `tools/evaluate/eval_group_activity.py`, unit-tested |
 | Any measured number | ❌ **none exists yet** — none may be quoted until rows above close |
 
 ## Runbook
@@ -33,13 +33,13 @@ self-fulfilling artifact instead of an external check.
 #    (osfclient or browser; keep the DOI in the final report's references)
 
 # 2) place/verify the label sheet, then integrity-check BEFORE anything else:
-python -m tools.prepare_ouccge --root data/OUC-CGE --verify-only
+python -m tools.data.prepare_ouccge --root data/OUC-CGE --verify-only
 
 # 3) build splits + manifest:
-python -m tools.prepare_ouccge --root data/OUC-CGE --out data/OUC-CGE/prepared
+python -m tools.data.prepare_ouccge --root data/OUC-CGE --out data/OUC-CGE/prepared
 
 # 4) later, once backend/group_activity.py has a trained model_fn:
-python -m tools.eval_group_activity \
+python -m tools.evaluate.eval_group_activity \
     --manifest data/OUC-CGE/prepared/manifest.csv \
     --predictions outputs/group_predictions.jsonl \
     --split test --abstain exclude --human-agreement <kappa from BOSS study>

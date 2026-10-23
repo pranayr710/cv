@@ -1,4 +1,4 @@
-"""Tests for tools.eval_group_activity metrics (the audited metric source).
+"""Tests for tools.evaluate.eval_group_activity metrics (the audited metric source).
 
 Covers:
 1. Wilson CI bounds stay in [0,1] and bracket the point estimate, including
@@ -10,7 +10,7 @@ Covers:
 
 import pytest
 
-from tools.eval_group_activity import evaluate, wilson_ci
+from tools.evaluate.eval_group_activity import evaluate, wilson_ci
 
 
 def pair(label, truth):

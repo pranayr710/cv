@@ -75,7 +75,7 @@ matched against a global reference, which cannot be right for every seat.
 
 It is now marked `superseded_by: [on_task_pct, engagement_pct]` rather than
 deleted. Deleting it is a **cross-owner change**: `backend/reporting.py` and
-`tools/dashboard.py` read it, and both belong to Person C. That needs their
+`tools/run/dashboard.py` read it, and both belong to Person C. That needs their
 agreement, not a unilateral removal.
 
 ### 2.3 Constants that are still asserted

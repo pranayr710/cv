@@ -8,7 +8,7 @@ and docs/PRIVACY_ETHICS.md), so a caller has to work to violate them:
    students; there is no parameter that quietly narrows it to one person.
 2. DRILL-DOWN IS EXPLICIT. Per-student output exists only in
    :func:`student_trajectory`, which requires a ``student_id`` argument.
-   The CLI (``tools/dashboard.py``) exposes it only behind ``--per-student``.
+   The CLI (``tools/run/dashboard.py``) exposes it only behind ``--per-student``.
 3. TRAJECTORIES, NOT SNAPSHOTS. Everything is returned as time-bucketed
    series. A single-number "current class engagement: 73%" is exactly the
    misreadable artifact this project refuses to produce.
@@ -277,6 +277,6 @@ def render_html(buckets: Sequence[TrendBucket], title: str = "ClassGraph — cla
 {table_rows}
 </table>
 <p>Individual students are intentionally absent from this page. Drill-down
-requires an explicit request (see <code>tools/dashboard.py --per-student</code>)
+requires an explicit request (see <code>tools/run/dashboard.py --per-student</code>)
 and is logged like any other access.</p>
 </body></html>"""

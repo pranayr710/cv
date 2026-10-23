@@ -231,7 +231,7 @@ def test_malformed_frame_is_rejected(frame) -> None:
 def test_missing_weights_fails_loudly() -> None:
     """A silent COCO fallback would report object classes as student behaviour."""
     cfg = replace(BehaviourConfig(), weights="runs/does/not/exist.pt")
-    with pytest.raises(FileNotFoundError, match="tools.train_behaviour"):
+    with pytest.raises(FileNotFoundError, match="tools.train.train_behaviour"):
         BehaviourClassifier(cfg)
 
 

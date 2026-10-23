@@ -15,7 +15,7 @@ import json
 
 import pytest
 
-from tools.server import VideoJob
+from tools.run.server import VideoJob
 
 
 @pytest.fixture

@@ -25,7 +25,7 @@ classgraph video --dir <folder of clips>       # process recorded footage
 classgraph train                               # refit the attention model
 ```
 
-**[DEPLOYMENT.md](DEPLOYMENT.md)** covers installing on a machine that is not
+**[DEPLOYMENT.md](docs/DEPLOYMENT.md)** covers installing on a machine that is not
 this one: model weights, Docker, privacy obligations, the known limits, and
 the failures worth recognising on sight.
 
@@ -57,12 +57,31 @@ disagree about a student, that is on screen. The two share a window, a
 stride, a coverage gate and a 1-10 mapping, so a difference between them is
 always a difference in judgement and never in arithmetic.
 
+## Layout
+
+```
+backend/      the pipeline: detection, identity, actions, attention scoring
+tools/        78 scripts, grouped by what you would open one for -- see tools/README.md
+  run/          what you run to use the system (server, batch, report, enrol)
+  train/        fitting the models and the improvement loop
+  evaluate/     measuring against ground truth
+  diagnose/     one-off investigations; each answers a question
+  data/         building and maintaining the label and image sets
+  assets/       images and charts for the decks
+classgraph/   the installed CLI (`classgraph serve`, `classgraph video`, ...)
+tests/        699 tests
+docs/         plans, literature review, privacy, per-person work split
+ppt/          deck builders; the decks themselves are written to the root
+schema.json   the frozen per-frame output contract
+graph_schema.json  the scene-graph contract
+```
+
 ## Where to look
 
-- **[PART1_PLAN.md](PART1_PLAN.md)** — current status: what's delivered, the
+- **[PART1_PLAN.md](docs/PART1_PLAN.md)** — current status: what's delivered, the
   headline numbers, the decisions made and why, and the limitations stated
   plainly rather than hidden. Read this first.
-- **[CHALLENGES_AND_SOLUTIONS.md](CHALLENGES_AND_SOLUTIONS.md)** — the full
+- **[CHALLENGES_AND_SOLUTIONS.md](docs/CHALLENGES_AND_SOLUTIONS.md)** — the full
   narrative log: every bug found, how it was verified (not assumed), and the
   measurement behind every number in this project.
 - **[schema.json](schema.json)** — the frozen per-frame output contract.
@@ -70,7 +89,7 @@ always a difference in judgement and never in arithmetic.
   [Person A](docs/WORK_PERSON_A.md) (Perception & Identity, stages 1–2),
   [Person B](docs/WORK_PERSON_B.md) (Relations & Time, stages 3–4),
   [Person C](docs/WORK_PERSON_C.md) (Group Activity & Reporting, stage 5).
-- **[HANDOFF.md](HANDOFF.md)** — a dated (2026-08-07) point-in-time snapshot
+- **[HANDOFF.md](docs/HANDOFF.md)** — a dated (2026-08-07) point-in-time snapshot
   for bringing a new session up to speed on Week 1 state. Historical; see
   PART1_PLAN.md for current state instead.
 
@@ -82,13 +101,13 @@ download); every piece states its own honest status:
 - `backend/group_activity.py` — ARG-style relation graph + GCN readout for
   clip-level engagement (high/medium/low), abstention-first. Untrained and
   unvalidated by design until its inputs exist.
-- `backend/reporting.py` + `tools/dashboard.py` — O6 reporting: class-level
+- `backend/reporting.py` + `tools/run/dashboard.py` — O6 reporting: class-level
   trends by default, per-student drill-down only behind an explicit
   `--per-student` flag, gaps rendered rather than smoothed over.
-- `tools/prepare_ouccge.py` / `tools/eval_group_activity.py` — external
+- `tools/data/prepare_ouccge.py` / `tools/evaluate/eval_group_activity.py` — external
   evaluation set preparation + harness (splits grouped by source recording;
   see [docs/OUC_CGE_PREP.md](docs/OUC_CGE_PREP.md)).
-- `tools/boss_agreement.py` + [docs/BOSS_VALIDATION.md](docs/BOSS_VALIDATION.md)
+- `tools/evaluate/boss_agreement.py` + [docs/BOSS_VALIDATION.md](docs/BOSS_VALIDATION.md)
   — Cohen's kappa between blind human BOSS coding and system verdicts.
 - [docs/PRIVACY_ETHICS.md](docs/PRIVACY_ETHICS.md) — framing vs EU AI Act
   Art 5(1)(f), India DPDP retention policy, anonymisation evidence, access
@@ -106,7 +125,7 @@ python -m backend.integrate --video path/to/video.mp4 --out outputs/stage1.jsonl
 
 Output is one JSON object per processed frame, matching `schema.json`.
 Per-student behaviour classification additionally requires a fine-tuned model
-(`python -m tools.train_behaviour`) — the pipeline runs without it (that field
+(`python -m tools.train.train_behaviour`) — the pipeline runs without it (that field
 is simply `null`) if the weights aren't present.
 
 ## Tests

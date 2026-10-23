@@ -13,7 +13,7 @@ box (padded by :data:`FaceConfig.scrfd_landmark_padding`) purely to fit
 landmarks and compute EAR. Face Mesh's own detector is bypassed entirely.
 
 **``"mediapipe"``.** The original path, kept only so the two can be compared
-(``tools/bench_faces.py``): one Face Mesh inference per **person crop**, using
+(``tools/evaluate/bench_faces.py``): one Face Mesh inference per **person crop**, using
 Face Mesh's internal BlazeFace detector.
 
 Why the default changed, measured on ``dataset/img01.jpg`` (1920x1088 classroom
@@ -52,7 +52,7 @@ Assignment
 * SCRFD now finds *more faces than YOLO finds persons* (48 vs 30 on img01), so
   some detected faces have no containing person box and are dropped by
   assignment. That is a **person-detection** shortfall, not a face one; it is
-  counted and reported by ``tools/bench_faces.py`` rather than hidden.
+  counted and reported by ``tools/evaluate/bench_faces.py`` rather than hidden.
 
 This module does not compute head pose (Person C) or track identities
 (Stage 2). Landmarks are the canonical 468 mesh points; the 10 iris points that

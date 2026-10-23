@@ -33,7 +33,7 @@ from backend.engagement_sequence import (
     sequence_for_window,
 )
 
-#: Where ``tools/train_mamba_scorer.py`` leaves its trained weights.
+#: Where ``tools/train/train_mamba_scorer.py`` leaves its trained weights.
 DEFAULT_MODEL = Path("outputs/mamba_attention_model.pt")
 
 #: Below this share of the 48 grid slots filled with real frames, the window

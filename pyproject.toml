@@ -51,18 +51,32 @@ dev = ["pytest>=8.0", "ruff>=0.4"]
 # One command per thing a user actually wants to do. Each maps to a main()
 # that already existed; no new entry-point logic.
 classgraph = "classgraph.cli:main"
-classgraph-server = "tools.server:main"
-classgraph-batch = "tools.batch_session:main"
+classgraph-server = "tools.run.server:main"
+classgraph-batch = "tools.run.batch_session:main"
 
 [project.urls]
 Repository = "https://github.com/pranayr710/cv"
 
 [tool.setuptools]
-packages = ["backend", "tools", "classgraph"]
+# Listed explicitly rather than discovered, so adding a directory under
+# tools/ is a deliberate act. The six subpackages group the tools by what
+# they are for; see each one's __init__.py.
+packages = [
+    "backend",
+    "classgraph",
+    "tools",
+    "tools.run",
+    "tools.train",
+    "tools.evaluate",
+    "tools.diagnose",
+    "tools.data",
+    "tools.assets",
+]
 include-package-data = true
 
 [tool.setuptools.package-data]
-"tools" = ["static/*", "static/**/*"]
+# The dashboard's HTML and JS live beside the server that serves them.
+"tools.run" = ["static/*", "static/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -72,7 +86,7 @@ filterwarnings = ["ignore::DeprecationWarning"]
 line-length = 88
 target-version = "py310"
 # The deck builders are one-off scripts, not shipped code.
-extend-exclude = ["build_*.py", "verify_ppt.py", ".venv"]
+extend-exclude = ["ppt/*", ".venv"]
 
 [tool.ruff.lint]
 # Ruff's default selection, which is what this codebase was written against
@@ -85,9 +99,9 @@ extend-exclude = ["build_*.py", "verify_ppt.py", ".venv"]
 select = ["E4", "E7", "E9", "F"]
 
 [tool.ruff.lint.per-file-ignores]
-# Every tool begins with sys.path.insert so it runs both as `python tools/x.py`
-# and as `python -m tools.x`. The backend imports that follow are therefore
-# below code by necessity, not by accident.
-"tools/*" = ["E402"]
+# Every tool begins with sys.path.insert so it runs both as
+# `python tools/<group>/x.py` and as `python -m tools.<group>.x`. The backend
+# imports that follow are therefore below code by necessity, not by accident.
+"tools/**" = ["E402"]
 "tests/*" = ["E402", "E702"]
 "classgraph/*" = ["E402"]

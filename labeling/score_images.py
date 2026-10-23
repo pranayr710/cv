@@ -120,7 +120,7 @@ def main() -> int:
     args = ap.parse_args()
 
     if not MANIFEST.exists():
-        print(f"{MANIFEST} not found. Run tools/sample_calibration_set.py "
+        print(f"{MANIFEST} not found. Run tools/data/sample_calibration_set.py "
               "first.")
         return 1
 

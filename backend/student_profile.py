@@ -387,7 +387,7 @@ def build_profiles(
     behaviour_reliability: dict[int, set[str]] = defaultdict(set)
     engagement_verdicts: dict[int, list[str | None]] = defaultdict(list)
     off_task_evidence: dict[int, bool] = defaultdict(bool)
-    # Set by tools/reject_static_faces.py when an identity was measured to
+    # Set by tools/diagnose/reject_static_faces.py when an identity was measured to
     # be a printed face (wall poster) rather than a student.
     is_poster: dict[int, bool] = defaultdict(bool)
     # Signals the graph already carries. Previously unreachable here, because
@@ -615,7 +615,7 @@ def build_profiles(
             "expression": _tally(expression_labels[person_id]),
             "behaviour": behaviour_summary,
             # SUPERSEDED by on_task_pct and engagement_pct, and kept only
-            # because backend/reporting.py and tools/dashboard.py still read
+            # because backend/reporting.py and tools/run/dashboard.py still read
             # it. It disagrees with both -- it can only reach "on task" through
             # a gaze label matched against a global reference, which cannot be
             # right for every seat, so on real footage it reported 0% for

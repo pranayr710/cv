@@ -201,7 +201,7 @@ def test_missing_file_raises() -> None:
 # --------------------------------------------------------------------------- #
 # Rejecting entries that are not students.
 #
-# A visual identity audit (tools/audit_identity.py) found the raw profile list
+# A visual identity audit (tools/diagnose/audit_identity.py) found the raw profile list
 # was not a student roster: of 18 entries on real footage, 5 were 1-2 frame
 # detection ghosts and 2 were wall posters tracked for 27 and 20 sightings.
 # --------------------------------------------------------------------------- #

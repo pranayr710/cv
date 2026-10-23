@@ -4,7 +4,7 @@ Why this module exists
 ----------------------
 
 Measured across the 13 real classroom images in ``dataset/`` (see
-``tools/bench_faces.py`` and ``tools/bench_persons.py``):
+``tools/evaluate/bench_faces.py`` and ``tools/evaluate/bench_persons.py``):
 
 =========================================  ========
 Signal                                     Count

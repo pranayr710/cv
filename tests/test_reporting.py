@@ -190,7 +190,7 @@ class TestReportIsActuallyBuilt:
         return folder, gallery
 
     def test_a_report_is_produced(self, tmp_path):
-        from tools.report import build
+        from tools.run.report import build
 
         folder, gallery = self._session(tmp_path)
         path = build(folder, gallery, title="Test session")
@@ -203,7 +203,7 @@ class TestReportIsActuallyBuilt:
         Unescaped, it is stored XSS running in the teacher's browser on the
         same origin as every API route.
         """
-        from tools.report import build
+        from tools.run.report import build
 
         folder, gallery = self._session(
             tmp_path, name="<img src=x onerror=alert(1)>")
@@ -228,7 +228,7 @@ class TestNamesAreNotPastedOntoStrangers:
         import numpy as np
 
         from backend.enrollment import EnrolledGallery
-        from tools import batch_session
+        from tools.run import batch_session
 
         gallery_path = tmp_path / "gallery.json"
         gallery = EnrolledGallery()
@@ -256,7 +256,7 @@ class TestNamesAreNotPastedOntoStrangers:
                 }) + "\n")
 
         from backend.student_profile import build_profiles
-        from tools.report import build
+        from tools.run.report import build
 
         profiles = build_profiles(out / "live_graph.jsonl", None)
         (out / "live_profiles.json").write_text(

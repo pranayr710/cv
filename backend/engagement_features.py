@@ -126,7 +126,7 @@ BASE_FEATURE_NAMES: tuple[str, ...] = (
 #: *and* standard deviation of head pose and gaze per clip.
 #:
 #: Twelve candidates were implemented and measured one at a time against the
-#: same baseline over eight seeds (tools/try_features.py). These three were
+#: same baseline over eight seeds (tools/diagnose/try_features.py). These three were
 #: the only ones positive on both the full label set and the 82 labels
 #: confirmed on two passes:
 #:

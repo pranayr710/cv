@@ -61,7 +61,7 @@ Western-skewed in-the-wild data. Accuracy on South Asian classroom faces is
 :mod:`backend.fairness_audit`. The audit harness there should be pointed at this
 model once labelled data exists. Until then, no accuracy claim is made here.
 
-Two public sanity checks exist (``tools/eval_expression_sanity.py``), and
+Two public sanity checks exist (``tools/evaluate/eval_expression_sanity.py``), and
 comparing them is itself informative:
 
 ==========================================  ========  ==========  ==========

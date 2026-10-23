@@ -423,7 +423,7 @@ def _build_behaviour_classifier(config: Config) -> BehaviourClassifier | None:
     """Construct the behaviour classifier, or ``None`` if it is unavailable.
 
     Unlike the other components this one is **optional**: its weights are
-    produced by ``tools/train_behaviour.py`` and live under gitignored
+    produced by ``tools/train/train_behaviour.py`` and live under gitignored
     ``runs/``, so a fresh clone has none. The pipeline stays fully usable
     without it (``behaviour`` is simply ``null`` in the output) rather than
     refusing to run, but the absence is logged rather than passing silently --
@@ -549,7 +549,7 @@ def process_video(
                 logger.warning(
                     "gallery_path=%s holds no registered people; identity falls "
                     "back to anonymous per-video ids. Register someone with "
-                    "tools/register_faces.py first.",
+                    "tools/run/register_faces.py first.",
                     config.identity.gallery_path,
                 )
                 from backend.identity import TwoPassIdentityResolver

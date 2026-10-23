@@ -22,7 +22,7 @@ something else before deduplication, so the effective sample is far smaller
 than the count suggests. This is built at a few hundred thousand parameters,
 and whether even that is too many is measured rather than assumed -- the
 comparison against frozen ResNet18 features is in
-``tools/train_vision_mamba.py``.
+``tools/train/train_vision_mamba.py``.
 """
 from __future__ import annotations
 

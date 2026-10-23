@@ -1,4 +1,4 @@
-"""Tests for tools.boss_agreement (Cohen's kappa + coverage discipline).
+"""Tests for tools.evaluate.boss_agreement (Cohen's kappa + coverage discipline).
 
 Covers:
 1. Kappa math against a hand-computed example.
@@ -10,7 +10,7 @@ Covers:
 
 import pytest
 
-from tools.boss_agreement import Row, cohen_kappa, compare, load_rows
+from tools.evaluate.boss_agreement import Row, cohen_kappa, compare, load_rows
 
 # --- 1. hand-computed example ---------------------------------------------------
 # a = on,on,off,unknown,on ; b = on,off,off,unknown,on

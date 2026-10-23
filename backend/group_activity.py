@@ -24,7 +24,7 @@ with three deviations, all forced by our problem being different:
 2. Three ordered classes, tiny N. OUC-CGE has 17 participants and ~3k labelled
    clips. That rules out deep stacks; the shipped readout is a 2-layer GCN at
    most, and the primary reported metric will sit next to human inter-rater
-   agreement, never alone (see ``tools/eval_group_activity.py``).
+   agreement, never alone (see ``tools/evaluate/eval_group_activity.py``).
 3. Abstention is part of the contract. ARG assumes every person is detected
    every frame. Classroom footage does not cooperate: occlusion and detector
    gaps are normal, and emitting a confident "high engagement" from two
@@ -60,7 +60,7 @@ Usage::
     # result.label in {"high","medium","low", None}; None == abstained
 
 Training is out of scope here: once B's graph lands and OUC-CGE is prepared
-(``tools/prepare_ouccge.py``), train the relation weights and GCN with PyTorch
+(``tools/data/prepare_ouccge.py``), train the relation weights and GCN with PyTorch
 externally and inject the callable. The pure-numpy forward pass exists so the
 plumbing is testable without torch, not because an untrained network means
 anything.
@@ -77,7 +77,7 @@ import numpy as np
 GroupLabel = Literal["high", "medium", "low"]
 
 # Ordered class index convention used everywhere in this module and in
-# tools/eval_group_activity.py. Ordinality is real (high > medium > low
+# tools/evaluate/eval_group_activity.py. Ordinality is real (high > medium > low
 # engagement); confusion matrices should respect it when read.
 LABELS: tuple[GroupLabel, ...] = ("high", "medium", "low")
 
