@@ -18,23 +18,49 @@ against hand-labelled ground truth and reproducible from `results/`.
 what to download, the three ways to run it, and the errors people actually
 hit.
 
+### 1. Install
+
 ```bash
 git clone https://github.com/pranayr710/cv.git classgraph && cd classgraph
 python -m venv .venv && .venv\Scripts\Activate.ps1   # or: source .venv/bin/activate
 pip install -r requirements.txt && pip install -e .
-
-classgraph doctor             # what this machine is missing
-python -m tools.run.server    # dashboard on 127.0.0.1:8000, prints an access token
+classgraph doctor                      # what this machine is missing
 ```
 
 A clone is **6 MB** and needs no data to start — the public weights
 (YOLO11m, InsightFace, SixDRepNet, the expression model, ~410 MB) download
 themselves on first use.
 
-Other entry points:
+### 2. Run the web interface
 
 ```bash
-classgraph video --dir <folder of clips> --out outputs/run1   # recorded footage
+python -m tools.run.server
+```
+
+Then open **<http://127.0.0.1:8000>** and paste the access token it printed
+in the terminal. That is the whole user interface: register students, start a
+camera session, upload a video and watch it being analysed, see the live
+overlay and the scene graph, and open the finished report.
+
+```
+ClassGraph dashboard -> http://127.0.0.1:8000
+  access token: 7f3a9c2b1e...        <- paste this into the page
+```
+
+To fix the token instead of reading a new one each run:
+
+```powershell
+$env:CLASSGRAPH_TOKEN = "classgraph"   # PowerShell
+export CLASSGRAPH_TOKEN=classgraph     # bash
+```
+
+> `classgraph serve` does the same thing. `uvicorn tools.run.server:app
+> --factory` also works, but cannot print the token.
+
+### 3. Everything else
+
+```bash
+classgraph video --dir <folder of clips> --out outputs/run1   # recorded footage, no browser
 classgraph live                                               # webcam, no browser
 classgraph train                                              # refit the attention model
 pytest                                                        # 729 tests
