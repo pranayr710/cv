@@ -289,26 +289,32 @@ def s02_vs_paper(prs, R):
 
 
 def s03_attention(prs, R):
-    c = R["ceiling"]
+    c, t = R["ceiling"], R["trusted"]
     s, y = chrome(prs, "Attention, against its ceiling", page=3)
+    share = t["model_accuracy"] / c["achievable_ceiling"]
 
     gap = 0.35
     w = (CW - 2 * gap) / 3
     top = y + 0.30
+    # Every figure read from results/, not typed. These three were literals
+    # carried over from an older run and had drifted: the slide said 0.732,
+    # 0.720 and 0.804 while trusted_eval measured 0.717, 0.708 and 0.830.
     card(s, M, top, w, 3.52, GREY, "Majority baseline",
-         [("0.401", "macro F1")])
+         [(f"{t['baseline_macro_f1']:.3f}", "macro F1")])
     card(s, M + w + gap, top, w, 3.52, BLUE, "Learned model",
-         [("0.720", "macro F1")])
+         [(f"{t['model_macro_f1']:.3f}", "macro F1")])
     card(s, M + 2 * (w + gap), top, w, 3.52, RUST, "Ceiling",
-         [("0.770", "what a perfect model scores")])
+         [(f"{c['achievable_ceiling']:.3f}", "what a perfect model scores")])
 
     banner(s, M, top + 3.76, CW,
-           "0.732 accuracy  -  95% of the ceiling these labels allow",
-           size=19)
+           f"{t['model_accuracy']:.3f} accuracy  -  {share:.0%} of the "
+           "ceiling these labels allow", size=19)
 
-    footnote(s, f"Ceiling measured, not assumed: 127 windows re-judged blind, "
-                f"kappa {c['cohens_kappa']:.3f}. Off-task recall 0.804 "
-                f"against the baseline's 0.000.")
+    footnote(s, f"Ceiling measured, not assumed: {c['n_rechecked']} windows "
+                f"re-judged blind, kappa {c['cohens_kappa']:.3f}. Off-task "
+                f"recall {t['model_off_task_recall']:.3f} against the "
+                f"baseline's {0.0:.3f}, on {t['n_trusted']} twice-confirmed "
+                "labels.")
     return s
 
 
