@@ -20,6 +20,10 @@ import requests
 
 SRC = Path("docs/diagrams")
 OUT = Path("ppt_assets")
+#: The rendered diagrams are also kept beside their source and
+#: tracked, because the README embeds them and ppt_assets/ is
+#: gitignored -- a clone would show three broken images otherwise.
+ALSO = Path("docs/diagrams")
 BASE = "https://mermaid.ink/img"
 #: Rendered wider than any slide so the deck downscales rather than upscales --
 #: text in an upscaled raster is the thing a projector makes unreadable.
@@ -56,6 +60,11 @@ def render(path: Path, dry: bool) -> bool:
 
     dest = OUT / f"{path.stem}.png"
     dest.write_bytes(r.content)
+    # Written twice on purpose. The decks read ppt_assets/, which is
+    # gitignored; the README embeds docs/diagrams/, which is not. Without
+    # the second copy a clone shows three broken images.
+    ALSO.mkdir(parents=True, exist_ok=True)
+    (ALSO / f"{path.stem}.png").write_bytes(r.content)
     from PIL import Image
 
     with Image.open(dest) as im:
