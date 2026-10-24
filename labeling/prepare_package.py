@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import os
 from pathlib import Path
 
 import cv2
@@ -30,7 +31,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.engagement_features import FEATURE_NAMES, iter_windows
 
 ROOT = Path(__file__).resolve().parent
-CLIPS = Path("C:/Users/prana/Downloads/high-2636(2191-2347)/high-2636(2191-2347)")
+# Overridable: this pointed at one person's Downloads folder, so no
+# clone could run the tool without editing it.
+CLIPS = Path(os.environ.get("CLASSGRAPH_CLIPS",
+                            "dataset/high-2636(2191-2347)"))
 GRAPH = Path("outputs/final2/live_graph.jsonl")
 RAW = Path("outputs/final2/raw.jsonl")
 

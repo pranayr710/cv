@@ -1394,6 +1394,34 @@ def _finish(out: Path, gallery) -> Path | None:
     return build(out, gallery)
 
 
+def app(**overrides):
+    """ASGI factory, so `uvicorn tools.run.server:app --factory` works.
+
+    There is deliberately no module-level `app` object. Building one at
+    import time would open the camera and load every model the moment
+    anything imported this module -- including the test suite.
+
+    This exists because `uvicorn tools.run.server:app` is the first thing
+    anyone tries, and it failed with `Attribute "app" not found`, which says
+    nothing about what to do instead. The supported invocation is still
+    `python -m tools.run.server`, which prints the access token the dashboard
+    needs; a bare uvicorn command cannot, so it generates one you then have
+    to read out of the environment.
+    """
+    import argparse as _argparse
+
+    defaults = {
+        "host": "127.0.0.1", "port": 8000, "camera": 0,
+        "gallery": "outputs/enrollment/gallery.json", "out": "outputs/live",
+        "db": "outputs/classgraph.db", "stride": 3, "imgsz": None,
+        "min_face_px": 60, "yaw_reference": None, "verbose": False,
+    }
+    defaults.update(overrides)
+    built = create_app(_argparse.Namespace(**defaults))
+    print(f"  access token: {built.state.classgraph_token}")
+    return built
+
+
 def main() -> int:
     """Parse arguments and serve the dashboard."""
     parser = argparse.ArgumentParser(description=__doc__)

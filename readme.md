@@ -79,6 +79,18 @@ schema.json   the frozen per-frame output contract
 graph_schema.json  the scene-graph contract
 ```
 
+## Getting started
+
+**[docs/SETUP.md](docs/SETUP.md)** — clone to working dashboard, what the
+project is, what to download and where to put it, and the errors people
+actually hit. Start there.
+
+```bash
+pip install -r requirements.txt && pip install -e .
+classgraph doctor          # what is missing on this machine
+python -m tools.run.server # dashboard on 127.0.0.1:8000
+```
+
 ## Where to look
 
 - **[PART1_PLAN.md](docs/PART1_PLAN.md)** — current status: what's delivered, the

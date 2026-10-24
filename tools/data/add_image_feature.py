@@ -29,13 +29,17 @@ import json
 import re
 import statistics
 import sys
+import os
 from pathlib import Path
 
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-CLIPS = Path("C:/Users/prana/Downloads/high-2636(2191-2347)/high-2636(2191-2347)")
+# Overridable: this pointed at one person's Downloads folder, so no
+# clone could run the tool without editing it.
+CLIPS = Path(os.environ.get("CLASSGRAPH_CLIPS",
+                            "dataset/high-2636(2191-2347)"))
 RAW = Path("outputs/final2/raw.jsonl")
 LABELS = Path("labeling/labels.json")
 DATA = Path("labeling/images/Final Dataset 256/Final Dataset 256")

@@ -1,0 +1,12 @@
+# Relative to this file, so the set moves between
+# machines. An absolute path here pinned it to one
+# laptop and broke every retrain on a clone.
+path: .
+train: train/images
+val: val/images
+nc: 4
+names:
+- read
+- sleep
+- using_device
+- write
