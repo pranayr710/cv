@@ -1,153 +1,173 @@
 # ClassGraph
 
-Classroom engagement analytics from video: detects every visible student,
-tracks them across frames, and reports per-student gaze, posture, facial
-expression, and behaviour (reading / writing / sleeping / phone use) — each
-signal validated against independently hand-labelled classroom images, not
-self-reported.
+**Per-student engagement from a single fixed classroom camera.**
 
-**Current phase:** Part 1 (Perception) — student detection through per-student
-signal extraction. Stage 2+ (identity persistence, scene graph, group
-activity) is built but deliberately paused until Part 1 is solid.
+One frame goes in. For every student visible, what comes out is: who they
+are, what they are doing, which way they are facing, and an attention score
+on a 1–10 scale aggregated over 15-second windows — plus a scene graph
+relating students to each other and to the objects they handle.
 
+Nine models, of which three are trained here. Every number below is measured
+against hand-labelled ground truth and reproducible from `results/`.
 
-## Install and run
+---
+
+## Start here
+
+**[docs/SETUP.md](docs/SETUP.md)** — clone to working dashboard: install,
+what to download, the three ways to run it, and the errors people actually
+hit.
 
 ```bash
-pip install -r requirements.txt
-pip install -e ".[learned]"
-classgraph doctor          # check this machine first
+git clone https://github.com/pranayr710/cv.git classgraph && cd classgraph
+python -m venv .venv && .venv\Scripts\Activate.ps1   # or: source .venv/bin/activate
+pip install -r requirements.txt && pip install -e .
+
+classgraph doctor             # what this machine is missing
+python -m tools.run.server    # dashboard on 127.0.0.1:8000, prints an access token
 ```
+
+A clone is **6 MB** and needs no data to start — the public weights
+(YOLO11m, InsightFace, SixDRepNet, the expression model, ~410 MB) download
+themselves on first use.
+
+Other entry points:
 
 ```bash
-classgraph serve                               # dashboard on :8000
-classgraph video --dir <folder of clips>       # process recorded footage
-classgraph train                               # refit the attention model
+classgraph video --dir <folder of clips> --out outputs/run1   # recorded footage
+classgraph live                                               # webcam, no browser
+classgraph train                                              # refit the attention model
+pytest                                                        # 729 tests
 ```
 
-**[DEPLOYMENT.md](docs/DEPLOYMENT.md)** covers installing on a machine that is not
-this one: model weights, Docker, privacy obligations, the known limits, and
-the failures worth recognising on sight.
+---
+
+## Three rules that explain most of the output
+
+* **It abstains.** When a model cannot answer, the system says so rather than
+  substituting its best guess. An unrecognised student is reported as
+  unidentified, never as the nearest match; a window too sparse to judge is
+  left unscored.
+* **Nothing rests on one frame.** Every verdict is windowed over 15 seconds.
+* **It does not infer emotion.** It classifies observable facial
+  configuration. (Barrett et al. 2019; EU AI Act Art. 5(1)(f).)
+
+---
 
 ## Where it stands
 
+All figures out-of-fold and grouped by student, so no student appears on both
+sides of a split.
+
 | | Measured |
 |---|---|
-| Attention score | **0.650 accuracy, 0.648 macro F1** at 91% coverage, against a rule baseline of **0.447 / 0.371**. Out-of-fold, split by student. |
+| **Attention score** | **0.717 accuracy, 0.708 macro F1, 0.830 off-task recall** on 82 twice-confirmed labels, against a majority baseline of 0.671 / 0.402 / **0.000** |
+| **Label ceiling** | **0.770** — the most a perfect model could score, given that re-judging 127 windows blind gave κ = 0.261 and ~23% label error. 0.717 is **93%** of it |
 | Student detection | P 82.2% / R 90.6% / F1 86.2% |
-| Behaviour model (fine-tuned YOLO11m) | mAP50 0.607; `write` 0.769 |
+| Behaviour detector | mAP@50 0.607 overall; `write` **0.767**, `read` 0.419 |
+| Image engagement scorer | **0.664** held out by near-duplicate group — *not* the 0.968 a random split reports |
 | Face recognition, close range | 0.978 against a held-out photo, 0.032 against a stranger |
-| Image engagement model | 0.664 held out by near-duplicate group — **not** the 0.968 a random split reports |
-| Headcount | **over-counts**: 13-18 ids for 8 real people. Per-student figures are sound per id; the roster is not. |
+| Headcount | **over-counts**: 13–18 ids for 8 real people. Per-student figures are sound per id; the roster is not |
 
-Architectures that were tried and did **not** beat the shipping model, all
-measured the same way and kept in the record rather than dropped: a Mamba
-sequence scorer (0.574 against 0.575, statistically tied), Vision Mamba on
-12,582 images (0.618 against ResNet18's 0.664), and three semi-supervised
-methods over the 405 unlabelled windows (no gain that survived fold
-permutation). The one change that did help was giving the model peer context
--- what the rest of the room was doing -- which is worth more than any of
-them.
+### The ceiling is the number that matters
+
+0.717 is not "72% of the way to a solved problem". Re-judging the same
+windows blind produced a different answer a third of the time, so roughly a
+quarter of the labels are wrong, and **no model scored against them can
+exceed 0.770**. The remaining gap is bought with better annotation, not a
+better model.
+
+### What was tried and did not win
+
+Kept in the record rather than dropped, because a result that did not hold is
+the only evidence that the ones that did were not luck:
+
+| | |
+|---|---|
+| Mamba sequence scorer | 0.592 against the MLP's 0.609 — a tie on 179 labels |
+| Vision Mamba on 12,582 images | 0.618 against ResNet18's 0.664 |
+| Self-training, label spreading, 9 of 12 literature features | no gain that survived fold permutation |
+
+The one change that helped was **peer context** — what the rest of the room
+is doing — which was worth more than any architecture tried.
 
 The Mamba scorer now **runs alongside** the shipping model rather than being
-kept in the record only. Both score every window and both numbers reach the
-dashboard and the report, because "statistically tied" is a reason to show
-two answers, not to pick one and present it as the answer. Where they
-disagree about a student, that is on screen. The two share a window, a
-stride, a coverage gate and a 1-10 mapping, so a difference between them is
-always a difference in judgement and never in arithmetic.
+filed away. Both score every window and both numbers reach the dashboard,
+because "statistically tied" is a reason to show two answers, not to pick
+one. They share a window, a stride, a coverage gate and a 1–10 mapping, so a
+difference between them is a difference in judgement and never in arithmetic.
+
+### Two things the models refuse to do
+
+* **Score footage they were not fitted on.** The attention model carries the
+  per-feature range of its training set. On a one-person webcam session,
+  three of its twenty-one features do not exist — there are no peers, and a
+  room focus needs three students — so it declines instead of extrapolating.
+* **Claim a confidence they have not earned.** Out of fold the raw model
+  claimed >90% certainty on 65% of windows and was right on 60% of those, so
+  the probability is Platt-calibrated before it becomes a score. Calibration
+  error 0.339 → 0.035.
+
+---
 
 ## Layout
 
 ```
 backend/      the pipeline: detection, identity, actions, attention scoring
-tools/        78 scripts, grouped by what you would open one for -- see tools/README.md
+tools/        78 scripts, grouped by what you would open one for — tools/README.md
   run/          what you run to use the system (server, batch, report, enrol)
   train/        fitting the models and the improvement loop
   evaluate/     measuring against ground truth
   diagnose/     one-off investigations; each answers a question
   data/         building and maintaining the label and image sets
   assets/       images and charts for the decks
-classgraph/   the installed CLI (`classgraph serve`, `classgraph video`, ...)
+classgraph/   the installed CLI (classgraph serve / video / live / train)
 models/       the two trained scorers the system loads at runtime (tracked)
-results/      the measurement behind every number quoted here (tracked)
-outputs/      what a run produces -- disposable, gitignored, no exceptions
-tests/        699 tests
-docs/         plans, literature review, privacy, per-person work split
-ppt/          deck builders; the decks themselves are written to the root
+results/      the measurement behind every number above (tracked)
+outputs/      what a run produces — disposable, gitignored
+tests/        729 tests; model-backed ones skip cleanly rather than faking a pass
+docs/         setup, plans, literature review, privacy, per-person work split
+ppt/          deck builders; the decks are written to the root
 schema.json   the frozen per-frame output contract
-graph_schema.json  the scene-graph contract
+graph_schema.json   the scene-graph contract
 ```
 
-## Getting started
-
-**[docs/SETUP.md](docs/SETUP.md)** — clone to working dashboard, what the
-project is, what to download and where to put it, and the errors people
-actually hit. Start there.
-
-```bash
-pip install -r requirements.txt && pip install -e .
-classgraph doctor          # what is missing on this machine
-python -m tools.run.server # dashboard on 127.0.0.1:8000
-```
+---
 
 ## Where to look
 
-- **[PART1_PLAN.md](docs/PART1_PLAN.md)** — current status: what's delivered, the
-  headline numbers, the decisions made and why, and the limitations stated
-  plainly rather than hidden. Read this first.
-- **[CHALLENGES_AND_SOLUTIONS.md](docs/CHALLENGES_AND_SOLUTIONS.md)** — the full
-  narrative log: every bug found, how it was verified (not assumed), and the
-  measurement behind every number in this project.
-- **[schema.json](schema.json)** — the frozen per-frame output contract.
-- **Work split across the five stages, one file per person** —
-  [Person A](docs/WORK_PERSON_A.md) (Perception & Identity, stages 1–2),
-  [Person B](docs/WORK_PERSON_B.md) (Relations & Time, stages 3–4),
-  [Person C](docs/WORK_PERSON_C.md) (Group Activity & Reporting, stage 5).
-- **[HANDOFF.md](docs/HANDOFF.md)** — a dated (2026-08-07) point-in-time snapshot
-  for bringing a new session up to speed on Week 1 state. Historical; see
-  PART1_PLAN.md for current state instead.
+| | |
+|---|---|
+| **[docs/SETUP.md](docs/SETUP.md)** | install, run, troubleshoot. Start here |
+| **[docs/PART1_PLAN.md](docs/PART1_PLAN.md)** | what is delivered, the decisions and why, limitations stated plainly |
+| **[docs/CHALLENGES_AND_SOLUTIONS.md](docs/CHALLENGES_AND_SOLUTIONS.md)** | every bug found, how it was verified, the measurement behind every number |
+| **[docs/PRIVACY_AND_ETHICS.md](docs/PRIVACY_AND_ETHICS.md)** | EU AI Act Art. 5(1)(f), India DPDP, retention, consent, access control |
+| **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | installing somewhere that is not this machine; Docker |
+| **[docs/LITERATURE_REVIEW.md](docs/LITERATURE_REVIEW.md)** | the research behind each open decision |
+| **[results/README.md](results/README.md)** | which tool rewrites each report, and which number it holds |
+| **Work split** | [Person A](docs/WORK_PERSON_A.md) · [Person B](docs/WORK_PERSON_B.md) · [Person C](docs/WORK_PERSON_C.md) |
 
-## Stage 5 (Person C) — group activity & reporting
+Base papers: ARG (Wu et al., CVPR 2019) contributes an architecture;
+RDFER (Liu, Wang & Shen, T-BIOM 2025) and Dynamic Objectives Learning
+(Wen et al., TMM 2020) contribute methods. The level of adoption is stated
+per paper in the review deck rather than implied.
 
-Scaffolding is in place ahead of its inputs (B's scene graph, the OUC-CGE
-download); every piece states its own honest status:
+---
 
-- `backend/group_activity.py` — ARG-style relation graph + GCN readout for
-  clip-level engagement (high/medium/low), abstention-first. Untrained and
-  unvalidated by design until its inputs exist.
-- `backend/reporting.py` + `tools/run/dashboard.py` — O6 reporting: class-level
-  trends by default, per-student drill-down only behind an explicit
-  `--per-student` flag, gaps rendered rather than smoothed over.
-- `tools/data/prepare_ouccge.py` / `tools/evaluate/eval_group_activity.py` — external
-  evaluation set preparation + harness (splits grouped by source recording;
-  see [docs/OUC_CGE_PREP.md](docs/OUC_CGE_PREP.md)).
-- `tools/evaluate/boss_agreement.py` + [docs/BOSS_VALIDATION.md](docs/BOSS_VALIDATION.md)
-  — Cohen's kappa between blind human BOSS coding and system verdicts.
-- [docs/PRIVACY_ETHICS.md](docs/PRIVACY_ETHICS.md) — framing vs EU AI Act
-  Art 5(1)(f), India DPDP retention policy, anonymisation evidence, access
-  control.
-- [docs/RENAME_HANDOFF.md](docs/RENAME_HANDOFF.md) — wording patches pending
-  file owners ("concentration" → behavioral proxy score; "emotion detection"
-  → facial expression classification).
+## Known limits
 
-## Running it
+Stated here rather than discovered later:
 
-```
-pip install -r requirements.txt
-python -m backend.integrate --video path/to/video.mp4 --out outputs/stage1.jsonl
-```
-
-Output is one JSON object per processed frame, matching `schema.json`.
-Per-student behaviour classification additionally requires a fine-tuned model
-(`python -m tools.train.train_behaviour`) — the pipeline runs without it (that field
-is simply `null`) if the weights aren't present.
-
-## Tests
-
-```
-pytest
-```
-
-658 tests, no ML weights required for most of them (model-backed tests skip
-cleanly when a dependency is absent rather than faking a pass).
+* **The roster over-counts.** 13–18 ids for 8 real people, narrowed to
+  re-identification across temporal gaps. Per-student figures are sound per
+  id; the headcount is not.
+* **The attention model is classroom-footage only.** One-person webcam
+  sessions are refused, by design — see above.
+* **`read` is the weak behaviour class** (0.419). Reading and writing differ
+  by what is in the hand, not by posture; the literature reports the same
+  confusion with far stronger temporal models.
+* **The group-activity network is implemented and untrained.** It needs a
+  labelled group-engagement corpus that is not publicly available.
+* **Annotation reliability caps everything at 0.770.** Raising it is the
+  single highest-value next step; nothing else can be shown to help until it
+  moves.
