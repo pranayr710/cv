@@ -1,0 +1,21 @@
+{
+ "n_windows": 557,
+ "n_students": 27,
+ "evaluation": "out-of-fold, grouped by student",
+ "out_of_fold_accuracy": 0.5386,
+ "before": {
+  "distinct_scores": 10,
+  "at_10_of_10": 0.1921,
+  "at_1_of_10": 0.1149
+ },
+ "after": {
+  "distinct_scores": 2,
+  "at_10_of_10": 0.0,
+  "at_1_of_10": 0.0
+ },
+ "platt": {
+  "a": 0.0362,
+  "b": 0.1296
+ },
+ "note": "Ordering is unchanged, so the comparison with the aggregate model stands. Only the reported score moves."
+}

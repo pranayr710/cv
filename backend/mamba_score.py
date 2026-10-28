@@ -105,6 +105,15 @@ class MambaScorer:
             # tidier errors, which a test of this function found.
             return
         self.model = model
+        # Platt coefficients, if the checkpoint carries them. Without one
+        # this model saturates: measured on its own training footage it put
+        # 23% of windows at exactly 10/10, and on a two-person webcam
+        # session it returned 10/10 for every single window -- the same
+        # number for a student on their phone and a student attentive
+        # throughout, which is not a measurement.
+        calib = blob.get("calibration")
+        self.calibration = (
+            (float(calib[0]), float(calib[1])) if calib else None)
         self._torch = torch
 
     @property
@@ -148,6 +157,22 @@ class MambaScorer:
         return to_score_10(probability)
 
     def _probability(self, steps: list[list[float]]) -> float:
+        """The calibrated probability, or the raw one if never calibrated."""
+        import math
+
+        torch = self._torch
+        with torch.no_grad():
+            x = torch.tensor([steps], dtype=torch.float32)
+            p = float(torch.sigmoid(self.model(x))[0])
+        if self.calibration is None:
+            return p
+        a, b = self.calibration
+        p = min(max(p, 1e-6), 1.0 - 1e-6)
+        z = a * math.log(p / (1.0 - p)) + b
+        return 1.0 / (1.0 + math.exp(-max(-60.0, min(60.0, z))))
+
+    def raw_probability(self, steps: list[list[float]]) -> float:
+        """Before calibration. Used by the fitter, which needs the input."""
         torch = self._torch
         with torch.no_grad():
             x = torch.tensor([steps], dtype=torch.float32)
