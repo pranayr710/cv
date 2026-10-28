@@ -320,11 +320,12 @@ Stated here rather than discovered later:
 * **The roster over-counts.** 13–18 ids for 8 real people, narrowed to
   re-identification across temporal gaps. Per-student figures are sound per
   id; the headcount is not.
-* **The attention model needs a room of five or more.** `peer_count` is
-  `n/(n+8)` over the peers in frame, and the fitted minimum of 0.333 means
-  four peers. Below that the peer features are outside anything the model
-  has seen, so it refuses — consistently, for everyone in the frame rather
-  than for whoever happens to have one more borderline feature.
+* **Peer context needs a room of five or more.** `peer_count` is `n/(n+8)`
+  over the peers in frame, and the fitted minimum of 0.333 means four peers.
+  Below that the full model refuses and a **solo model** fitted on the same
+  windows minus the three peer features takes over, so a small room is still
+  scored. It costs about 0.03 macro F1 (0.587 against 0.620 on the trusted
+  labels), and any score it produced says so.
 * **`read` is the weak behaviour class** (0.419). Reading and writing differ
   by what is in the hand, not by posture; the literature reports the same
   confusion with far stronger temporal models.

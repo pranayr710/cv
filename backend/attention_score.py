@@ -32,13 +32,26 @@ from pathlib import Path
 from typing import Any
 
 from backend.engagement_features import (
+    BASE_FEATURE_NAMES,
+    BODY_FEATURE_NAMES,
     MIN_COVERAGE,
+    PEER_FEATURE_NAMES,
     STRIDE_MS,
     WINDOW_MS,
     peer_vectors_in_span,
     window_features,
 )
 from backend.engagement_model import EngagementModel, load_or_none
+
+#: The peer-free fallback, fitted by tools/train/train_solo_model.py.
+SOLO_MODEL = Path("models/window_engagement_model_solo.json")
+
+#: What that model reads: the full window minus the three peer features.
+#: Named here so the loader can verify it rather than trusting the file.
+SOLO_FEATURE_NAMES = [n for n in (list(BASE_FEATURE_NAMES)
+                                  + list(BODY_FEATURE_NAMES)
+                                  + list(PEER_FEATURE_NAMES))
+                      if n not in set(PEER_FEATURE_NAMES)]
 
 #: Frames-per-second assumed when converting the window length into a frame
 #: count. Overridden per session by the caller when the real rate is known.
@@ -115,6 +128,23 @@ class AttentionScorer:
                  window_ms: int = WINDOW_MS,
                  stride_ms: int = STRIDE_MS) -> None:
         self.model = model if model is not None else load_or_none()
+        # The fallback for rooms too small for the full model. It reads the
+        # same window minus the three peer features, so it works at any room
+        # size -- at a measured cost of about 0.03 macro F1, which is why it
+        # is the fallback and not the default. None if it has not been
+        # trained; the system then simply reports no score in a small room,
+        # which is what it did before this existed.
+        self.solo = load_or_none(SOLO_MODEL, expect=SOLO_FEATURE_NAMES)
+        self.solo_columns: list[int] | None = None
+        if self.solo is not None and self.model is not None:
+            try:
+                self.solo_columns = [self.model.feature_names.index(n)
+                                     for n in self.solo.feature_names]
+            except ValueError:
+                # The solo model names a feature the full one does not: it
+                # was fitted against a different feature set and cannot be
+                # fed from this vector.
+                self.solo = None
         self.fps = fps
         self.window_ms = window_ms
         self.stride_ms = stride_ms
@@ -166,6 +196,19 @@ class AttentionScorer:
                                     "no trained model; rules apply", start)
 
         verdict = self.model.classify(vector)
+        scorer_used, scoring = self.model, vector
+
+        # A room too small for the full model is not a reason to report
+        # nothing. The solo model reads the same window minus the three peer
+        # features, so it applies at any room size -- at a measured cost of
+        # about 0.03 macro F1, which is why it is reached for only here.
+        if (self.solo is not None and verdict.abstained
+                and "rooms of five" in (verdict.reason or "")):
+            small = [vector[i] for i in self.solo_columns]
+            attempt = self.solo.classify(small)
+            if not attempt.abstained:
+                verdict, scorer_used, scoring = attempt, self.solo, small
+
         # Remembered, not re-derived each frame. update() returns None on
         # every frame between completed windows, so a caller that inspected
         # only the current reading saw no refusal on those frames and went on
@@ -181,7 +224,7 @@ class AttentionScorer:
         # which put 58% of all scores at exactly 1 or exactly 10 -- and a
         # student at 1/10 here against 10/10 from the sequence model.
         shown = (None if probability is None
-                 else self.model.calibrated_probability(vector))
+                 else scorer_used.calibrated_probability(scoring))
         if shown is not None and shown != shown:
             shown = None
         score = None if shown is None else to_score_10(shown)
@@ -199,7 +242,9 @@ class AttentionScorer:
 
         reason = verdict.reason
         if not verdict.abstained:
-            reason = f"{verdict.reason} ({self.model.explain(vector)})"
+            reason = f"{verdict.reason} ({scorer_used.explain(scoring)})"
+            if scorer_used is self.solo:
+                reason += " [solo model: too few students for peer context]"
         return AttentionReading(person_id, score, probability, verdict.label,
                                 reason, start)
 

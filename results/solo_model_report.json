@@ -1,0 +1,49 @@
+{
+ "n_windows": 557,
+ "n_students": 27,
+ "features": [
+  "coverage",
+  "frac_on_task_action",
+  "frac_off_task_action",
+  "frac_unknown_action",
+  "frac_phone",
+  "frac_eyes_closed",
+  "frac_oriented",
+  "frac_gaze_attending",
+  "mean_focus_offset_deg",
+  "action_entropy",
+  "action_switch_rate",
+  "frac_head_down_action",
+  "mean_vertical_lean",
+  "frac_expr_negative",
+  "frac_expr_uncertain",
+  "facing_variability",
+  "hands_visible",
+  "head_torso_misalign"
+ ],
+ "dropped": [
+  "peer_frac_on_task",
+  "peer_frac_gaze_attending",
+  "peer_count"
+ ],
+ "evaluation": "out-of-fold, grouped by student",
+ "scores": {
+  "all": {
+   "n": 557,
+   "accuracy": 0.5673,
+   "macro_f1": 0.5672,
+   "off_task_recall": 0.5946
+  },
+  "trusted": {
+   "n": 82,
+   "accuracy": 0.5976,
+   "macro_f1": 0.5872,
+   "off_task_recall": 0.6667
+  }
+ },
+ "calibration": [
+  0.0392,
+  0.1485
+ ],
+ "role": "fallback for rooms too small for the full model, which needs five or more people in frame; the full model is used wherever it applies"
+}

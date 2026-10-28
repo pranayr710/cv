@@ -425,13 +425,24 @@ class MLPEngagementModel(EngagementModel):
         return path
 
 
-def load_or_none(path: Path | None = None) -> EngagementModel | None:
+def load_or_none(path: Path | None = None,
+                 expect: Sequence[str] | None = None,
+                 ) -> EngagementModel | None:
     """The trained model, or ``None`` if it has not been trained.
+
+    Args:
+        path: The artifact to load. Defaults to the shipping model.
+        expect: The feature names this caller will feed it. Defaults to the
+            full current set. The peer-free fallback model is fitted on a
+            subset of them and states that here rather than the check being
+            relaxed for everyone -- the point of the check is that a model
+            whose columns mean something else must not load silently.
 
     Callers fall back to :func:`backend.engagement.classify_engagement`. A
     missing model must degrade to the rules rather than break the pipeline,
     because the rules are what ships today.
     """
+    wanted = list(FEATURE_NAMES if expect is None else expect)
     try:
         model = EngagementModel.load(path)
     except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError):
@@ -441,14 +452,13 @@ def load_or_none(path: Path | None = None) -> EngagementModel | None:
     # -- n_frames was removed from the feature set and a stale artifact would
     # have kept scoring against it -- so the check is enforced at load rather
     # than left to the caller.
-    if model.feature_names != list(FEATURE_NAMES):
+    if model.feature_names != wanted:
         import logging
 
         logging.getLogger(__name__).warning(
-            "ignoring %s: trained on %d features %s, current set has %d. "
-            "Retrain with tools/train/train_window_model.py.",
-            path or DEFAULT_MODEL, len(model.feature_names),
-            "that differ from the current ones", len(FEATURE_NAMES))
+            "ignoring %s: trained on %d features that differ from the %d "
+            "expected. Retrain with tools/train/train_window_model.py.",
+            path or DEFAULT_MODEL, len(model.feature_names), len(wanted))
         return None
     return model
 
