@@ -56,10 +56,15 @@ class _StudentState:
 
     frames: deque = field(default_factory=deque)
     last_window_ms: int = -1
-    #: Set once the model has refused this student's windows as unlike the
-    #: footage it was fitted on. Sticky, because the refusal is a property of
-    #: the session rather than of one window -- a one-person webcam session
-    #: does not acquire peers between frames.
+    #: Whether the model refused this student's most recent window as unlike
+    #: the footage it was fitted on.
+    #:
+    #: Carried between windows rather than latched forever. update() returns
+    #: None on every frame between completed windows, so without somewhere to
+    #: keep this a caller sees no refusal on those frames and publishes the
+    #: other model's score anyway -- which is the bug this exists for. It is
+    #: reassigned at each completed window, because a room that gains
+    #: students genuinely does become familiar footage again.
     unfit: bool = False
     scores: list[tuple[int, float]] = field(default_factory=list)
     uncertain: list[dict[str, Any]] = field(default_factory=list)

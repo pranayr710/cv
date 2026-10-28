@@ -80,6 +80,25 @@ MAX_FEATURES_OUT_OF_RANGE: int = 3
 #: as a different kind of footage.
 OUT_OF_RANGE_TOLERANCE: float = 0.10
 
+#: Features that describe the ROOM rather than the student. If one of these
+#: is outside the fitted range, every student in the frame is outside it, and
+#: counting it against each of them individually is the wrong arithmetic.
+#:
+#: Measured on a two-person session: peer_count sat at 0.111 against a fitted
+#: range of 0.333-0.600, and peer_frac_gaze_attending was out in all twelve
+#: windows for both students -- because the model was fitted on rooms of five
+#: or more. Both students therefore began every window with two of the three
+#: strikes already spent, and whether a third borderline feature happened to
+#: tip over decided who got a score. One student was scored and the other was
+#: not, on footage that was equally unfamiliar for both.
+#:
+#: peer_count is n/(n+8) where n is the peers in frame, so the fitted minimum
+#: of 0.333 means four peers: the model has never seen a room smaller than
+#: five people.
+ROOM_FEATURES: frozenset[str] = frozenset({
+    "peer_count", "peer_frac_on_task", "peer_frac_gaze_attending",
+})
+
 
 @dataclass(frozen=True)
 class Verdict:
@@ -267,6 +286,17 @@ class EngagementModel:
         # reports a confident score for footage it was never fitted on. See
         # MAX_FEATURES_OUT_OF_RANGE.
         strange = self.out_of_range(features)
+        # A room-level feature out of range disqualifies on its own: it is
+        # the same fact about every student in the frame, so the alternative
+        # is scoring some of them and not others by coincidence.
+        room = sorted(set(strange) & ROOM_FEATURES)
+        if room:
+            return Verdict(
+                None, float("nan"),
+                f"{', '.join(room)} outside the range this model was fitted "
+                "on -- it was fitted on rooms of five or more and this frame "
+                "holds fewer",
+                True)
         if len(strange) >= MAX_FEATURES_OUT_OF_RANGE:
             return Verdict(
                 None, float("nan"),

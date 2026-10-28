@@ -320,8 +320,11 @@ Stated here rather than discovered later:
 * **The roster over-counts.** 13–18 ids for 8 real people, narrowed to
   re-identification across temporal gaps. Per-student figures are sound per
   id; the headcount is not.
-* **The attention model is classroom-footage only.** One-person webcam
-  sessions are refused, by design — see above.
+* **The attention model needs a room of five or more.** `peer_count` is
+  `n/(n+8)` over the peers in frame, and the fitted minimum of 0.333 means
+  four peers. Below that the peer features are outside anything the model
+  has seen, so it refuses — consistently, for everyone in the frame rather
+  than for whoever happens to have one more borderline feature.
 * **`read` is the weak behaviour class** (0.419). Reading and writing differ
   by what is in the hand, not by posture; the literature reports the same
   confusion with far stronger temporal models.

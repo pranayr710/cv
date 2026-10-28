@@ -95,6 +95,48 @@ class TestItRefusesRatherThanExtrapolating:
         assert "coverage" in v.reason
 
 
+class TestARoomFeatureDisqualifiesOnItsOwn:
+    """Why one of two students was scored and the other was not.
+
+    peer_count and the two peer fractions describe the room, not the
+    student: if one is outside the fitted range it is outside it for
+    everybody in the frame. Counting them against each student individually
+    meant that on a two-person session both began every window with two of
+    the three strikes already spent, and whichever student happened to have
+    a third borderline feature tip over got no score while the other did --
+    on footage equally unfamiliar for both.
+    """
+
+    def _model(self):
+        names = ["coverage", "a", "peer_count", "peer_frac_on_task"]
+        return EngagementModel([0.0] * 4, 0.0, names, [0.0] * 4, [1.0] * 4,
+                               lo=[0, 0, 0.333, 0.136],
+                               hi=[1, 1, 0.600, 0.681])
+
+    def test_peer_count_alone_refuses(self):
+        v = self._model().classify([0.9, 0.5, 0.111, 0.4])
+        assert v.abstained
+        assert "peer_count" in v.reason
+
+    def test_the_reason_says_what_is_wrong_with_the_footage(self):
+        """'Three features out of range' tells an operator nothing. 'Fitted
+        on rooms of five or more' tells them to use different footage."""
+        v = self._model().classify([0.9, 0.5, 0.111, 0.4])
+        assert "five or more" in v.reason
+
+    def test_two_students_in_one_frame_are_treated_alike(self):
+        """The actual symptom. Same room, so the same verdict."""
+        m = self._model()
+        a = m.classify([0.9, 0.1, 0.111, 0.4])   # a third feature borderline
+        b = m.classify([0.9, 0.5, 0.111, 0.4])   # it is not
+        assert a.abstained and b.abstained
+        assert ("peer_count" in a.reason) == ("peer_count" in b.reason)
+
+    def test_a_full_room_is_unaffected(self):
+        v = self._model().classify([0.9, 0.5, 0.45, 0.4])
+        assert "outside the range" not in (v.reason or "")
+
+
 class TestTheRangeSurvivesASaveAndLoad:
     def test_it_round_trips(self, tmp_path):
         path = tmp_path / "m.json"
