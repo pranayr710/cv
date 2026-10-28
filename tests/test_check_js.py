@@ -105,5 +105,5 @@ class TestTheRealDashboard:
         reference error anywhere -- the tab just silently draws nothing."""
         source = APP.read_text(encoding="utf-8")
         for name in ("renderRoomMap", "renderObjectLinks",
-                     "renderScoreCompare", "renderInteractionMatrix"):
+                     "renderOnTask", "renderInteractionMatrix"):
             assert f"function {name}(" in source, name

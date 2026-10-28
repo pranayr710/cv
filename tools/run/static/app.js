@@ -127,33 +127,24 @@ function paintRoster(students) {
     const el = document.querySelector(`.student[data-id="${s.id}"]`);
     if (!el) continue;
     el.classList.toggle("present", s.present);
-    // The learned model's 1-10 score. A dash until it has seen a full
-    // window of this student: inventing a number for someone who just walked
-    // in would contradict how the rest of this system treats thin evidence.
+    // The percentage the rules measured, not the learned 1-10 score.
+    //
+    // Both models still run and both still reach the JSON. Neither is shown,
+    // because out of fold they are right 54.6% and 53.9% of the time: on a
+    // two-person session they returned the same score for a student on
+    // their phone in 64 frames and one attentive in 84, while this
+    // percentage separated them 62% to 100%. A figure that near chance does
+    // not belong on screen beside one that is measured.
     const pct = el.querySelector(".pct");
-    const score = s.attention_score;
-    const mamba = s.attention_score_mamba;
-    // Two models, side by side. The aggregate model is the one that ships;
-    // the Mamba sequence model scores the same 15-second window from the
-    // frames in order rather than from their averages. Out of fold on 179
-    // labelled windows they came out at 0.609 and 0.592 -- closer together
-    // than 179 labels can separate -- so neither is presented as the answer
-    // and a disagreement between them is information the viewer should see.
-    pct.innerHTML = score == null
+    const onTask = s.facing_front_pct;
+    pct.innerHTML = onTask == null
       ? '<span class="sc sc-none">—</span>'
-      : `<span class="sc" style="color:${scoreColour(score)}">${score}</span>`
-        + '<span class="sc-sep">/</span>'
-        + (mamba == null
-            ? '<span class="sc sc-none" title="Mamba: no full window yet">'
-              + "–</span>"
-            : `<span class="sc sc-mamba" style="color:${scoreColour(mamba)}">`
-              + `${mamba}</span>`);
-    pct.title = score == null
-      ? "waiting for a full 15s window"
-      : `aggregate model ${score}/10`
-        + (mamba == null ? "" : `, Mamba sequence model ${mamba}/10`)
-        + ` · ${s.attention_label || "no verdict"}`
-        + ` · ${s.attention_reason || ""}`;
+      : `<span class="sc" style="color:${
+          scoreColour(Math.round(onTask * 10))}">${
+          Math.round(onTask * 100)}%</span>`;
+    pct.title = onTask == null
+      ? "waiting for enough frames to judge"
+      : `${Math.round(onTask * 100)}% of graded frames facing the room`;
 
     const act = s.action ? ACTION_LABEL[s.action] || s.action : "not seen";
     // Posture is shown next to the action, not instead of it. A student can
@@ -361,7 +352,7 @@ function setGraphMode(mode) {
   const labels = {
     room: "Seating and room focus",
     objects: "Who was holding what",
-    scores: "Attention: both models",
+    scores: "On task, per student",
     heatmap: "Shared actions between students"
   };
   $("graphModeLabel").textContent = labels[mode] || mode;
@@ -416,7 +407,7 @@ function paintLiveGraph(students, detectedObjects, pairs) {
   if (currentGraphMode === "heatmap") {
     renderInteractionMatrix(svg, present, pairList, W, H);
   } else if (currentGraphMode === "scores") {
-    renderScoreCompare(svg, present, objects, pairList, W, H);
+    renderOnTask(svg, present, objects, pairList, W, H);
   } else if (currentGraphMode === "objects") {
     renderObjectLinks(svg, present, objects, pairList, W, H);
   } else {
@@ -609,67 +600,58 @@ function renderObjectLinks(svg, present, objects, pairs, W, H) {
  * can resolve. So neither is shown as the answer, and where they disagree
  * about a student that disagreement is on screen rather than averaged away.
  */
-function renderScoreCompare(svg, present, objects, pairs, W, H) {
-  const scored = present.filter(
-    s => s.attention_score != null || s.attention_score_mamba != null);
+/** On-task percentage per student, as measured by the rules.
+ *
+ * This replaced a side-by-side of the two learned 1-10 scores. Both models
+ * still run and both numbers still reach the JSON, but neither is drawn:
+ * out of fold they are right 54.6% and 53.9% of the time, and on a
+ * two-person session they returned the same score for a student on their
+ * phone in 64 frames and one attentive in 84 -- while this percentage
+ * separated the same two students 62% to 100%.
+ *
+ * Charting a near-chance figure beside a measured one invites a comparison
+ * that cannot be made.
+ */
+function renderOnTask(svg, present, objects, pairs, W, H) {
+  const scored = present.filter(s => s.facing_front_pct != null);
   if (!scored.length) {
-    emptyGraph(svg, "No student has been visible for a full 15-second "
-      + "window yet. Both models abstain until then.");
+    emptyGraph(svg, "No student has enough graded frames yet.");
     return;
   }
 
-  const left = 160, right = W - 90;
+  const left = 170, right = W - 90;
   const rowH = Math.min(54, (H - 120) / scored.length);
-  const barW = (right - left) / 10;
-  let html = legend([["#4a86c9", "aggregate model (shipping)"],
-                     ["#a862c0", "Mamba sequence model"]]);
+  const barW = (right - left) / 100;
+  let html = legend([["#4a86c9", "facing the room, % of graded frames"]]);
 
-  // Gridlines at each second point of the 1-10 scale, so a bar is read off
-  // an axis instead of estimated from its length.
-  for (let v = 0; v <= 10; v += 2) {
+  for (let v = 0; v <= 100; v += 25) {
     const x = left + v * barW;
     html += `<line x1="${x}" y1="56" x2="${x}" `
           + `y2="${56 + scored.length * rowH}" `
           + `stroke="rgba(255,255,255,.08)"/>`
           + `<text x="${x}" y="${72 + scored.length * rowH}" `
-          + `text-anchor="middle" class="graph-note">${v}</text>`;
+          + `text-anchor="middle" class="graph-note">${v}%</text>`;
   }
 
   scored.forEach((s, i) => {
-    const y = 62 + i * rowH;
-    const h = Math.min(13, rowH / 3.4);
-    html += `<text x="${left - 12}" y="${y + h + 3}" text-anchor="end" `
-          + `class="graph-name">${escape(who(s))}</text>`;
-    const bars = [["#4a86c9", s.attention_score, "aggregate"],
-                  ["#a862c0", s.attention_score_mamba, "Mamba"]];
-    bars.forEach((bar, k) => {
-      const by = y + k * (h + 3);
-      const score = bar[1];
-      if (score == null) {
-        html += `<text x="${left + 6}" y="${by + h - 1}" class="graph-note">`
-              + `${bar[2]}: no full window yet</text>`;
-        return;
-      }
-      html += `<rect x="${left}" y="${by}" width="${score * barW}" `
-            + `height="${h}" rx="3" fill="${bar[0]}"/>`
-            + `<text x="${left + score * barW + 7}" y="${by + h - 1}" `
-            + `class="graph-value">${score}</text>`;
-    });
+    const y = 64 + i * rowH;
+    const h = Math.min(18, rowH / 2.2);
+    const v = Math.round(s.facing_front_pct * 100);
+    html += `<text x="${left - 12}" y="${y + h - 3}" text-anchor="end" `
+          + `class="graph-name">${escape(who(s))}</text>`
+          + `<rect x="${left}" y="${y}" width="${v * barW}" height="${h}" `
+          + `rx="3" fill="${scoreColour(Math.round(v / 10))}"/>`
+          + `<text x="${left + v * barW + 8}" y="${y + h - 3}" `
+          + `class="graph-value">${v}%</text>`;
   });
 
-  const gaps = scored.filter(s => s.attention_score != null
-    && s.attention_score_mamba != null
-    && Math.abs(s.attention_score - s.attention_score_mamba) >= 3);
   html += `<text x="${W / 2}" y="${H - 10}" text-anchor="middle" `
-        + `class="graph-note">`
-        + (gaps.length
-            ? escape("The two models differ by 3 or more points on "
-                + `${gaps.length} of ${scored.length} students. Neither is `
-                + "known to be the better one on this evidence.")
-            : "The two models agree within 2 points on every student.")
-        + "</text>";
+        + `class="graph-note">Measured from the action rules. The two `
+        + "learned attention models are not charted — out of fold they "
+        + "are right about 54% of the time.</text>";
   svg.innerHTML = html;
 }
+
 
 /** How often each pair of students was doing the same thing at the same time.
  *
@@ -880,27 +862,25 @@ async function showResults(reportUrl) {
   } else {
     box.innerHTML = students.map((s) => {
       const name = s.name || `Student ${s.id}`;
-      // Both models, with the number of windows each rests on. They can and
-      // do disagree -- on the recording this was built against one student
-      // came out 1/10 from the aggregate model and 10/10 from Mamba -- and
-      // that is a fact about how little 179 labels settle, not a fault to
-      // hide by picking one.
-      const pair = `<span class="sc" style="color:${
-        scoreColour(s.attention)}">${s.attention == null ? "—"
-        : s.attention}</span><span class="sc-sep">/</span><span class="sc" `
-        + `style="color:${scoreColour(s.attention_mamba)}">${
-        s.attention_mamba == null ? "–" : s.attention_mamba}</span>`;
-      const onTask = s.on_task_pct == null
-        ? "" : ` · ${Math.round(s.on_task_pct)}% on task`;
+      // The measured percentage, not the learned score. Both models still
+      // run and both still reach the JSON; neither is printed, because out
+      // of fold they are right 54.6% and 53.9% of the time and on this
+      // footage returned the same number for two students the rules
+      // separated 62% to 100%.
+      const onTask = s.on_task_pct == null ? null : Math.round(s.on_task_pct);
+      const pct = onTask == null
+        ? '<span class="sc sc-none">—</span>'
+        : `<span class="sc" style="color:${scoreColour(Math.round(onTask / 10))
+          }">${onTask}%</span>`;
       const did = s.top_action ? ` · mostly ${ACTION_LABEL[s.top_action]
         || s.top_action}` : "";
       const windows = `${s.attention_windows || 0} and ${
-        s.attention_windows_mamba || 0} windows scored`;
+        s.attention_windows_mamba || 0} windows scored by the two attention
+        models; their 1-10 scores are not shown`;
       return `<div class="student present">
           <div class="row"><b>${escape(name)}</b><span class="pct"
-            title="aggregate model / Mamba sequence model, each out of 10 · ${
-            windows}">${pair}</span></div>
-          <div class="sub">${s.frames || 0} frames${onTask}${did}</div>
+            title="${windows}">${pct}</span></div>
+          <div class="sub">${s.frames || 0} frames${did}</div>
         </div>`;
     }).join("");
   }

@@ -521,18 +521,13 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
     label = {p["person_id"]: names.get(p["person_id"], f"Student {p['person_id']}")
              for p in students}
     on_task = {p["person_id"]: p.get("on_task_pct") for p in students}
-    # The learned score, shown beside the rule-derived figures
-    # rather than instead of them: they disagree, and which one a
-    # reader is looking at should never be ambiguous.
-    attention = {p["person_id"]: p.get("attention_score")
-                 for p in students}
-    # The Mamba sequence model's score for the same student. Reported next to
-    # the above, never averaged with it: out of fold on 179 hand-labelled
-    # windows, grouped by student, the two scored 0.609 and 0.592 -- a gap
-    # smaller than 179 labels can resolve, so declaring a winner would be
-    # reporting a coin flip. Where they disagree, that is worth seeing.
-    mamba = {p["person_id"]: p.get("attention_score_mamba")
-             for p in students}
+    # The two 1-10 attention scores are deliberately NOT rendered. They are
+    # still computed, still written to live_profiles.json, and still counted
+    # below -- but out of fold they are right 54.6% and 53.9% of the time,
+    # and a figure that near chance does not belong beside a percentage that
+    # is measured. On a two-person session both models returned the same
+    # score for a student on their phone in 64 frames and one attentive in
+    # 84, which is what a reader was being invited to compare.
     engaged = {p["person_id"]: p.get("engagement_pct") for p in students}
     order = sorted((p["person_id"] for p in students),
                    key=lambda pid: (on_task.get(pid) is None, on_task.get(pid, 0)))
@@ -549,12 +544,8 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
       <header><h3>{label[pid]}</h3>
         <span class="id">#{pid} · {p["frames_seen"]} frames</span></header>
       <div class="pair">
-        <div><b>{"—" if attention[pid] is None else f"{attention[pid]}/10"}</b>
-             <small>attention &middot; aggregate model</small></div>
-        <div><b>{"—" if mamba[pid] is None else f"{mamba[pid]}/10"}</b>
-             <small>attention &middot; Mamba sequence</small></div>
         <div><b>{"—" if on_task[pid] is None else f"{on_task[pid]:.0f}%"}</b>
-             <small>on task &middot; rules</small></div>
+             <small>on task</small></div>
         <div><b>{"—" if engaged[pid] is None else f"{engaged[pid]:.0f}%"}</b>
              <small>facing room</small></div>
       </div>
@@ -563,9 +554,11 @@ def build(out_dir: Path, gallery, title="Classroom session") -> Path:
         <dt>Most of the time</dt><dd>{top or "—"}</dd>
         <dt>Expression</dt><dd>{_stack_expr(p["expression"]["counts"])}</dd>
         <dt>Posture</dt><dd>{posture_label(lean)}</dd>
-        <dt>Attention from</dt><dd>{p.get('attention_windows', 0)} windows
-          scored by the aggregate model,
-          {p.get('attention_windows_mamba', 0)} by the sequence model</dd>
+        <dt>Windows scored</dt><dd>{p.get('attention_windows', 0)} by the
+          aggregate model, {p.get('attention_windows_mamba', 0)} by the
+          sequence model. The 1&ndash;10 score each produces is not shown:
+          out of fold they are right 54.6% and 53.9% of the time, which is
+          not a number to put beside a percentage that is measured.</dd>
       </dl>
       <div class="tghead">How they moved between actions</div>
       {_transitions_svg(pid, transitions)}
